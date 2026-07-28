@@ -111,6 +111,9 @@ export interface DayCloseReport {
   systemUPI: number; // paise
   countedCash: number; // paise
   denominations: DenominationBreakdown;
+  useBNACount?: boolean;
+  bnaDepositAmount?: number; // paise
+  bnaSlipNumber?: string;
   variance: number; // paise
   status: CashVarianceStatus;
   isCloseReturn: boolean;

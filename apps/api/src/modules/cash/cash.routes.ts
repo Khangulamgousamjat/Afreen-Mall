@@ -9,7 +9,18 @@ router.use(authenticateToken);
 // 1. POST /api/v1/cash/day-close - Cashier End-of-Shift Day Close
 router.post('/day-close', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { registerId, systemCash, systemCard, systemUPI, countedCash, denominations, isCloseReturn } = req.body;
+    const {
+      registerId,
+      systemCash,
+      systemCard,
+      systemUPI,
+      countedCash,
+      denominations,
+      useBNACount = false,
+      bnaDepositAmount,
+      bnaSlipNumber,
+      isCloseReturn,
+    } = req.body;
 
     if (countedCash === undefined || !denominations) {
       return res.status(400).json({ error: 'Counted cash and denomination breakdown are required' });
@@ -33,6 +44,9 @@ router.post('/day-close', async (req: AuthenticatedRequest, res: Response) => {
         systemUPI: systemUPI || 0,
         countedCash: countedCash || 0,
         denominations,
+        useBNACount: Boolean(useBNACount),
+        bnaDepositAmount: bnaDepositAmount || null,
+        bnaSlipNumber: bnaSlipNumber || null,
         variance,
         status,
         isCloseReturn: Boolean(isCloseReturn),

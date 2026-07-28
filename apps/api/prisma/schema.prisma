@@ -328,6 +328,9 @@ model RegisterClose {
   systemUPI      Int      // Paise
   countedCash    Int      // Paise
   denominations  Json     // { d2000, d500, d200... }
+  useBNACount    Boolean  @default(false)
+  bnaDepositAmount Int?   // Paise
+  bnaSlipNumber  String?
   variance       Int      // Paise
   status         CashVarianceStatus
   isCloseReturn  Boolean  @default(false)
