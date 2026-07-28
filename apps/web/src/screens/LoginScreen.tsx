@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Lock, AlertOctagon, ArrowLeft, Shield } from 'lucide-react';
+import { AlertOctagon, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { AfreenMallLogo } from '../components/AfreenMallLogo';
 
 interface LoginScreenProps {
   onBackToWelcome: () => void;
@@ -45,27 +46,32 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
         padding: '24px',
       }}
     >
-      <div className="card" style={{ maxWidth: '440px', width: '100%', padding: '36px 28px' }}>
-        <button
-          className="btn"
-          onClick={onBackToWelcome}
-          style={{ marginBottom: '20px', padding: '4px 8px', fontSize: '12px' }}
-        >
-          <ArrowLeft size={14} />
-          <span>Back</span>
-        </button>
+      <div className="card" style={{ maxWidth: '480px', width: '100%', padding: '36px 28px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-start', marginBottom: '12px' }}>
+          <button
+            className="btn"
+            onClick={onBackToWelcome}
+            style={{ padding: '4px 8px', fontSize: '12px' }}
+          >
+            <ArrowLeft size={14} />
+            <span>Back</span>
+          </button>
+        </div>
 
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <Shield size={36} style={{ color: 'var(--accent-lime)', marginBottom: '8px' }} />
-          <h2 style={{ fontSize: '22px', fontWeight: 'bold', textTransform: 'uppercase' }}>Afreen Mall Staff Login</h2>
+        {/* Aesthetic Logo Emblem */}
+        <AfreenMallLogo size="large" />
+
+        <div style={{ textAlign: 'center', marginBottom: '24px', marginTop: '12px' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Staff Secure Login</h2>
           <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Enter your 6-digit Staff ID (e.g. 300000) or Username
+            Enter 6-digit Staff ID (e.g. 300000) or Username
           </div>
         </div>
 
         {error && (
           <div
             style={{
+              width: '100%',
               backgroundColor: 'rgba(248, 113, 113, 0.1)',
               border: '1px solid var(--status-red)',
               color: 'var(--status-red)',
@@ -82,7 +88,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
             <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
               6-Digit Staff ID / Username
@@ -117,8 +123,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           </button>
         </form>
 
-        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-          Strictly internal access. Accounts are created exclusively by Super Admin.
+        <div style={{ width: '100%', marginTop: '24px', textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+          Strictly internal access. Accounts provisioned by Super Admin.
         </div>
       </div>
     </div>
