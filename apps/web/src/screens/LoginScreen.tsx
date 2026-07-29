@@ -18,11 +18,21 @@ interface StaffMember {
 const INITIAL_STAFF_LIST: StaffMember[] = [
   { staffId: 300000, username: 'Superkhan', name: 'Gous Khan', role: 'SUPER_ADMIN' },
   { staffId: 300001, username: 'manager1', name: 'Store Manager', role: 'STORE_MANAGER' },
-  { staffId: 300002, username: 'cashier1', name: 'Head Cashier', role: 'CASHIER' },
   { staffId: 300003, username: 'cashofficer1', name: 'Cash Officer', role: 'CASH_OFFICER' },
   { staffId: 300004, username: 'inventory1', name: 'Inventory Specialist', role: 'INVENTORY_STAFF' },
   { staffId: 300005, username: 'warehouse1', name: 'Warehouse Lead', role: 'WAREHOUSE_STAFF' },
   { staffId: 300006, username: 'auditor1', name: 'Audit Officer', role: 'AUDITOR' },
+  // 10 Normal Cashier accounts
+  { staffId: 300010, username: 'cashier1', name: 'Cashier 1', role: 'CASHIER' },
+  { staffId: 300011, username: 'cashier2', name: 'Cashier 2', role: 'CASHIER' },
+  { staffId: 300012, username: 'cashier3', name: 'Cashier 3', role: 'CASHIER' },
+  { staffId: 300013, username: 'cashier4', name: 'Cashier 4', role: 'CASHIER' },
+  { staffId: 300014, username: 'cashier5', name: 'Cashier 5', role: 'CASHIER' },
+  { staffId: 300015, username: 'cashier6', name: 'Cashier 6', role: 'CASHIER' },
+  { staffId: 300016, username: 'cashier7', name: 'Cashier 7', role: 'CASHIER' },
+  { staffId: 300017, username: 'cashier8', name: 'Cashier 8', role: 'CASHIER' },
+  { staffId: 300018, username: 'cashier9', name: 'Cashier 9', role: 'CASHIER' },
+  { staffId: 300019, username: 'cashier10', name: 'Cashier 10', role: 'CASHIER' },
 ];
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLoginSuccess }) => {
