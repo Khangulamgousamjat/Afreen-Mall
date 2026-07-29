@@ -35,7 +35,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
 
   const [staffList, setStaffList] = useState<StaffMember[]>(INITIAL_STAFF_LIST);
   const [staffSearchQuery, setStaffSearchQuery] = useState('');
-  const [showStaffDirectory, setShowStaffDirectory] = useState(true);
+  
+  // Table is HIDDEN by default on screen load
+  const [showStaffDirectory, setShowStaffDirectory] = useState(false);
 
   const identifierInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -76,9 +78,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
     );
   });
 
-  // Select staff member and auto-focus password field
+  // Select staff member from directory table
   const handleSelectStaff = (staff: StaffMember) => {
     setIdentifier(staff.staffId.toString());
+    setShowStaffDirectory(false); // Hide table after selecting valid staff
     setError('');
     setTimeout(() => {
       passwordInputRef.current?.focus();
@@ -101,11 +104,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
       );
 
       if (matched) {
+        // Valid ID: keep table HIDDEN, set ID, jump to Password box
         setIdentifier(matched.staffId.toString());
+        setShowStaffDirectory(false);
         setError('');
         passwordInputRef.current?.focus();
       } else {
-        setError(`Staff ID "${val}" not found. Please choose your account from the table below.`);
+        // Wrong ID: OPEN table automatically and show error message
+        setError(`Staff ID "${val}" not found. Please select your account from the directory table below.`);
         setShowStaffDirectory(true);
       }
     }
@@ -162,7 +168,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
         </div>
       </div>
 
-      <div className="card" style={{ maxWidth: '680px', width: '100%', padding: '28px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div className="card" style={{ maxWidth: '520px', width: '100%', padding: '32px 28px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <button
             className="btn"
@@ -173,6 +179,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
             <span>Back</span>
           </button>
 
+          {/* Optional manual directory toggle */}
           <button
             className="btn"
             type="button"
@@ -188,7 +195,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
             }}
           >
             <Users size={14} />
-            <span>{showStaffDirectory ? 'Hide Directory Table' : 'Show Directory Table'}</span>
+            <span>{showStaffDirectory ? 'Close Directory' : 'Staff Directory'}</span>
             {showStaffDirectory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
         </div>
@@ -196,7 +203,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
         <div style={{ textAlign: 'center', marginBottom: '18px' }}>
           <h2 style={{ fontSize: '20px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Staff Secure Login</h2>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Type Staff ID & Press Enter, or Search & Select your account from the table below
+            Enter 6-digit Staff ID & Press Enter
           </div>
         </div>
 
@@ -221,36 +228,72 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
         )}
 
         <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Side-by-side Inputs: Staff ID Box (Left) + Big Search Box (Right) */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'flex-start' }}>
-            {/* Left: Staff ID / Username Input */}
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-main)', display: 'block', marginBottom: '6px' }}>
+          {/* Staff ID / Username Input Box */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-main)' }}>
                 6-Digit Staff ID / Username
               </label>
-              <input
-                ref={identifierInputRef}
-                type="text"
-                className="input-field tabular-nums"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                onKeyDown={handleIdentifierKeyDown}
-                placeholder="Type ID (e.g. 300000) & Press Enter"
-                required
-                autoFocus
-                disabled={loading}
-                style={{ fontSize: '14px', padding: '10px 12px' }}
-              />
-              <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
-                Press Enter to validate & jump to password
-              </span>
+              <button
+                type="button"
+                onClick={() => setShowStaffDirectory((prev) => !prev)}
+                style={{ background: 'none', border: 'none', color: 'var(--accent-lime)', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                {showStaffDirectory ? 'Hide Directory' : 'Search Directory'}
+              </button>
             </div>
+            <input
+              ref={identifierInputRef}
+              type="text"
+              className="input-field tabular-nums"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              onKeyDown={handleIdentifierKeyDown}
+              placeholder="Type Staff ID (e.g. 300000) & Press Enter"
+              required
+              autoFocus
+              disabled={loading}
+              style={{ fontSize: '14px', padding: '10px 12px' }}
+            />
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+              Press Enter to validate — if correct, jumps to password. If wrong, opens table.
+            </span>
+          </div>
 
-            {/* Right: Big Staff Search Input */}
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--accent-lime)', display: 'block', marginBottom: '6px' }}>
-                Search Staff Directory (Name / Role / ID)
-              </label>
+          {/* Selected Staff Badge */}
+          {selectedStaffObj && !showStaffDirectory && (
+            <div
+              style={{
+                width: '100%',
+                backgroundColor: 'var(--accent-soft)',
+                border: '1px solid var(--accent-lime)',
+                padding: '8px 14px',
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Account Selected: </span>
+                <strong style={{ color: 'var(--accent-lime)' }}>{selectedStaffObj.name}</strong>
+                <span style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '6px' }} className="tabular-nums">(ID: {selectedStaffObj.staffId})</span>
+              </div>
+              <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--accent-lime)', textTransform: 'uppercase' }}>{selectedStaffObj.role}</span>
+            </div>
+          )}
+
+          {/* Directory Table — ONLY opens if wrong ID is entered or manually requested */}
+          {showStaffDirectory && (
+            <div style={{ width: '100%', border: '1px solid var(--accent-lime)', backgroundColor: 'var(--surface-color)', borderRadius: '4px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--accent-lime)', letterSpacing: '0.5px' }}>
+                  Select Correct Account Below
+                </span>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{filteredStaff.length} Accounts</span>
+              </div>
+
+              {/* Big Search Input Box inside the opened table panel */}
               <div style={{ position: 'relative', width: '100%' }}>
                 <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input
@@ -261,28 +304,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
                   onChange={(e) => setStaffSearchQuery(e.target.value)}
                   placeholder="Search by Name, Staff ID, or Role..."
                   disabled={loading}
-                  style={{ fontSize: '14px', padding: '10px 12px 10px 36px', border: '1px solid var(--accent-lime)' }}
+                  style={{ fontSize: '13px', padding: '8px 12px 8px 36px', border: '1px solid var(--border-color)' }}
+                  autoFocus
                 />
               </div>
-              <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
-                Filters staff table live as you type
-              </span>
-            </div>
-          </div>
 
-          {/* Prominent Staff Accounts Table */}
-          {showStaffDirectory && (
-            <div style={{ width: '100%', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', borderRadius: '4px', overflow: 'hidden' }}>
-              <div style={{ padding: '8px 12px', backgroundColor: 'var(--surface-secondary)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--accent-lime)', letterSpacing: '0.5px' }}>
-                  Staff Accounts Directory
-                </span>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  Showing {filteredStaff.length} of {staffList.length} accounts (Click or Enter to select)
-                </span>
-              </div>
-
-              <div style={{ maxHeight: '190px', overflowY: 'auto' }}>
+              {/* Scrollable Accounts Table */}
+              <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--border-color)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                   <thead>
                     <tr style={{ backgroundColor: 'var(--bg-color)', borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase' }}>
@@ -295,7 +323,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
                   <tbody>
                     {filteredStaff.length === 0 ? (
                       <tr>
-                        <td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                        <td colSpan={4} style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                           No staff member matching "{staffSearchQuery}"
                         </td>
                       </tr>
@@ -306,13 +334,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
                           <tr
                             key={staff.staffId}
                             onClick={() => handleSelectStaff(staff)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') handleSelectStaff(staff); }}
-                            tabIndex={0}
                             style={{
                               backgroundColor: isSelected ? 'var(--accent-soft)' : undefined,
                               borderBottom: '1px solid var(--border-color)',
                               cursor: 'pointer',
-                              transition: 'background-color 0.15s ease',
                             }}
                           >
                             <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontWeight: 'bold', color: 'var(--text-main)' }}>
@@ -353,29 +378,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
-
-          {/* Selected Staff Info Bar */}
-          {selectedStaffObj && (
-            <div
-              style={{
-                width: '100%',
-                backgroundColor: 'var(--accent-soft)',
-                border: '1px solid var(--accent-lime)',
-                padding: '8px 14px',
-                fontSize: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <div>
-                <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Account Selected: </span>
-                <strong style={{ color: 'var(--accent-lime)' }}>{selectedStaffObj.name}</strong>
-                <span style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '6px' }} className="tabular-nums">(ID: {selectedStaffObj.staffId})</span>
-              </div>
-              <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--accent-lime)', textTransform: 'uppercase' }}>{selectedStaffObj.role}</span>
             </div>
           )}
 
