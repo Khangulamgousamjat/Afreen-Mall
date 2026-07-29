@@ -7,7 +7,7 @@ const API_BASE = `${API_HOST.replace(/\/$/, '')}/api/v1`;
 
 export const api = axios.create({
   baseURL: API_BASE,
-  timeout: 60000, // 60 second timeout to accommodate Render free-tier cold starts
+  timeout: 45000, // 45 second timeout for general API operations
   headers: {
     'Content-Type': 'application/json',
   },

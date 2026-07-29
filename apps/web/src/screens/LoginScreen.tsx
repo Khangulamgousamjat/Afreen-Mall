@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AlertOctagon, ArrowLeft, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 
 interface LoginScreenProps {
   onBackToWelcome: () => void;
@@ -15,18 +16,28 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
   const [loading, setLoading] = useState(false);
   const [statusText, setStatusText] = useState('Authenticating...');
 
+  const isHealthPingInFlight = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
-  const timer1Ref = useRef<NodeJS.Timeout | null>(null);
-  const timer2Ref = useRef<NodeJS.Timeout | null>(null);
 
   const clearAllTimers = () => {
     if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
-    if (timer1Ref.current) clearTimeout(timer1Ref.current);
-    if (timer2Ref.current) clearTimeout(timer2Ref.current);
   };
 
+  // Task 1: Fire lightweight GET to /health on mount to wake Render instance early
   useEffect(() => {
+    isHealthPingInFlight.current = true;
+    const wakeServer = async () => {
+      try {
+        await api.get('/health', { timeout: 30000 });
+      } catch {
+        // Fire-and-forget background ping to trigger Render cold start
+      } finally {
+        isHealthPingInFlight.current = false;
+      }
+    };
+    wakeServer();
+
     return () => {
       clearAllTimers();
       if (abortControllerRef.current) abortControllerRef.current.abort();
@@ -49,37 +60,58 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    // 60-second timeout to allow Render free tier cold-starts to complete naturally
+    // Task 1: 60-second total client timeout
     timeoutIdRef.current = setTimeout(() => {
       controller.abort();
     }, 60000);
 
     try {
       setLoading(true);
-      setStatusText('Authenticating...');
 
-      // Dynamic status progress updates for cashier feedback
-      timer1Ref.current = setTimeout(() => {
-        setStatusText('Connecting to Cloud API...');
-      }, 3000);
-
-      timer2Ref.current = setTimeout(() => {
+      // Task 1: Immediate cold-start message if health ping is still in flight
+      if (isHealthPingInFlight.current) {
         setStatusText('Waking Cloud Server (~30s Cold Start)...');
-      }, 8000);
+      } else {
+        setStatusText('Authenticating...');
+      }
 
-      await login(identifier.trim(), password);
+      // Task 1: Exponential backoff retry (up to 3 attempts)
+      const maxRetries = 3;
+      let lastErr: any = null;
 
-      clearAllTimers();
-      onLoginSuccess();
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        if (controller.signal.aborted) break;
+
+        try {
+          if (attempt > 1) {
+            setStatusText(`Waking Cloud Server (Attempt ${attempt}/${maxRetries})...`);
+            const delay = Math.pow(2, attempt - 1) * 1000; // 2s, 4s
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
+
+          await login(identifier.trim(), password);
+          clearAllTimers();
+          onLoginSuccess();
+          return;
+        } catch (err: any) {
+          lastErr = err;
+          // If error is invalid credentials or 401, don't retry - fail immediately
+          if (err.response?.status === 401 || err.response?.status === 400 || err.response?.status === 423) {
+            throw err;
+          }
+        }
+      }
+
+      if (lastErr) throw lastErr;
     } catch (err: any) {
       clearAllTimers();
 
       if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED' || err.name === 'AbortError' || err?.message === 'canceled') {
-        setError('Server request timed out. Please click Retry below to try again.');
+        setError('Server request timed out after 60s. Click Retry below.');
       } else if (err.response?.data?.error) {
         setError(err.response.data.error);
       } else if (err.message === 'Network Error') {
-        setError('Unable to connect to backend server. Please check internet connection or click Retry.');
+        setError('Unable to connect to backend server. Please check connection or retry.');
       } else if (err.message) {
         setError(err.message);
       } else {
