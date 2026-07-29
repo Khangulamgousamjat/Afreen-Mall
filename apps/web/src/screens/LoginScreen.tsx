@@ -46,8 +46,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
         padding: '24px',
       }}
     >
-      <div className="card" style={{ maxWidth: '480px', width: '100%', padding: '36px 28px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-start', marginBottom: '12px' }}>
+      <div className="card" style={{ maxWidth: '440px', width: '100%', padding: '32px 28px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-start', marginBottom: '8px' }}>
           <button
             className="btn"
             onClick={onBackToWelcome}
@@ -58,12 +58,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           </button>
         </div>
 
-        {/* Aesthetic Logo Emblem */}
-        <AfreenMallLogo size="large" />
+        {/* Compact Vector Logo Emblem */}
+        <AfreenMallLogo size="medium" />
 
-        <div style={{ textAlign: 'center', marginBottom: '24px', marginTop: '12px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '20px', marginTop: '8px' }}>
           <h2 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Staff Secure Login</h2>
-          <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
             Enter 6-digit Staff ID (e.g. 300000) or Username
           </div>
         </div>
@@ -75,9 +75,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
               backgroundColor: 'rgba(248, 113, 113, 0.1)',
               border: '1px solid var(--status-red)',
               color: 'var(--status-red)',
-              padding: '12px',
+              padding: '10px 12px',
               fontSize: '13px',
-              marginBottom: '20px',
+              marginBottom: '16px',
               display: 'flex',
               alignItems: 'flex-start',
               gap: '10px',
@@ -88,9 +88,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
-            <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+            <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
               6-Digit Staff ID / Username
             </label>
             <input
@@ -105,7 +105,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           </div>
 
           <div>
-            <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+            <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
               Password
             </label>
             <input
@@ -118,12 +118,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
             />
           </div>
 
-          <button type="submit" className="btn btn-primary" disabled={loading} style={{ padding: '12px', marginTop: '8px' }}>
+          <button type="submit" className="btn btn-primary" disabled={loading} style={{ padding: '12px', marginTop: '6px' }}>
             {loading ? 'Authenticating...' : 'Sign In to Operations'}
           </button>
         </form>
 
-        <div style={{ width: '100%', marginTop: '24px', textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+        <div style={{ width: '100%', marginTop: '20px', textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '14px' }}>
           Strictly internal access. Accounts provisioned by Super Admin.
         </div>
       </div>

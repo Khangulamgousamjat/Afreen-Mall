@@ -33,18 +33,18 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGoToLogin }) => 
       <div
         className="card"
         style={{
-          maxWidth: '680px',
+          maxWidth: '540px',
           width: '100%',
           textAlign: 'center',
-          padding: '48px 40px',
+          padding: '36px 32px',
           border: '1px solid var(--border-color)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
         }}
       >
-        {/* Prominent Aesthetic Brand Logo (Big Display, No Down Words) */}
-        <AfreenMallLogo size="huge" />
+        {/* Sleek, Compact Transparent Vector Logo */}
+        <AfreenMallLogo size="large" />
 
         {/* Single CTA Button */}
         <button
@@ -52,23 +52,23 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGoToLogin }) => 
           onClick={onGoToLogin}
           style={{
             width: '100%',
-            maxWidth: '380px',
-            padding: '16px',
-            fontSize: '17px',
-            marginTop: '36px',
+            maxWidth: '340px',
+            padding: '14px',
+            fontSize: '16px',
+            marginTop: '24px',
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            gap: '12px',
+            gap: '10px',
           }}
         >
           <span>Staff Login</span>
-          <ArrowRight size={20} />
+          <ArrowRight size={18} />
         </button>
 
         <div
           style={{
-            marginTop: '28px',
+            marginTop: '20px',
             fontSize: '12px',
             color: 'var(--text-muted)',
             display: 'flex',
