@@ -1,7 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { AlertOctagon, ArrowLeft, RefreshCw } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertOctagon, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
 
 interface LoginScreenProps {
   onBackToWelcome: () => void;
@@ -14,35 +13,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [statusText, setStatusText] = useState('Authenticating...');
-
-  const isHealthPingInFlight = useRef(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
-
-  const clearAllTimers = () => {
-    if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
-  };
-
-  // Task 1: Fire lightweight GET to /health on mount to wake Render instance early
-  useEffect(() => {
-    isHealthPingInFlight.current = true;
-    const wakeServer = async () => {
-      try {
-        await api.get('/health', { timeout: 30000 });
-      } catch {
-        // Fire-and-forget background ping to trigger Render cold start
-      } finally {
-        isHealthPingInFlight.current = false;
-      }
-    };
-    wakeServer();
-
-    return () => {
-      clearAllTimers();
-      if (abortControllerRef.current) abortControllerRef.current.abort();
-    };
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,72 +23,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
       return;
     }
 
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    // Task 1: 60-second total client timeout
-    timeoutIdRef.current = setTimeout(() => {
-      controller.abort();
-    }, 60000);
-
     try {
       setLoading(true);
-
-      // Task 1: Immediate cold-start message if health ping is still in flight
-      if (isHealthPingInFlight.current) {
-        setStatusText('Waking Cloud Server (~30s Cold Start)...');
-      } else {
-        setStatusText('Authenticating...');
-      }
-
-      // Task 1: Exponential backoff retry (up to 3 attempts)
-      const maxRetries = 3;
-      let lastErr: any = null;
-
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        if (controller.signal.aborted) break;
-
-        try {
-          if (attempt > 1) {
-            setStatusText(`Waking Cloud Server (Attempt ${attempt}/${maxRetries})...`);
-            const delay = Math.pow(2, attempt - 1) * 1000; // 2s, 4s
-            await new Promise((resolve) => setTimeout(resolve, delay));
-          }
-
-          await login(identifier.trim(), password);
-          clearAllTimers();
-          onLoginSuccess();
-          return;
-        } catch (err: any) {
-          lastErr = err;
-          // If error is invalid credentials or 401, don't retry - fail immediately
-          if (err.response?.status === 401 || err.response?.status === 400 || err.response?.status === 423) {
-            throw err;
-          }
-        }
-      }
-
-      if (lastErr) throw lastErr;
+      await login(identifier.trim(), password);
+      onLoginSuccess();
     } catch (err: any) {
-      clearAllTimers();
-
-      if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED' || err.name === 'AbortError' || err?.message === 'canceled') {
-        setError('Server request timed out after 60s. Click Retry below.');
-      } else if (err.response?.data?.error) {
-        setError(err.response.data.error);
-      } else if (err.message === 'Network Error') {
-        setError('Unable to connect to backend server. Please check connection or retry.');
-      } else if (err.message) {
-        setError(err.message);
-      } else {
-        setError('Authentication failed. Please try again.');
-      }
+      setError(err.response?.data?.error || err.message || 'Authentication failed');
     } finally {
-      clearAllTimers();
       setLoading(false);
     }
   };
@@ -179,31 +90,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
               fontSize: '13px',
               marginBottom: '16px',
               display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
+              alignItems: 'center',
+              gap: '10px',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-              <AlertOctagon size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
-              <div>{error}</div>
-            </div>
-            <button
-              className="btn"
-              onClick={handleSubmit}
-              style={{
-                alignSelf: 'flex-end',
-                padding: '4px 10px',
-                fontSize: '11px',
-                borderColor: 'var(--status-red)',
-                color: 'var(--status-red)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-            >
-              <RefreshCw size={12} />
-              <span>Retry Login</span>
-            </button>
+            <AlertOctagon size={18} style={{ flexShrink: 0 }} />
+            <div>{error}</div>
           </div>
         )}
 
@@ -240,7 +132,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           </div>
 
           <button type="submit" className="btn btn-primary" disabled={loading} style={{ padding: '12px', marginTop: '6px' }}>
-            {loading ? statusText : 'Sign In to Operations'}
+            {loading ? 'Authenticating...' : 'Sign In to Operations'}
           </button>
         </form>
 
