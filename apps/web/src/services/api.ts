@@ -1,12 +1,13 @@
 import axios from 'axios';
 
-// Use VITE_API_URL from .env.local for Render backend; fallback to relative path for local dev proxy
-const API_BASE = (import.meta.env.VITE_API_URL
-  ? import.meta.env.VITE_API_URL + '/api/v1'
-  : '/api/v1');
+// Fallback directly to live Render backend host if VITE_API_URL is not set at build time
+const DEFAULT_BACKEND_URL = 'https://afreen-mall.onrender.com';
+const API_HOST = import.meta.env.VITE_API_URL || DEFAULT_BACKEND_URL;
+const API_BASE = `${API_HOST.replace(/\/$/, '')}/api/v1`;
 
 export const api = axios.create({
   baseURL: API_BASE,
+  timeout: 20000, // 20 second global request timeout
   headers: {
     'Content-Type': 'application/json',
   },

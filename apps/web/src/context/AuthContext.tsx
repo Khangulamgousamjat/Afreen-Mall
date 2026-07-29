@@ -38,6 +38,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (identifier: string, password: string) => {
     const res = await api.post('/auth/login', { identifier, password });
+
+    if (!res.data || typeof res.data !== 'object' || !res.data.token || !res.data.user) {
+      throw new Error('Invalid authentication response from server');
+    }
+
     const { token: jwtToken, user: userPayload } = res.data;
 
     setToken(jwtToken);

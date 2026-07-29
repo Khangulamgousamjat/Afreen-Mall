@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { AlertOctagon, ArrowLeft } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { AlertOctagon, ArrowLeft, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { AfreenMallLogo } from '../components/AfreenMallLogo';
 
 interface LoginScreenProps {
   onBackToWelcome: () => void;
@@ -14,26 +13,77 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isWakingServer, setIsWakingServer] = useState(false);
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!identifier || !password) {
+    if (!identifier.trim() || !password) {
       setError('Staff ID / Username and Password are required');
       return;
     }
 
+    // Cancel any previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    // Set 15-second client-side timeout
+    timeoutIdRef.current = setTimeout(() => {
+      controller.abort();
+    }, 15000);
+
     try {
       setLoading(true);
-      await login(identifier, password);
+      setIsWakingServer(false);
+
+      // Inform user if server takes > 4 seconds (e.g. Render free tier cold start)
+      const warmingTimer = setTimeout(() => {
+        setIsWakingServer(true);
+      }, 4000);
+
+      await login(identifier.trim(), password);
+
+      clearTimeout(warmingTimer);
+      if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
+
       onLoginSuccess();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Authentication failed');
+      if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
+
+      if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED' || err.name === 'AbortError' || axiosIsCancel(err)) {
+        setError('Server took too long to respond (Cold Start). Please click Retry below.');
+      } else if (err.response?.data?.error) {
+        setError(err.response.data.error);
+      } else if (err.message === 'Network Error') {
+        setError('Unable to connect to backend server. Please check internet connection or retry.');
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError('Authentication failed. Please try again.');
+      }
     } finally {
+      if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
       setLoading(false);
+      setIsWakingServer(false);
     }
   };
+
+  const axiosIsCancel = (err: any) => err?.message === 'canceled' || err?.code === 'ECONNABORTED';
 
   return (
     <div
@@ -60,6 +110,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Internal Operations</div>
         </div>
       </div>
+
       <div className="card" style={{ maxWidth: '440px', width: '100%', padding: '32px 28px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-start', marginBottom: '8px' }}>
           <button
@@ -90,12 +141,31 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
               fontSize: '13px',
               marginBottom: '16px',
               display: 'flex',
-              alignItems: 'flex-start',
-              gap: '10px',
+              flexDirection: 'column',
+              gap: '8px',
             }}
           >
-            <AlertOctagon size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
-            <div>{error}</div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+              <AlertOctagon size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div>{error}</div>
+            </div>
+            <button
+              className="btn"
+              onClick={handleSubmit}
+              style={{
+                alignSelf: 'flex-end',
+                padding: '4px 10px',
+                fontSize: '11px',
+                borderColor: 'var(--status-red)',
+                color: 'var(--status-red)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              <RefreshCw size={12} />
+              <span>Retry Login</span>
+            </button>
           </div>
         )}
 
@@ -112,6 +182,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
               placeholder="e.g. 300000 or Superkhan"
               required
               autoFocus
+              disabled={loading}
             />
           </div>
 
@@ -126,11 +197,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••••••"
               required
+              disabled={loading}
             />
           </div>
 
           <button type="submit" className="btn btn-primary" disabled={loading} style={{ padding: '12px', marginTop: '6px' }}>
-            {loading ? 'Authenticating...' : 'Sign In to Operations'}
+            {loading ? (isWakingServer ? 'Waking Cloud Server...' : 'Authenticating...') : 'Sign In to Operations'}
           </button>
         </form>
 
