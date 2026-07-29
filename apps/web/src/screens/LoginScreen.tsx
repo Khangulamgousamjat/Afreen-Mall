@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { AlertOctagon, ArrowLeft, Eye, EyeOff, Search, Users, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
+import { AlertOctagon, ArrowLeft, Eye, EyeOff, Search, Users, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 
@@ -15,7 +15,6 @@ interface StaffMember {
   role: string;
 }
 
-// Default seeded staff directory
 const INITIAL_STAFF_LIST: StaffMember[] = [
   { staffId: 300000, username: 'Superkhan', name: 'Gous Khan', role: 'SUPER_ADMIN' },
   { staffId: 300001, username: 'manager1', name: 'Store Manager', role: 'STORE_MANAGER' },
@@ -34,14 +33,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Staff directory & search state
   const [staffList, setStaffList] = useState<StaffMember[]>(INITIAL_STAFF_LIST);
   const [staffSearchQuery, setStaffSearchQuery] = useState('');
-  const [showStaffDirectory, setShowStaffDirectory] = useState(false);
+  const [showStaffDirectory, setShowStaffDirectory] = useState(true);
 
+  const identifierInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const passwordInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch live users from API if available to auto-populate newly added staff
+  // Fetch live staff members from API if available to auto-include newly provisioned accounts
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -58,13 +58,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           }
         }
       } catch {
-        // Fallback to INITIAL_STAFF_LIST if offline/unauthenticated
+        // Fallback to INITIAL_STAFF_LIST
       }
     };
     fetchUsers();
   }, []);
 
-  // Filter staff by Name, Staff ID, or Role
+  // Filter staff by Name, Staff ID, Username, or Role
   const filteredStaff = staffList.filter((s) => {
     const q = staffSearchQuery.toLowerCase().trim();
     if (!q) return true;
@@ -76,16 +76,42 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
     );
   });
 
+  // Select staff member and auto-focus password field
   const handleSelectStaff = (staff: StaffMember) => {
     setIdentifier(staff.staffId.toString());
-    setShowStaffDirectory(false);
     setError('');
-    // Auto-focus password input after selecting staff
     setTimeout(() => {
       passwordInputRef.current?.focus();
     }, 50);
   };
 
+  // Keyboard Enter handler on Staff ID box
+  const handleIdentifierKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = identifier.trim();
+      if (!val) {
+        setShowStaffDirectory(true);
+        return;
+      }
+
+      // Check if typed identifier matches a valid staff account
+      const matched = staffList.find(
+        (s) => s.staffId.toString() === val || s.username.toLowerCase() === val.toLowerCase()
+      );
+
+      if (matched) {
+        setIdentifier(matched.staffId.toString());
+        setError('');
+        passwordInputRef.current?.focus();
+      } else {
+        setError(`Staff ID "${val}" not found. Please choose your account from the table below.`);
+        setShowStaffDirectory(true);
+      }
+    }
+  };
+
+  // Form submission handler (instant 1-second login)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -106,7 +132,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
     }
   };
 
-  // Get selected staff display name if identifier matches a staff member
   const selectedStaffObj = staffList.find(
     (s) => s.staffId.toString() === identifier.trim() || s.username.toLowerCase() === identifier.trim().toLowerCase()
   );
@@ -123,7 +148,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
         position: 'relative',
       }}
     >
-      {/* Top-left logo header — matches every internal page */}
+      {/* Top-left logo header */}
       <div style={{ position: 'absolute', top: '16px', left: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
         <img
           src={theme === 'dark' ? '/logo-dark.jpg' : '/logo-light.jpg'}
@@ -137,8 +162,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
         </div>
       </div>
 
-      <div className="card" style={{ maxWidth: '460px', width: '100%', padding: '32px 28px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+      <div className="card" style={{ maxWidth: '680px', width: '100%', padding: '28px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <button
             className="btn"
             onClick={onBackToWelcome}
@@ -148,7 +173,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
             <span>Back</span>
           </button>
 
-          {/* Quick Staff Directory Toggle Button */}
           <button
             className="btn"
             type="button"
@@ -164,130 +188,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
             }}
           >
             <Users size={14} />
-            <span>Staff Directory</span>
+            <span>{showStaffDirectory ? 'Hide Directory Table' : 'Show Directory Table'}</span>
             {showStaffDirectory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
         </div>
 
-        <div style={{ textAlign: 'center', marginBottom: '16px', marginTop: '4px' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Staff Secure Login</h2>
+        <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Staff Secure Login</h2>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Enter Staff ID, select name below, or use username
+            Type Staff ID & Press Enter, or Search & Select your account from the table below
           </div>
         </div>
-
-        {/* Quick Staff Selection & Search Directory Dropdown Panel */}
-        {showStaffDirectory && (
-          <div
-            style={{
-              width: '100%',
-              backgroundColor: 'var(--surface-color)',
-              border: '1px solid var(--border-color)',
-              padding: '12px',
-              marginBottom: '16px',
-              borderRadius: '4px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-            }}
-          >
-            <div style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--accent-lime)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span>Search & Select Staff Member</span>
-              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{filteredStaff.length} Accounts</span>
-            </div>
-
-            {/* Search Input Box */}
-            <div style={{ position: 'relative', width: '100%' }}>
-              <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input
-                type="text"
-                className="input-field"
-                placeholder="Search by Name, Staff ID, or Role..."
-                value={staffSearchQuery}
-                onChange={(e) => setStaffSearchQuery(e.target.value)}
-                style={{ paddingLeft: '32px', fontSize: '12px', padding: '6px 10px 6px 32px' }}
-                autoFocus
-              />
-            </div>
-
-            {/* Scrollable Staff List */}
-            <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
-              {filteredStaff.length === 0 ? (
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '12px', fontStyle: 'italic' }}>
-                  No staff member matching "{staffSearchQuery}"
-                </div>
-              ) : (
-                filteredStaff.map((staff) => {
-                  const isSelected = identifier.trim() === staff.staffId.toString() || identifier.trim().toLowerCase() === staff.username.toLowerCase();
-                  return (
-                    <div
-                      key={staff.staffId}
-                      onClick={() => handleSelectStaff(staff)}
-                      style={{
-                        padding: '8px 10px',
-                        backgroundColor: isSelected ? 'var(--accent-soft)' : 'var(--bg-color)',
-                        border: `1px solid ${isSelected ? 'var(--accent-lime)' : 'var(--border-color)'}`,
-                        borderRadius: '3px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        transition: 'all 0.15s ease',
-                      }}
-                    >
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span>{staff.name}</span>
-                          {isSelected && <CheckCircle2 size={13} style={{ color: 'var(--accent-lime)' }} />}
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-                          ID: <strong style={{ color: 'var(--text-main)' }}>{staff.staffId}</strong> ({staff.username})
-                        </div>
-                      </div>
-                      <span
-                        style={{
-                          fontSize: '10px',
-                          padding: '2px 6px',
-                          backgroundColor: 'rgba(255,255,255,0.06)',
-                          border: '1px solid var(--border-color)',
-                          color: 'var(--accent-lime)',
-                          fontWeight: 'bold',
-                          letterSpacing: '0.4px',
-                        }}
-                      >
-                        {staff.role}
-                      </span>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Selected Staff Info Badge */}
-        {selectedStaffObj && !showStaffDirectory && (
-          <div
-            style={{
-              width: '100%',
-              backgroundColor: 'var(--accent-soft)',
-              border: '1px solid var(--accent-lime)',
-              padding: '8px 12px',
-              marginBottom: '14px',
-              fontSize: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <div>
-              <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Selected Staff: </span>
-              <strong style={{ color: 'var(--text-main)' }}>{selectedStaffObj.name}</strong>
-              <span style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '6px' }} className="tabular-nums">(ID: {selectedStaffObj.staffId})</span>
-            </div>
-            <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--accent-lime)' }}>{selectedStaffObj.role}</span>
-          </div>
-        )}
 
         {error && (
           <div
@@ -296,7 +207,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
               backgroundColor: 'rgba(248, 113, 113, 0.1)',
               border: '1px solid var(--status-red)',
               color: 'var(--status-red)',
-              padding: '10px 12px',
+              padding: '10px 14px',
               fontSize: '13px',
               marginBottom: '16px',
               display: 'flex',
@@ -309,35 +220,168 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-              <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+        <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Side-by-side Inputs: Staff ID Box (Left) + Big Search Box (Right) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'flex-start' }}>
+            {/* Left: Staff ID / Username Input */}
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-main)', display: 'block', marginBottom: '6px' }}>
                 6-Digit Staff ID / Username
               </label>
-              <button
-                type="button"
-                onClick={() => setShowStaffDirectory(true)}
-                style={{ background: 'none', border: 'none', color: 'var(--accent-lime)', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}
-              >
-                Search Name / Directory
-              </button>
+              <input
+                ref={identifierInputRef}
+                type="text"
+                className="input-field tabular-nums"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                onKeyDown={handleIdentifierKeyDown}
+                placeholder="Type ID (e.g. 300000) & Press Enter"
+                required
+                autoFocus
+                disabled={loading}
+                style={{ fontSize: '14px', padding: '10px 12px' }}
+              />
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                Press Enter to validate & jump to password
+              </span>
             </div>
-            <input
-              type="text"
-              className="input-field tabular-nums"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="e.g. 300000 or click Staff Directory"
-              required
-              autoFocus
-              disabled={loading}
-            />
+
+            {/* Right: Big Staff Search Input */}
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--accent-lime)', display: 'block', marginBottom: '6px' }}>
+                Search Staff Directory (Name / Role / ID)
+              </label>
+              <div style={{ position: 'relative', width: '100%' }}>
+                <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  className="input-field"
+                  value={staffSearchQuery}
+                  onChange={(e) => setStaffSearchQuery(e.target.value)}
+                  placeholder="Search by Name, Staff ID, or Role..."
+                  disabled={loading}
+                  style={{ fontSize: '14px', padding: '10px 12px 10px 36px', border: '1px solid var(--accent-lime)' }}
+                />
+              </div>
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                Filters staff table live as you type
+              </span>
+            </div>
           </div>
 
-          {/* Password Input Field with Eye Show/Hide Toggle */}
+          {/* Prominent Staff Accounts Table */}
+          {showStaffDirectory && (
+            <div style={{ width: '100%', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ padding: '8px 12px', backgroundColor: 'var(--surface-secondary)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--accent-lime)', letterSpacing: '0.5px' }}>
+                  Staff Accounts Directory
+                </span>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  Showing {filteredStaff.length} of {staffList.length} accounts (Click or Enter to select)
+                </span>
+              </div>
+
+              <div style={{ maxHeight: '190px', overflowY: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: 'var(--bg-color)', borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase' }}>
+                      <th style={{ padding: '8px 12px' }}>STAFF ID</th>
+                      <th style={{ padding: '8px 12px' }}>STAFF NAME</th>
+                      <th style={{ padding: '8px 12px' }}>ROLE</th>
+                      <th style={{ padding: '8px 12px', textAlign: 'right' }}>ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredStaff.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          No staff member matching "{staffSearchQuery}"
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredStaff.map((staff) => {
+                        const isSelected = identifier.trim() === staff.staffId.toString() || identifier.trim().toLowerCase() === staff.username.toLowerCase();
+                        return (
+                          <tr
+                            key={staff.staffId}
+                            onClick={() => handleSelectStaff(staff)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleSelectStaff(staff); }}
+                            tabIndex={0}
+                            style={{
+                              backgroundColor: isSelected ? 'var(--accent-soft)' : undefined,
+                              borderBottom: '1px solid var(--border-color)',
+                              cursor: 'pointer',
+                              transition: 'background-color 0.15s ease',
+                            }}
+                          >
+                            <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontWeight: 'bold', color: 'var(--text-main)' }}>
+                              {staff.staffId}
+                            </td>
+                            <td style={{ padding: '8px 12px', fontWeight: 'bold', color: isSelected ? 'var(--accent-lime)' : 'var(--text-main)' }}>
+                              {staff.name}
+                              {isSelected && <CheckCircle2 size={13} style={{ display: 'inline', marginLeft: '6px', color: 'var(--accent-lime)' }} />}
+                            </td>
+                            <td style={{ padding: '8px 12px' }}>
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  padding: '2px 6px',
+                                  backgroundColor: 'rgba(255,255,255,0.06)',
+                                  border: '1px solid var(--border-color)',
+                                  color: 'var(--accent-lime)',
+                                  fontWeight: 'bold',
+                                }}
+                              >
+                                {staff.role}
+                              </span>
+                            </td>
+                            <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                              <button
+                                type="button"
+                                className={`btn ${isSelected ? 'btn-primary' : ''}`}
+                                style={{ padding: '2px 8px', fontSize: '11px' }}
+                                onClick={(e) => { e.stopPropagation(); handleSelectStaff(staff); }}
+                              >
+                                {isSelected ? 'Selected ✓' : 'Select'}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Selected Staff Info Bar */}
+          {selectedStaffObj && (
+            <div
+              style={{
+                width: '100%',
+                backgroundColor: 'var(--accent-soft)',
+                border: '1px solid var(--accent-lime)',
+                padding: '8px 14px',
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Account Selected: </span>
+                <strong style={{ color: 'var(--accent-lime)' }}>{selectedStaffObj.name}</strong>
+                <span style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '6px' }} className="tabular-nums">(ID: {selectedStaffObj.staffId})</span>
+              </div>
+              <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--accent-lime)', textTransform: 'uppercase' }}>{selectedStaffObj.role}</span>
+            </div>
+          )}
+
+          {/* Password Input Box with Eye Show/Hide Toggle */}
           <div>
-            <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+            <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-main)', display: 'block', marginBottom: '6px' }}>
               Password
             </label>
             <div style={{ position: 'relative', width: '100%' }}>
@@ -347,10 +391,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
                 className="input-field"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••••"
+                placeholder="Enter password & Press Enter to sign in"
                 required
                 disabled={loading}
-                style={{ paddingRight: '40px' }}
+                style={{ fontSize: '14px', padding: '10px 40px 10px 12px' }}
               />
               <button
                 type="button"
@@ -358,7 +402,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
                 title={showPassword ? 'Hide password' : 'Show password'}
                 style={{
                   position: 'absolute',
-                  right: '8px',
+                  right: '10px',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   background: 'none',
@@ -371,13 +415,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
                   justifyContent: 'center',
                 }}
               >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+              Press Enter inside password field to sign in instantly
+            </span>
           </div>
 
-          <button type="submit" className="btn btn-primary" disabled={loading} style={{ padding: '12px', marginTop: '6px' }}>
-            {loading ? 'Authenticating...' : 'Sign In to Operations'}
+          <button type="submit" className="btn btn-primary" disabled={loading} style={{ padding: '14px', fontSize: '15px', marginTop: '4px' }}>
+            {loading ? 'Authenticating...' : 'Sign In to Operations (Enter)'}
           </button>
         </form>
 
