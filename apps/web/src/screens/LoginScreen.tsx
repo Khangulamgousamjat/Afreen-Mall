@@ -13,14 +13,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isWakingServer, setIsWakingServer] = useState(false);
+  const [statusText, setStatusText] = useState('Authenticating...');
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
+  const timer1Ref = useRef<NodeJS.Timeout | null>(null);
+  const timer2Ref = useRef<NodeJS.Timeout | null>(null);
+
+  const clearAllTimers = () => {
+    if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
+    if (timer1Ref.current) clearTimeout(timer1Ref.current);
+    if (timer2Ref.current) clearTimeout(timer2Ref.current);
+  };
 
   useEffect(() => {
     return () => {
-      if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
+      clearAllTimers();
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
   }, []);
@@ -34,7 +42,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
       return;
     }
 
-    // Cancel any previous request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -42,48 +49,47 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    // Set 15-second client-side timeout
+    // 60-second timeout to allow Render free tier cold-starts to complete naturally
     timeoutIdRef.current = setTimeout(() => {
       controller.abort();
-    }, 15000);
+    }, 60000);
 
     try {
       setLoading(true);
-      setIsWakingServer(false);
+      setStatusText('Authenticating...');
 
-      // Inform user if server takes > 4 seconds (e.g. Render free tier cold start)
-      const warmingTimer = setTimeout(() => {
-        setIsWakingServer(true);
-      }, 4000);
+      // Dynamic status progress updates for cashier feedback
+      timer1Ref.current = setTimeout(() => {
+        setStatusText('Connecting to Cloud API...');
+      }, 3000);
+
+      timer2Ref.current = setTimeout(() => {
+        setStatusText('Waking Cloud Server (~30s Cold Start)...');
+      }, 8000);
 
       await login(identifier.trim(), password);
 
-      clearTimeout(warmingTimer);
-      if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
-
+      clearAllTimers();
       onLoginSuccess();
     } catch (err: any) {
-      if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
+      clearAllTimers();
 
-      if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED' || err.name === 'AbortError' || axiosIsCancel(err)) {
-        setError('Server took too long to respond (Cold Start). Please click Retry below.');
+      if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED' || err.name === 'AbortError' || err?.message === 'canceled') {
+        setError('Server request timed out. Please click Retry below to try again.');
       } else if (err.response?.data?.error) {
         setError(err.response.data.error);
       } else if (err.message === 'Network Error') {
-        setError('Unable to connect to backend server. Please check internet connection or retry.');
+        setError('Unable to connect to backend server. Please check internet connection or click Retry.');
       } else if (err.message) {
         setError(err.message);
       } else {
         setError('Authentication failed. Please try again.');
       }
     } finally {
-      if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
+      clearAllTimers();
       setLoading(false);
-      setIsWakingServer(false);
     }
   };
-
-  const axiosIsCancel = (err: any) => err?.message === 'canceled' || err?.code === 'ECONNABORTED';
 
   return (
     <div
@@ -202,7 +208,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           </div>
 
           <button type="submit" className="btn btn-primary" disabled={loading} style={{ padding: '12px', marginTop: '6px' }}>
-            {loading ? (isWakingServer ? 'Waking Cloud Server...' : 'Authenticating...') : 'Sign In to Operations'}
+            {loading ? statusText : 'Sign In to Operations'}
           </button>
         </form>
 
