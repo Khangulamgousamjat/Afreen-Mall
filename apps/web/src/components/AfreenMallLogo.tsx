@@ -9,26 +9,22 @@ interface AfreenMallLogoProps {
 export const AfreenMallLogo: React.FC<AfreenMallLogoProps> = ({ size = 'medium', className = '' }) => {
   const { theme } = useAuth();
 
-  const widths = {
-    small: 160,
-    medium: 180,
-    large: 220,
-    huge: 280,
+  const widths: Record<string, number> = {
+    small: 150,
+    medium: 200,
+    large: 260,
+    huge: 320,
   };
 
-  const width = widths[size];
-
-  const logoSrc = theme === 'dark'
-    ? '/logo dark .png'
-    : '/logo light .png';
+  const logoSrc = theme === 'dark' ? '/logo-dark.jpg' : '/logo-light.jpg';
 
   return (
     <img
       src={logoSrc}
-      alt="Afreen Mall Logo"
+      alt="Afreen Mall"
       className={className}
       style={{
-        width,
+        width: widths[size],
         maxWidth: '100%',
         height: 'auto',
         objectFit: 'contain',

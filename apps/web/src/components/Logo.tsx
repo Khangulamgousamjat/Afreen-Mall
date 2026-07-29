@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAuth } from '../context/AuthContext';
 
 interface LogoProps {
   theme?: 'dark' | 'light';
@@ -8,24 +9,19 @@ interface LogoProps {
 }
 
 export default function Logo({
-  theme = 'dark',
   size = 'md',
-  showSubtitle = true,
   className = '',
 }: LogoProps) {
-  const isDark = theme === 'dark';
+  const { theme } = useAuth();
 
-  // Size configurations — control max width of the image
-  const widths = {
-    sm: 140,
-    md: 180,
-    lg: 240,
-    hero: 320,
-  }[size];
+  const widths: Record<string, number> = {
+    sm: 120,
+    md: 150,
+    lg: 200,
+    hero: 280,
+  };
 
-  const logoSrc = isDark
-    ? '/logo dark .png'
-    : '/logo light .png';
+  const logoSrc = theme === 'dark' ? '/logo-dark.jpg' : '/logo-light.jpg';
 
   return (
     <div
@@ -39,9 +35,9 @@ export default function Logo({
     >
       <img
         src={logoSrc}
-        alt="Afreen Mall Logo"
+        alt="Afreen Mall"
         style={{
-          width: widths,
+          width: widths[size],
           maxWidth: '100%',
           height: 'auto',
           objectFit: 'contain',
