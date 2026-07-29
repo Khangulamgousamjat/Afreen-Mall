@@ -46,8 +46,6 @@ Highlights:
 - Default store: Afreen Mall (created by seed).
 - Super Admin:
   - Staff ID: 3000000
-  - Username: Superkhan
-  - Password (seeded): Kingkhan@12
 - Default password for other seeded accounts: Pass@123
 - Example staff accounts (examples seeded in the script):
   - manager1 (STORE_MANAGER)
