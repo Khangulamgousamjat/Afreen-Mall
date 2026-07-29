@@ -24,16 +24,16 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGoToLogin }) => 
       }}
     >
       {/* Top-left logo header — matches every internal page */}
-      <div style={{ position: 'absolute', top: '16px', left: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div style={{ position: 'absolute', top: '16px', left: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
         <img
           src={theme === 'dark' ? '/logo-dark.jpg' : '/logo-light.jpg'}
           alt="Afreen Mall"
-          style={{ height: '30px', width: 'auto', objectFit: 'contain' }}
+          style={{ height: '42px', width: 'auto', objectFit: 'contain' }}
           draggable={false}
         />
         <div style={{ lineHeight: 1.2 }}>
-          <div style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text-main)', letterSpacing: '0.4px' }}>Afreen Mall</div>
-          <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.7px' }}>Internal Operations</div>
+          <div style={{ fontSize: '16px', fontWeight: '500', color: 'var(--text-main)', letterSpacing: '0.5px' }}>Afreen Mall</div>
+          <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Internal Operations</div>
         </div>
       </div>
 
@@ -48,18 +48,16 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGoToLogin }) => 
       <div
         className="card"
         style={{
-          maxWidth: '540px',
+          maxWidth: '500px',
           width: '100%',
           textAlign: 'center',
-          padding: '36px 32px',
+          padding: '48px 36px',
           border: '1px solid var(--border-color)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
         }}
       >
-        {/* Sleek, Compact Transparent Vector Logo */}
-        <AfreenMallLogo size="large" />
 
         {/* Single CTA Button */}
         <button
@@ -70,7 +68,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGoToLogin }) => 
             maxWidth: '340px',
             padding: '14px',
             fontSize: '16px',
-            marginTop: '24px',
+            marginTop: '0px',
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',

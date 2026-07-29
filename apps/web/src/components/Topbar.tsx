@@ -10,15 +10,15 @@ export const Topbar: React.FC = () => {
   return (
     <header className="topbar">
       {/* LEFT: Logo + Mall name (shared across every internal page) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <img
           src={logoSrc}
           alt="Afreen Mall"
-          style={{ height: '32px', width: 'auto', objectFit: 'contain', display: 'block' }}
+          style={{ height: '42px', width: 'auto', objectFit: 'contain', display: 'block' }}
           draggable={false}
         />
         <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-          <span style={{ fontSize: '15px', fontWeight: '500', letterSpacing: '0.5px', color: 'var(--text-main)' }}>
+          <span style={{ fontSize: '16px', fontWeight: '500', letterSpacing: '0.5px', color: 'var(--text-main)' }}>
             Afreen Mall
           </span>
           <span style={{ fontSize: '10px', color: 'var(--text-muted)', letterSpacing: '0.8px', textTransform: 'uppercase' }}>

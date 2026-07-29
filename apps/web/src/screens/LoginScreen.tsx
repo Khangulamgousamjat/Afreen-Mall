@@ -48,16 +48,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
       }}
     >
       {/* Top-left logo header — matches every internal page */}
-      <div style={{ position: 'absolute', top: '16px', left: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div style={{ position: 'absolute', top: '16px', left: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
         <img
           src={theme === 'dark' ? '/logo-dark.jpg' : '/logo-light.jpg'}
           alt="Afreen Mall"
-          style={{ height: '30px', width: 'auto', objectFit: 'contain' }}
+          style={{ height: '42px', width: 'auto', objectFit: 'contain' }}
           draggable={false}
         />
         <div style={{ lineHeight: 1.2 }}>
-          <div style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text-main)', letterSpacing: '0.4px' }}>Afreen Mall</div>
-          <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.7px' }}>Internal Operations</div>
+          <div style={{ fontSize: '16px', fontWeight: '500', color: 'var(--text-main)', letterSpacing: '0.5px' }}>Afreen Mall</div>
+          <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Internal Operations</div>
         </div>
       </div>
       <div className="card" style={{ maxWidth: '440px', width: '100%', padding: '32px 28px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -72,10 +72,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           </button>
         </div>
 
-        {/* Compact Vector Logo Emblem */}
-        <AfreenMallLogo size="medium" />
-
-        <div style={{ textAlign: 'center', marginBottom: '20px', marginTop: '8px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '20px', marginTop: '4px' }}>
           <h2 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Staff Secure Login</h2>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
             Enter 6-digit Staff ID (e.g. 300000) or Username
