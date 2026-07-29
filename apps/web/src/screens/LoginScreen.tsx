@@ -9,7 +9,7 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLoginSuccess }) => {
-  const { login } = useAuth();
+  const { login, theme } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -44,8 +44,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
         alignItems: 'center',
         justifyContent: 'center',
         padding: '24px',
+        position: 'relative',
       }}
     >
+      {/* Top-left logo header — matches every internal page */}
+      <div style={{ position: 'absolute', top: '16px', left: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <img
+          src={theme === 'dark' ? '/logo-dark.jpg' : '/logo-light.jpg'}
+          alt="Afreen Mall"
+          style={{ height: '30px', width: 'auto', objectFit: 'contain' }}
+          draggable={false}
+        />
+        <div style={{ lineHeight: 1.2 }}>
+          <div style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text-main)', letterSpacing: '0.4px' }}>Afreen Mall</div>
+          <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.7px' }}>Internal Operations</div>
+        </div>
+      </div>
       <div className="card" style={{ maxWidth: '440px', width: '100%', padding: '32px 28px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-start', marginBottom: '8px' }}>
           <button

@@ -23,6 +23,21 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGoToLogin }) => 
         padding: '24px',
       }}
     >
+      {/* Top-left logo header — matches every internal page */}
+      <div style={{ position: 'absolute', top: '16px', left: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <img
+          src={theme === 'dark' ? '/logo-dark.jpg' : '/logo-light.jpg'}
+          alt="Afreen Mall"
+          style={{ height: '30px', width: 'auto', objectFit: 'contain' }}
+          draggable={false}
+        />
+        <div style={{ lineHeight: 1.2 }}>
+          <div style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text-main)', letterSpacing: '0.4px' }}>Afreen Mall</div>
+          <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.7px' }}>Internal Operations</div>
+        </div>
+      </div>
+
+      {/* Top-right theme toggle */}
       <div style={{ position: 'absolute', top: '24px', right: '24px' }}>
         <button className="btn" onClick={toggleTheme} style={{ fontSize: '12px', padding: '6px 12px' }}>
           {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
