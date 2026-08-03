@@ -143,20 +143,6 @@ graph TD
 | **Cash Officer** | `300004` | `babuji1` | Babuji Namole | `Pass@123` |
 | **Senior Accountant** | `300005` | `amit1` | Amit Verma | `Pass@123` |
 
----
 
-## 🛠️ Build & Deployment Instructions
-
-### Prerequisites
-- Node.js >= 18.x
-- npm >= 9.x
-
-### Build Commands
-```bash
-# Build all monorepo workspaces (shared-types, api, web)
-npm run build
-```
-
----
 
 *Afreen Mall Enterprise Operations Platform — Software Architecture by Gous Khan*
