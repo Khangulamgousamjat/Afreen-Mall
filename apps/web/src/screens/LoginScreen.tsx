@@ -17,22 +17,22 @@ interface StaffMember {
 
 const INITIAL_STAFF_LIST: StaffMember[] = [
   { staffId: 300000, username: 'Superkhan', name: 'Gous Khan', role: 'SUPER_ADMIN' },
-  { staffId: 300001, username: 'manager1', name: 'Store Manager', role: 'STORE_MANAGER' },
-  { staffId: 300003, username: 'cashofficer1', name: 'Cash Officer', role: 'CASH_OFFICER' },
-  { staffId: 300004, username: 'inventory1', name: 'Inventory Specialist', role: 'INVENTORY_STAFF' },
-  { staffId: 300005, username: 'warehouse1', name: 'Warehouse Lead', role: 'WAREHOUSE_STAFF' },
-  { staffId: 300006, username: 'auditor1', name: 'Audit Officer', role: 'AUDITOR' },
-  // 10 Normal Cashier accounts
-  { staffId: 300010, username: 'cashier1', name: 'Cashier 1', role: 'CASHIER' },
-  { staffId: 300011, username: 'cashier2', name: 'Cashier 2', role: 'CASHIER' },
-  { staffId: 300012, username: 'cashier3', name: 'Cashier 3', role: 'CASHIER' },
-  { staffId: 300013, username: 'cashier4', name: 'Cashier 4', role: 'CASHIER' },
-  { staffId: 300014, username: 'cashier5', name: 'Cashier 5', role: 'CASHIER' },
-  { staffId: 300015, username: 'cashier6', name: 'Cashier 6', role: 'CASHIER' },
-  { staffId: 300016, username: 'cashier7', name: 'Cashier 7', role: 'CASHIER' },
-  { staffId: 300017, username: 'cashier8', name: 'Cashier 8', role: 'CASHIER' },
-  { staffId: 300018, username: 'cashier9', name: 'Cashier 9', role: 'CASHIER' },
-  { staffId: 300019, username: 'cashier10', name: 'Cashier 10', role: 'CASHIER' },
+  { staffId: 300001, username: 'manager1', name: 'Sanjay Gupta', role: 'STORE_MANAGER' },
+  { staffId: 300002, username: 'pooja1', name: 'Pooja Sharma', role: 'CASHIER' },
+  { staffId: 300003, username: 'vinayak1', name: 'Vinayak Shinde', role: 'CASHIER' },
+  { staffId: 300004, username: 'babuji1', name: 'Babuji Namole', role: 'CASH_OFFICER' },
+  { staffId: 300005, username: 'amit1', name: 'Amit Verma', role: 'ACCOUNTANT' },
+  { staffId: 300006, username: 'auditor1', name: 'Rajesh Deshmukh', role: 'AUDITOR' },
+  { staffId: 300010, username: 'rohan1', name: 'Rohan Kadam', role: 'CASHIER' },
+  { staffId: 300011, username: 'sunita1', name: 'Sunita Pawar', role: 'CASHIER' },
+  { staffId: 300012, username: 'mahesh1', name: 'Mahesh Patil', role: 'CASHIER' },
+  { staffId: 300013, username: 'sachin1', name: 'Sachin Jadhav', role: 'CASHIER' },
+  { staffId: 300014, username: 'priya1', name: 'Priya Kulkarni', role: 'CASHIER' },
+  { staffId: 300015, username: 'rahul1', name: 'Rahul Chavan', role: 'CASHIER' },
+  { staffId: 300016, username: 'deepak1', name: 'Deepak Gaikwad', role: 'CASHIER' },
+  { staffId: 300017, username: 'sneha1', name: 'Sneha Joshi', role: 'CASHIER' },
+  { staffId: 300018, username: 'nitin1', name: 'Nitin More', role: 'CASHIER' },
+  { staffId: 300019, username: 'aniket1', name: 'Aniket Salunkhe', role: 'CASHIER' },
 ];
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLoginSuccess }) => {
@@ -266,32 +266,49 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
               style={{ fontSize: '14px', padding: '10px 12px' }}
             />
             <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
-              Press Enter to validate — if correct, jumps to password. If wrong, opens table.
+              Press Enter to validate — auto-fills name box below.
             </span>
           </div>
 
-          {/* Selected Staff Badge */}
-          {selectedStaffObj && !showStaffDirectory && (
+          {/* Dedicated Staff Full Name Box */}
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-main)', display: 'block', marginBottom: '6px' }}>
+              Staff Member Name (Auto-filled on ID match)
+            </label>
             <div
+              onClick={() => setShowStaffDirectory((prev) => !prev)}
               style={{
                 width: '100%',
-                backgroundColor: 'var(--accent-soft)',
-                border: '1px solid var(--accent-lime)',
-                padding: '8px 14px',
-                fontSize: '12px',
+                padding: '10px 12px',
+                backgroundColor: 'var(--bg-color)',
+                border: selectedStaffObj ? '2px solid var(--accent-lime)' : '1px solid var(--border-color)',
+                color: selectedStaffObj ? 'var(--text-main)' : 'var(--text-muted)',
+                fontWeight: selectedStaffObj ? 'bold' : 'normal',
+                fontSize: '14px',
+                cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
+                justify: 'space-between',
+                transition: 'all 0.15s ease',
               }}
+              title="Click to select staff member from directory"
             >
-              <div>
-                <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Account Selected: </span>
-                <strong style={{ color: 'var(--accent-lime)' }}>{selectedStaffObj.name}</strong>
-                <span style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '6px' }} className="tabular-nums">(ID: {selectedStaffObj.staffId})</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Users size={16} style={{ color: 'var(--accent-lime)' }} />
+                <span>
+                  {selectedStaffObj ? (
+                    <>
+                      <strong style={{ color: 'var(--accent-lime)' }}>{selectedStaffObj.name}</strong>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>({selectedStaffObj.role})</span>
+                    </>
+                  ) : (
+                    '▶ Click here to select staff name from table...'
+                  )}
+                </span>
               </div>
-              <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--accent-lime)', textTransform: 'uppercase' }}>{selectedStaffObj.role}</span>
+              <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />
             </div>
-          )}
+          </div>
 
           {/* Directory Table — ONLY opens if wrong ID is entered or manually requested */}
           {showStaffDirectory && (

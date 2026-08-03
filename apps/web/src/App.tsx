@@ -17,6 +17,8 @@ import { CustomersScreen } from './screens/CustomersScreen';
 import { ReportsScreen } from './screens/ReportsScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 
+import { SecurityGuard } from './components/SecurityGuard';
+
 export const AppContent: React.FC = () => {
   const { user } = useAuth();
   const [authView, setAuthView] = useState<'WELCOME' | 'LOGIN'>('WELCOME');
@@ -25,17 +27,24 @@ export const AppContent: React.FC = () => {
   if (!user) {
     if (authView === 'LOGIN') {
       return (
-        <LoginScreen
-          onBackToWelcome={() => setAuthView('WELCOME')}
-          onLoginSuccess={() => setCurrentScreen('dashboard')}
-        />
+        <SecurityGuard>
+          <LoginScreen
+            onBackToWelcome={() => setAuthView('WELCOME')}
+            onLoginSuccess={() => setCurrentScreen('dashboard')}
+          />
+        </SecurityGuard>
       );
     }
-    return <WelcomeScreen onGoToLogin={() => setAuthView('LOGIN')} />;
+    return (
+      <SecurityGuard>
+        <WelcomeScreen onGoToLogin={() => setAuthView('LOGIN')} />
+      </SecurityGuard>
+    );
   }
 
   return (
-    <div className="app-container">
+    <SecurityGuard>
+      <div className="app-container">
       <Sidebar currentScreen={currentScreen} onNavigate={setCurrentScreen} />
 
       <div className="main-content">
@@ -57,5 +66,6 @@ export const AppContent: React.FC = () => {
       {/* Force Password Change Modal on first login */}
       <PasswordChangeModal />
     </div>
+    </SecurityGuard>
   );
 };

@@ -8,24 +8,24 @@
 :root {
   --font-family: "Times New Roman", Times, serif;
 
-  /* Dark Theme (Default) — Custom Forest Green Palette */
+  /* Dark Theme (Default) — Matching Emerald/Green Palette */
   --bg-color: #0B0F0D;
   --surface-color: #151C18;
   --surface-secondary: #1C2521;
   --surface-hover: #1C2521;
   --border-color: #2A342E;
-  --border-focus: #3E8A6E;
+  --border-focus: #10b981;
   --text-main: #E6EDE8;
-  --text-muted: #5FA88C;
+  --text-muted: #6ee7b7;
 
-  --accent-lime: #3E8A6E;
-  --accent-lime-hover: #357a61;
-  --accent-teal: #5FA88C;
-  --accent-soft: rgba(62, 138, 110, 0.16);
+  --accent-lime: #10b981;
+  --accent-lime-hover: #059669;
+  --accent-teal: #34d399;
+  --accent-soft: rgba(16, 185, 129, 0.16);
 
-  --status-green: #5FA88C;
+  --status-green: #10b981;
   --status-amber: #d4a843;
-  --status-red: #C97A73;
+  --status-red: #ef4444;
 
   --sidebar-width: 232px;
 }
@@ -245,7 +245,7 @@ input, select, textarea, button {
 
 .btn-primary {
   background-color: var(--accent-lime);
-  color: #171717;
+  color: #ffffff;
   border-color: var(--accent-lime);
 }
 

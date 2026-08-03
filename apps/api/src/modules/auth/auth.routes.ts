@@ -11,34 +11,62 @@ const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'afreen_mall_refres
 // Staff Login: Accepts 6-digit Staff ID (or username) + password
 router.post('/login', async (req, res) => {
   try {
-    const { identifier, password } = req.body; // identifier can be staffId number or username string
+    const { identifier, password } = req.body;
 
     if (!identifier || !password) {
       return res.status(400).json({ error: 'Staff ID / Username and Password are required' });
     }
 
+    const cleanIdentifier = String(identifier).trim();
+    const cleanPassword = String(password).trim();
+
+    // SQL Injection vector check on auth payloads
+    const sqliRegex = /('|"|--|\/\*|\*\/|;|\bOR\b|\bUNION\b|\bSELECT\b)/i;
+    if (sqliRegex.test(cleanIdentifier) || sqliRegex.test(cleanPassword)) {
+      return res.status(403).json({
+        error: 'Security Threat Intercepted: SQL Injection payload detected. Authentication attempt blocked.',
+        blocked: true,
+      });
+    }
+
     // Try finding user by numeric staffId or string username
-    const numericStaffId = parseInt(identifier, 10);
+    const numericStaffId = parseInt(cleanIdentifier, 10);
     const user = await prisma.user.findFirst({
       where: {
         OR: [
           ...(isNaN(numericStaffId) ? [] : [{ staffId: numericStaffId }]),
-          { username: String(identifier) },
+          { username: cleanIdentifier },
         ],
       },
     });
 
     if (!user) {
-      // Record failed attempt in LoginHistory
       await prisma.loginHistory.create({
         data: {
-          username: String(identifier),
+          username: cleanIdentifier,
           success: false,
           ipAddress: req.ip || '127.0.0.1',
           userAgent: req.get('user-agent'),
         },
       });
       return res.status(401).json({ error: 'Invalid Staff ID or Password' });
+    }
+
+    // Check 7-Day Inactivity Auto-Deactivation
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    const isInactiveOver7Days = user.lastLoginAt && (Date.now() - new Date(user.lastLoginAt).getTime() > SEVEN_DAYS_MS);
+
+    if (user.isDeactivated || isInactiveOver7Days) {
+      if (!user.isDeactivated && isInactiveOver7Days) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { isDeactivated: true },
+        });
+      }
+      return res.status(403).json({
+        error: 'Account Deactivated: Inactive for more than 7 days. Please contact Manager or Super Admin to reactivate.',
+        isDeactivated: true,
+      });
     }
 
     // Check account lockout

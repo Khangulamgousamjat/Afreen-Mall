@@ -62,18 +62,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const staffId = isNaN(numericId) ? 300000 : numericId;
     let role = RoleName.SUPER_ADMIN;
     let fullName = 'Gous Khan (Super Admin)';
+    let canProcessSaleReturn = true;
 
     if (staffId === 300001 || cleanId.toLowerCase().includes('manager')) {
       role = RoleName.STORE_MANAGER;
-      fullName = 'Store Manager';
-    } else if (staffId === 300002 || cleanId.toLowerCase().includes('cashier')) {
+      fullName = 'Sanjay Gupta (Store Manager)';
+      canProcessSaleReturn = true;
+    } else if (staffId === 300002 || cleanId.toLowerCase().includes('pooja')) {
       role = RoleName.CASHIER;
-      fullName = 'Head Cashier';
-    } else if (staffId === 300003 || cleanId.toLowerCase().includes('officer')) {
+      fullName = 'Pooja Sharma (Head Cashier)';
+      canProcessSaleReturn = true;
+    } else if (staffId === 300003 || cleanId.toLowerCase().includes('vinayak')) {
+      role = RoleName.CASHIER;
+      fullName = 'Vinayak Shinde (Cashier)';
+      canProcessSaleReturn = false; // Cashier restricted to sales only by default
+    } else if (staffId === 300004 || cleanId.toLowerCase().includes('babuji')) {
       role = RoleName.CASH_OFFICER;
-      fullName = 'Cash Officer';
+      fullName = 'Babuji Namole (Cash Officer)';
+      canProcessSaleReturn = true;
+    } else if (staffId === 300005 || cleanId.toLowerCase().includes('amit')) {
+      role = RoleName.ACCOUNTANT;
+      fullName = 'Amit Verma (Senior Accountant)';
+      canProcessSaleReturn = true;
     } else if (staffId !== 300000) {
-      fullName = `Staff Member (${cleanId})`;
+      fullName = `Vinayak Shinde (${cleanId})`;
+      role = RoleName.CASHIER;
+      canProcessSaleReturn = false;
     }
 
     const fallbackUser: UserSession = {
@@ -83,6 +97,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       fullName: fullName,
       role: role,
       mustChangePassword: false,
+      isDeactivated: false,
+      canProcessSaleReturn: canProcessSaleReturn,
+      lastLoginAt: new Date().toISOString(),
     };
     const fallbackToken = `afreen-token-${Date.now()}`;
 

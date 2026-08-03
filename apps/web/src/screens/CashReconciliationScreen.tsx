@@ -10,9 +10,9 @@ export const CashReconciliationScreen: React.FC = () => {
 
   // Cash Officer Handover Rows
   const [handovers] = useState([
-    { pos: 'POS-01', cashier: 'Amit Verma (300003)', systemCash: 4500000, countedCash: 4500000, variance: 0, status: 'MATCHED' },
-    { pos: 'POS-02', cashier: 'Pooja Sharma (300007)', systemCash: 3200000, countedCash: 3150000, variance: -50000, status: 'SHORT' },
-    { pos: 'POS-03', cashier: 'Rohan Gupta (300008)', systemCash: 5100000, countedCash: 5120000, variance: 20000, status: 'EXCESS' },
+    { pos: 'POS-01', cashier: 'Amit Verma (300003)', systemCash: 4500000, countedCash: 2500000, bnaDeposit: 2000000, bnaSlip: 'BNA-9921', totalCash: 4500000, variance: 0, status: 'MATCHED' },
+    { pos: 'POS-02', cashier: 'Pooja Sharma (300007)', systemCash: 3200000, countedCash: 1150000, bnaDeposit: 2000000, bnaSlip: 'BNA-9922', totalCash: 3150000, variance: -50000, status: 'SHORT' },
+    { pos: 'POS-03', cashier: 'Rohan Gupta (300008)', systemCash: 5100000, countedCash: 2120000, bnaDeposit: 3000000, bnaSlip: 'BNA-9923', totalCash: 5120000, variance: 20000, status: 'EXCESS' },
   ]);
 
   // Manager Reconciliation Form State
@@ -98,7 +98,6 @@ export const CashReconciliationScreen: React.FC = () => {
             </div>
           </div>
         </div>
-
         {isAccountantRole && !accountantApproved && (
           <button className="btn btn-primary" onClick={handleAccountantApprove}>
             Approve Consolidated Close
@@ -139,7 +138,10 @@ export const CashReconciliationScreen: React.FC = () => {
                   <th>POS Register</th>
                   <th>Cashier</th>
                   <th>System Cash (₹)</th>
-                  <th>Counted Cash (₹)</th>
+                  <th>Counter Cash (₹)</th>
+                  <th>BNA Machine Cash (₹)</th>
+                  <th>BNA Slip #</th>
+                  <th>Total Cash Sales (₹)</th>
                   <th>Variance</th>
                   <th>Status</th>
                 </tr>
@@ -147,10 +149,13 @@ export const CashReconciliationScreen: React.FC = () => {
               <tbody>
                 {handovers.map((h, idx) => (
                   <tr key={idx}>
-                    <td style={{ fontWeight: 'bold' }}>{h.pos}</td>
+                    <td style={{ fontWeight: 'bold', fontFamily: 'monospace' }}>{h.pos}</td>
                     <td>{h.cashier}</td>
                     <td className="monetary">₹{(h.systemCash / 100).toFixed(2)}</td>
                     <td className="monetary">₹{(h.countedCash / 100).toFixed(2)}</td>
+                    <td className="monetary" style={{ color: '#10b981', fontWeight: 'bold' }}>₹{(h.bnaDeposit / 100).toFixed(2)}</td>
+                    <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{h.bnaSlip}</td>
+                    <td className="monetary" style={{ fontWeight: 'bold', color: 'var(--accent-lime)' }}>₹{(h.totalCash / 100).toFixed(2)}</td>
                     <td className="monetary" style={{ color: h.variance < 0 ? 'var(--status-red)' : h.variance > 0 ? 'var(--status-amber)' : 'var(--status-green)' }}>
                       ₹{(h.variance / 100).toFixed(2)}
                     </td>

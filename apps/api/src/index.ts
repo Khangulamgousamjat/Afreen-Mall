@@ -14,6 +14,8 @@ import customersRouter from './modules/customers/customers.routes.js';
 import reportsRouter from './modules/reports/reports.routes.js';
 import hardwareRouter from './modules/hardware/hardware.routes.js';
 
+import { sqlInjectionGuard } from './middleware/sqlInjectionGuard.middleware.js';
+
 dotenv.config();
 
 const app = express();
@@ -21,6 +23,18 @@ const PORT = process.env.PORT || 4000;
 
 app.use(cors({ origin: '*', credentials: false }));
 app.use(express.json());
+
+// Enterprise Security Headers
+app.use((req, res, next) => {
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Content-Security-Policy', "default-src 'self'");
+  next();
+});
+
+// WAF Global SQL Injection Shield
+app.use(sqlInjectionGuard);
 
 // Healthcheck
 app.get('/health', (req, res) => {

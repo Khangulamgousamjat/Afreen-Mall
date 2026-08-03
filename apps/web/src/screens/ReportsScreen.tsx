@@ -38,9 +38,14 @@ export const ReportsScreen: React.FC = () => {
 
       {reportTab === 'SALES' && (
         <div className="card">
-          <h3 style={{ fontSize: '16px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '16px' }}>
-            Daily Sales Breakdown (July 2026)
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 'bold', textTransform: 'uppercase', margin: 0 }}>
+              Daily Sales & Cash Deposit Breakdown
+            </h3>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', backgroundColor: 'var(--bg-card-hover)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+              Note: BNA Machine Deposits are classified as <strong>CASH SALES</strong> (Independent of Card & UPI)
+            </span>
+          </div>
 
           <div className="table-container">
             <table>
@@ -48,7 +53,9 @@ export const ReportsScreen: React.FC = () => {
                 <tr>
                   <th>Date</th>
                   <th>Total Invoices</th>
-                  <th>Cash Sales (₹)</th>
+                  <th>Counter Cash (₹)</th>
+                  <th>BNA Machine Cash (₹)</th>
+                  <th>Total Cash Sales (₹)</th>
                   <th>Card Sales (₹)</th>
                   <th>UPI Sales (₹)</th>
                   <th>Total Revenue (₹)</th>
@@ -58,7 +65,9 @@ export const ReportsScreen: React.FC = () => {
                 <tr>
                   <td className="tabular-nums">2026-07-28 (Today)</td>
                   <td className="tabular-nums">42</td>
-                  <td className="monetary">₹45,000.00</td>
+                  <td className="monetary">₹25,000.00</td>
+                  <td className="monetary" style={{ color: '#10b981', fontWeight: 'bold' }}>₹20,000.00</td>
+                  <td className="monetary" style={{ fontWeight: 'bold', color: 'var(--accent-lime)' }}>₹45,000.00</td>
                   <td className="monetary">₹22,000.00</td>
                   <td className="monetary">₹18,000.00</td>
                   <td className="monetary" style={{ fontWeight: 'bold', color: 'var(--accent-lime)' }}>₹85,000.00</td>
@@ -66,7 +75,9 @@ export const ReportsScreen: React.FC = () => {
                 <tr>
                   <td className="tabular-nums">2026-07-27</td>
                   <td className="tabular-nums">58</td>
-                  <td className="monetary">₹62,000.00</td>
+                  <td className="monetary">₹32,000.00</td>
+                  <td className="monetary" style={{ color: '#10b981', fontWeight: 'bold' }}>₹30,000.00</td>
+                  <td className="monetary" style={{ fontWeight: 'bold' }}>₹62,000.00</td>
                   <td className="monetary">₹34,000.00</td>
                   <td className="monetary">₹28,000.00</td>
                   <td className="monetary" style={{ fontWeight: 'bold' }}>₹1,24,000.00</td>

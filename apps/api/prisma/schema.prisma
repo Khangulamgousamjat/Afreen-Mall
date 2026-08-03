@@ -60,6 +60,9 @@ model User {
   isLocked           Boolean    @default(false)
   failedAttempts     Int        @default(0)
   lockoutUntil       DateTime?
+  lastLoginAt        DateTime?
+  isDeactivated      Boolean    @default(false)
+  canProcessSaleReturn Boolean  @default(false)
   sessions           Session[]
   loginHistory       LoginHistory[]
   auditLogs          AuditLog[]
@@ -279,6 +282,11 @@ model Sale {
   changeDue       Int         @default(0) // Paise
   customerPhone   String?
   customerName    String?
+  transactionId   String?
+  isManuallyRecovered Boolean @default(false)
+  recoveredByStaffId Int?
+  recoveredAt     DateTime?
+  reprintCount    Int         @default(0)
   status          String      @default("COMPLETED") // COMPLETED, CANCELLED, RETURNED
   items           SaleItem[]
   saleReturns     SaleReturn[]

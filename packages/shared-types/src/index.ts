@@ -46,6 +46,9 @@ export interface UserSession {
   fullName: string;
   role: RoleName;
   mustChangePassword: boolean;
+  lastLoginAt?: string;
+  isDeactivated?: boolean;
+  canProcessSaleReturn?: boolean;
 }
 
 export interface DenominationBreakdown {
@@ -96,14 +99,28 @@ export interface POSInvoice {
   changeDue: number; // in paise
   customerPhone?: string;
   customerName?: string;
+  transactionId?: string;
+  isManuallyRecovered?: boolean;
+  recoveredByStaffId?: number;
+  recoveredAt?: string;
+  reprintCount?: number;
+  isDuplicateCopy?: boolean;
   status: 'COMPLETED' | 'CANCELLED' | 'RETURNED' | 'HELD';
   createdAt: string;
+}
+
+export interface BillRecoveryPayload {
+  transactionId: string;
+  amount: number; // in paise
+  paymentMode: PaymentMode.CARD | PaymentMode.UPI;
+  registerId?: string;
 }
 
 export interface DayCloseReport {
   id: string;
   date: string;
   registerId: string;
+  posNumber?: string;
   cashierStaffId: number;
   cashierName: string;
   systemCash: number; // paise
@@ -114,6 +131,7 @@ export interface DayCloseReport {
   useBNACount?: boolean;
   bnaDepositAmount?: number; // paise
   bnaSlipNumber?: string;
+  totalCashSales?: number; // paise (countedCash + bnaDepositAmount)
   variance: number; // paise
   status: CashVarianceStatus;
   isCloseReturn: boolean;
