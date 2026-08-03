@@ -457,8 +457,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           </button>
         </form>
 
-        <div style={{ width: '100%', marginTop: '20px', textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '14px' }}>
-          Strictly internal access. Accounts provisioned by Super Admin.
+        <div style={{ width: '100%', marginTop: '20px', textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+          <div>Strictly internal access. Accounts provisioned by Store Manager / Super Admin.</div>
+          <div className="crafted-by-badge" style={{ marginTop: '4px' }}>
+            <span>Made with</span>
+            <span className="animated-heart">❤️</span>
+            <span>by <strong style={{ color: 'var(--accent-lime)' }}>Gous Khan</strong></span>
+          </div>
         </div>
       </div>
     </div>
