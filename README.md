@@ -170,7 +170,7 @@ graph TD
 
 <div align="center">
 
-### 💖 Made with ❤️ by **Gous Organisation**
+### 💖 Made by **Gous Organisation**
 
 *Software Architect: **Gous Khan** · Afreen Mall Enterprise Platform*
 
