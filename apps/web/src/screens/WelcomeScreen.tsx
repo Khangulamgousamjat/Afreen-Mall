@@ -93,23 +93,36 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGoToLogin }) => 
           <ShieldCheck size={14} style={{ color: 'var(--accent-lime)' }} />
           <span>Internal Operations Platform · Authorized Staff Access Only</span>
         </div>
-
-        {/* Gous Organisation Branding Footer */}
-        <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border-color)', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-          <div className="crafted-by-badge">
-            <span>Made with</span>
-            <span className="animated-heart">❤️</span>
-            <span>by <strong style={{ color: 'var(--accent-lime)' }}>Gous Organisation</strong></span>
-          </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', textAlign: 'center', lineHeight: 1.5 }}>
-            <div>Software Architect: <strong>Gous Khan</strong></div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginTop: '2px', flexWrap: 'wrap' }}>
-              <span>📞 <strong>+91 8625076618</strong></span>
-              <span>✉️ <strong>khangulamgousamjat@gmail.com</strong></span>
-            </div>
-          </div>
-        </div>
       </div>
+
+      {/* Page Footer at Very Bottom of Viewport */}
+      <footer
+        style={{
+          position: 'absolute',
+          bottom: '20px',
+          left: 0,
+          right: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '0 16px',
+          pointerEvents: 'auto',
+        }}
+      >
+        <div className="crafted-by-badge">
+          <span>Made with</span>
+          <span className="animated-heart">❤️</span>
+          <span>by <strong style={{ color: 'var(--accent-lime)' }}>Gous Organisation</strong></span>
+        </div>
+        <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.4 }}>
+          <span>Software Architect: <strong>Gous Khan</strong></span>
+          <span style={{ margin: '0 8px' }}>·</span>
+          <span>📞 <strong>+91 8625076618</strong></span>
+          <span style={{ margin: '0 8px' }}>·</span>
+          <span>✉️ <strong>khangulamgousamjat@gmail.com</strong></span>
+        </div>
+      </footer>
     </div>
   );
 };

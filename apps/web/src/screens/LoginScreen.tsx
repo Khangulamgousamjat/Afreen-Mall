@@ -457,22 +457,38 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           </button>
         </form>
 
-        <div style={{ width: '100%', marginTop: '20px', textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-          <div>Strictly internal access. Accounts provisioned by Store Manager / Super Admin.</div>
-          <div className="crafted-by-badge" style={{ marginTop: '4px' }}>
-            <span>Made with</span>
-            <span className="animated-heart">❤️</span>
-            <span>by <strong style={{ color: 'var(--accent-lime)' }}>Gous Organisation</strong></span>
-          </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', textAlign: 'center', lineHeight: 1.5 }}>
-            <div>Software Architect: <strong>Gous Khan</strong></div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginTop: '2px', flexWrap: 'wrap' }}>
-              <span>📞 <strong>+91 8625076618</strong></span>
-              <span>✉️ <strong>khangulamgousamjat@gmail.com</strong></span>
-            </div>
-          </div>
+        <div style={{ width: '100%', marginTop: '16px', textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+          Strictly internal access. Accounts provisioned by Store Manager / Super Admin.
         </div>
       </div>
+
+      {/* Page Footer at Very Bottom of Viewport */}
+      <footer
+        style={{
+          position: 'absolute',
+          bottom: '16px',
+          left: 0,
+          right: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '0 16px',
+        }}
+      >
+        <div className="crafted-by-badge">
+          <span>Made with</span>
+          <span className="animated-heart">❤️</span>
+          <span>by <strong style={{ color: 'var(--accent-lime)' }}>Gous Organisation</strong></span>
+        </div>
+        <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.4 }}>
+          <span>Software Architect: <strong>Gous Khan</strong></span>
+          <span style={{ margin: '0 8px' }}>·</span>
+          <span>📞 <strong>+91 8625076618</strong></span>
+          <span style={{ margin: '0 8px' }}>·</span>
+          <span>✉️ <strong>khangulamgousamjat@gmail.com</strong></span>
+        </div>
+      </footer>
     </div>
   );
 };
