@@ -115,6 +115,14 @@
 
 ---
 
+### 🔑 15. Extreme Session Invalidation & 15-Minute Idle Auto-Logout
+- **Ephemeral `sessionStorage` Enforcement**: All session tokens and user objects are stored in ephemeral `sessionStorage` (legacy persistent `localStorage` is explicitly purged on startup).
+- **Tab & Browser Exit Invalidation**: Closing the browser tab or window **INSTANTLY DESTROYS** the session. Opening the URL link again in a new tab/window **ALWAYS forces a fresh password login**.
+- **15-Minute Inactivity Watchdog (`useIdleTimer`)**: A background security watchdog tracks user interaction (`mousemove`, `keydown`, `click`, `scroll`, `touchstart`). If no user activity occurs for **15 minutes (900,000 ms)**, the system automatically purges all session tokens, logs out the user, and displays a red **Security Session Expired** modal requiring re-authentication.
+- **Session Time-To-Live (TTL)**: Enforces an 8-hour maximum shift limit (`afreen_session_expires`). If expired on load/refresh, the session is purged immediately.
+
+---
+
 ## 📐 Monorepo Architecture & Tech Stack
 
 ```mermaid
