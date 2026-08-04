@@ -43,146 +43,50 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         {/* Cashier Welcome Header */}
-        <div style={{ borderLeft: '4px solid var(--accent-lime)', paddingLeft: '16px' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
-            Cashier Command Center
-          </h1>
-          <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Welcome, <strong>{user?.fullName}</strong> (Staff ID: {user?.staffId}) · Terminal Desk Operations
+        <div style={{ borderLeft: '4px solid var(--accent-lime)', paddingLeft: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              Cashier Terminal Command Center
+            </h1>
+            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
+              Welcome, <strong>{user?.fullName}</strong> (Staff ID: {user?.staffId}) · Active Billing Desk
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 'bold', padding: '4px 10px', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: 'var(--accent-lime)', border: '1px solid var(--accent-lime)' }}>
+              TERMINAL: POS-01 MAIN COUNTER
+            </span>
           </div>
         </div>
 
-        {/* 4 Main Cashier Quick Action Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
-          {/* Card 1: Sale */}
-          <div
-            className="card"
-            style={{
-              padding: '24px',
-              borderLeft: '4px solid #10b981',
-              backgroundColor: 'var(--surface-color)',
-              cursor: 'pointer',
-              transition: 'transform 0.15s ease, border-color 0.15s ease',
-            }}
-            onClick={() => onNavigate && onNavigate('pos')}
-            title="Start new retail barcode billing"
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-              <div style={{ padding: '10px', backgroundColor: 'rgba(16, 185, 129, 0.15)', borderRadius: '8px', color: '#10b981' }}>
-                <ShoppingCart size={28} />
-              </div>
-              <span style={{ fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', backgroundColor: 'rgba(16, 185, 129, 0.2)', color: '#10b981', borderRadius: '12px' }}>
-                NEW BILL
-              </span>
+        {/* Counter KPI Summary Tiles */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+          <div className="card" style={{ borderLeft: '3px solid var(--accent-lime)' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Today's Shift Sales</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '4px' }} className="monetary">
+              ₹{(metrics.todayRevenue / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </div>
-            <h3 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', margin: '0 0 6px' }}>
-              1. Retail Sale (POS)
-            </h3>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-              Scan barcodes, process items, apply discounts, and complete customer payment.
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontWeight: 'bold', fontSize: '12px', marginTop: '16px' }}>
-              <span>Launch POS Billing</span>
-              <ArrowRight size={14} />
+            <div style={{ fontSize: '11px', color: 'var(--status-green)', marginTop: '4px' }}>
+              Recorded on Active Register
             </div>
           </div>
 
-          {/* Card 2: Sale Return */}
-          <div
-            className="card"
-            style={{
-              padding: '24px',
-              borderLeft: '4px solid #ef4444',
-              backgroundColor: 'var(--surface-color)',
-              cursor: 'pointer',
-              transition: 'transform 0.15s ease, border-color 0.15s ease',
-            }}
-            onClick={() => onNavigate && onNavigate('pos-return')}
-            title="Process item exchange or refund return"
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-              <div style={{ padding: '10px', backgroundColor: 'rgba(239, 68, 68, 0.15)', borderRadius: '8px', color: '#ef4444' }}>
-                <RotateCcw size={28} />
-              </div>
-              <span style={{ fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', backgroundColor: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', borderRadius: '12px' }}>
-                RETURN MODE
-              </span>
+          <div className="card" style={{ borderLeft: '3px solid var(--status-green)' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total Invoices Billed</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '4px' }} className="tabular-nums">
+              {metrics.todayTransactionCount} Transactions
             </div>
-            <h3 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', margin: '0 0 6px' }}>
-              2. Process Sale Return
-            </h3>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-              Accept customer returned items, issue credit notes, or process cash refunds.
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontWeight: 'bold', fontSize: '12px', marginTop: '16px' }}>
-              <span>Launch Return Desk</span>
-              <ArrowRight size={14} />
-            </div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Shift Invoices Completed</div>
           </div>
 
-          {/* Card 3: Close Sale */}
-          <div
-            className="card"
-            style={{
-              padding: '24px',
-              borderLeft: '4px solid #3b82f6',
-              backgroundColor: 'var(--surface-color)',
-              cursor: 'pointer',
-              transition: 'transform 0.15s ease, border-color 0.15s ease',
-            }}
-            onClick={() => onNavigate && onNavigate('dayclose')}
-            title="Submit register shift close & cash count"
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-              <div style={{ padding: '10px', backgroundColor: 'rgba(59, 130, 246, 0.15)', borderRadius: '8px', color: '#3b82f6' }}>
-                <Clock size={28} />
-              </div>
-              <span style={{ fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', backgroundColor: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6', borderRadius: '12px' }}>
-                DAY CLOSE
-              </span>
+          <div className="card" style={{ borderLeft: '3px solid #3b82f6' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Navigation Control</div>
+            <div style={{ fontSize: '13px', fontWeight: 'bold', marginTop: '6px', color: 'var(--accent-lime)' }}>
+              Use Left Sidebar Menu
             </div>
-            <h3 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', margin: '0 0 6px' }}>
-              3. Close Sale (Register Close)
-            </h3>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-              Count drawer cash, enter BNA slip deposit, and submit cashier shift close report.
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#3b82f6', fontWeight: 'bold', fontSize: '12px', marginTop: '16px' }}>
-              <span>Submit Day Close</span>
-              <ArrowRight size={14} />
-            </div>
-          </div>
-
-          {/* Card 4: Close Sale Return */}
-          <div
-            className="card"
-            style={{
-              padding: '24px',
-              borderLeft: '4px solid #f59e0b',
-              backgroundColor: 'var(--surface-color)',
-              cursor: 'pointer',
-              transition: 'transform 0.15s ease, border-color 0.15s ease',
-            }}
-            onClick={() => onNavigate && onNavigate('dayclose')}
-            title="Review return vouchers & handover reconciliation"
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-              <div style={{ padding: '10px', backgroundColor: 'rgba(245, 158, 11, 0.15)', borderRadius: '8px', color: '#f59e0b' }}>
-                <FileText size={28} />
-              </div>
-              <span style={{ fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', backgroundColor: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b', borderRadius: '12px' }}>
-                HANDOVER
-              </span>
-            </div>
-            <h3 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', margin: '0 0 6px' }}>
-              4. Close Sale Return Summary
-            </h3>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-              Verify daily return vouchers, exchange tallies, and submit handover summary to manager.
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#f59e0b', fontWeight: 'bold', fontSize: '12px', marginTop: '16px' }}>
-              <span>View Handover Report</span>
-              <ArrowRight size={14} />
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              Sale (POS), Sale Return, Close Sale & Return
             </div>
           </div>
         </div>
