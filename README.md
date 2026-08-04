@@ -6,7 +6,8 @@
 ---
 
 ![Afreen Mall Security](https://img.shields.io/badge/Security-Military%20%26%20Bank--Grade-10b981?style=for-the-badge&logo=shield)
-![Crafted by Gous Khan](https://img.shields.io/badge/Made%20With-%E2%9D%A4%EF%B8%8F%20by%20Gous%20Khan-FF1493?style=for-the-badge)
+![Crafted by Gous Organisation](https://img.shields.io/badge/Made%20With-%E2%9D%A4%EF%B8%8F%20by%20Gous%20Organisation-FF1493?style=for-the-badge)
+![Architect](https://img.shields.io/badge/Architect-Gous%20Khan-10b981?style=for-the-badge)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Monorepo-3178C6?style=for-the-badge&logo=typescript)
 ![React](https://img.shields.io/badge/Frontend-Vite%20React-61DAFB?style=for-the-badge&logo=react)
 ![Express](https://img.shields.io/badge/Backend-Node.js%20Express-000000?style=for-the-badge&logo=express)
@@ -169,10 +170,12 @@ graph TD
 
 <div align="center">
 
-### 💖 Made with ❤️ by **Gous Khan**
+### 💖 Made with ❤️ by **Gous Organisation**
 
-*Lead Software Architect & Developer · Afreen Mall Enterprise Platform*
+*Software Architect: **Gous Khan** · Afreen Mall Enterprise Platform*
 
-![Made with Love by Gous Khan](https://img.shields.io/badge/Crafted%20With-%E2%9D%A4%EF%B8%8F%20by%20Gous%20Khan-FF1493?style=for-the-badge)
+📞 **Mobile**: `+91 8625076618` | ✉️ **Email**: `khangulamgousamjat@gmail.com`
+
+![Made with Love by Gous Organisation](https://img.shields.io/badge/Crafted%20With-%E2%9D%A4%EF%B8%8F%20by%20Gous%20Organisation-FF1493?style=for-the-badge)
 
 </div>

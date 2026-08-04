@@ -462,7 +462,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           <div className="crafted-by-badge" style={{ marginTop: '4px' }}>
             <span>Made with</span>
             <span className="animated-heart">❤️</span>
-            <span>by <strong style={{ color: 'var(--accent-lime)' }}>Gous Khan</strong></span>
+            <span>by <strong style={{ color: 'var(--accent-lime)' }}>Gous Organisation</strong></span>
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', textAlign: 'center', lineHeight: 1.5 }}>
+            <div>Software Architect: <strong>Gous Khan</strong></div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginTop: '2px', flexWrap: 'wrap' }}>
+              <span>📞 <strong>+91 8625076618</strong></span>
+              <span>✉️ <strong>khangulamgousamjat@gmail.com</strong></span>
+            </div>
           </div>
         </div>
       </div>
