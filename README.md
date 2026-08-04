@@ -123,6 +123,19 @@
 
 ---
 
+### 🎯 16. Strict Cashier Role Navigation & Streamlined Command Center
+- **Sidebar Role Filtering (`Sidebar.tsx`)**: When logged in as a **Cashier** (`RoleName.CASHIER`), all store-wide management modules (Inventory, Purchasing, Warehouse, Reports, Settings) are **HIDDEN**. The sidebar displays **ONLY 3 Essential Operational Items**:
+  1. 🛒 **Sale (POS Billing)**
+  2. 🔄 **Sale Return**
+  3. 🕒 **Close Sale & Return (Day Close)**
+- **Cashier Command Center (`DashboardScreen.tsx`)**: Replaces complex store-wide KPIs with a focused **Cashier Terminal Desk** featuring **4 Quick Action Cards**:
+  1. 💳 **1. Retail Sale (POS)** (Launch POS Barcode Billing)
+  2. 🔄 **2. Process Sale Return** (Launch POS Return Mode)
+  3. 🕒 **3. Close Sale (Register Close)** (Launch Shift Day Close)
+  4. 📋 **4. Close Sale Return Summary** (Launch Day Close Handover Summary)
+
+---
+
 ## 📐 Monorepo Architecture & Tech Stack
 
 ```mermaid
