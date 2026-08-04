@@ -140,7 +140,14 @@
 ### 🔍 17. POS Barcode Scanner Validations & Zero Price Guard
 - **Unregistered / Invalid Barcode Alert**: Scanned barcodes not present in the store catalog (e.g. unknown barcode `99999999`) trigger an instant red modal: `❌ BARCODE NOT FOUND: Barcode "99999999" is WRONG or NOT AVAILABLE in store catalog.`
 - **Zero Price Prevention Guard**: Items with an MRP / selling price of `₹0.00` are blocked from being added to the cart with an amber warning: `⚠️ INVALID ITEM PRICE: Item price cannot be ₹0.00. Please set valid price in Inventory master.`
-- **Malformed Scan Detection**: Truncated or partial scans (fewer than 3 digits) trigger an immediate alert: `⚠️ SCAN INCOMPLETE: Barcode was NOT PROPERLY SCANNED! Please align scanner and scan full barcode again.`
+---
+
+### ⌨️ 18. Global Keyboard Operability System (WCAG 2.1.1 / 2.1.2 Compliant)
+- **Zero-Mouse Rule Guarantee**: Cashiers can complete 100% of POS tasks using only keyboard shortcuts and navigation without touching a mouse.
+- **Centralized Shortcut Registry (`shortcutRegistry.ts`)**: Single collision-checked registry avoiding OS/browser reserved keys (`F5`, `F11`, `F12`, `Ctrl+W`, `Ctrl+T`, `Ctrl+F`). Maps `F1` (Help Legend), `F2` (Sale Type), `F3` (Repeat Item), `F7` (Instant UPI), `F10` (Checkout), `Shift + F8` (Manual Bill Recovery), `Ctrl + F5` (Duplicate Print), `Alt + F11` (Return Mode), and `Escape` (Cancel Modal).
+- **High-Contrast Focus Indicator (WCAG 2.4.7)**: Enforces 3:1 minimum contrast `:focus-visible` emerald outline (`outline: 2px solid var(--accent-lime); outline-offset: 2px;`) across all buttons, inputs, selects, and table rows.
+- **Modal Focus Trap (`useFocusTrap.ts` - WCAG 2.1.2)**: Auto-focuses the first field inside modals on open. Traps `Tab` / `Shift + Tab` cycling strictly inside modal bounds. Restores focus to the triggering element on close.
+- **Full Numeric Keypad (Numpad) Support**: Treats `NumpadEnter` and `NumpadDecimal` identically to main keyboard keys across all amount and quantity fields.
 
 ---
 

@@ -57,6 +57,23 @@
   font-family: var(--font-family) !important;
 }
 
+/* WCAG 2.4.7 — High-Contrast Focus Ring (3:1 Contrast Minimum) */
+*:focus-visible {
+  outline: 2px solid var(--accent-lime) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25) !important;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.nav-item:focus-visible {
+  outline: 2px solid var(--accent-lime) !important;
+  outline-offset: 2px !important;
+  border-color: var(--accent-lime) !important;
+}
+
 body {
   background-color: var(--bg-color);
   color: var(--text-main);

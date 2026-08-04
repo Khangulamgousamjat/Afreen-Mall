@@ -3,6 +3,7 @@ import { RefreshCw, AlertTriangle, CheckCircle2, ShieldAlert, X, CreditCard, QrC
 import { useAuth } from '../context/AuthContext';
 import { PaymentMode, RoleName } from '@afreen-mall/shared-types';
 import { api } from '../services/api';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface ManualBillRecoveryModalProps {
   isOpen: boolean;
@@ -18,6 +19,8 @@ export const ManualBillRecoveryModal: React.FC<ManualBillRecoveryModalProps> = (
   defaultAmountRupees = 0,
 }) => {
   const { user } = useAuth();
+  const containerRef = useFocusTrap<HTMLDivElement>(isOpen);
+
   const [transactionId, setTransactionId] = useState('');
   const [amountRupees, setAmountRupees] = useState<string>(
     defaultAmountRupees > 0 ? defaultAmountRupees.toString() : ''
@@ -27,6 +30,21 @@ export const ManualBillRecoveryModal: React.FC<ManualBillRecoveryModalProps> = (
   const [checkingTx, setCheckingTx] = useState(false);
   const [loading, setLoading] = useState(false);
   const txnInputRef = useRef<HTMLInputElement>(null);
+
+  // Escape Key dismissal & Numpad Enter key handling
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   useEffect(() => {
     if (isOpen) {
@@ -173,7 +191,7 @@ Software by Gous Khan · Mobile: 8625076618
 
   return (
     <div className="modal-overlay" style={{ zIndex: 1100 }}>
-      <div className="modal-content" style={{ maxWidth: '520px', width: '100%', borderRadius: '12px', padding: '24px' }}>
+      <div ref={containerRef} className="modal-content" tabIndex={-1} style={{ maxWidth: '520px', width: '100%', borderRadius: '12px', padding: '24px' }}>
         
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
