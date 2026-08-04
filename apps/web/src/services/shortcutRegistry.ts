@@ -27,11 +27,20 @@ export const GLOBAL_SHORTCUT_MAP: KeyboardShortcut[] = [
 ];
 
 /**
- * Check if a keyboard event matches a registered shortcut
+ * Check if a keyboard event matches a registered shortcut (Dual e.key and e.code matching)
  */
 export const matchesShortcut = (e: KeyboardEvent, shortcut: KeyboardShortcut): boolean => {
-  const matchKey = e.key.toUpperCase() === shortcut.key.toUpperCase() || e.code.toUpperCase() === shortcut.key.toUpperCase();
-  const matchCtrl = Boolean(shortcut.ctrlKey) === Boolean(e.ctrlKey);
+  const targetKey = shortcut.key.toUpperCase();
+  const eventKey = (e.key || '').toUpperCase();
+  const eventCode = (e.code || '').toUpperCase();
+
+  let matchKey = eventKey === targetKey || eventCode === targetKey || eventCode === `KEY${targetKey}` || eventCode === `DIGIT${targetKey}`;
+
+  if (targetKey === 'ENTER') {
+    matchKey = eventKey === 'ENTER' || eventCode === 'ENTER' || eventCode === 'NUMPADENTER';
+  }
+
+  const matchCtrl = Boolean(shortcut.ctrlKey) === Boolean(e.ctrlKey || e.metaKey);
   const matchShift = Boolean(shortcut.shiftKey) === Boolean(e.shiftKey);
   const matchAlt = Boolean(shortcut.altKey) === Boolean(e.altKey);
 

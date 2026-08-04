@@ -36,14 +36,17 @@ export const ManualBillRecoveryModal: React.FC<ManualBillRecoveryModalProps> = (
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
+      const k = (e.key || '').toUpperCase();
+      const c = (e.code || '').toUpperCase();
+
+      if (k === 'ESCAPE' || c === 'ESCAPE') {
+        e.preventDefault(); e.stopPropagation();
         onClose();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [isOpen, onClose]);
 
   useEffect(() => {
