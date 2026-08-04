@@ -72,13 +72,21 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
   const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null);
 
   // ── Modals ──────────────────────────────────────────────────────────────
+  // ── Modals & Alerts ─────────────────────────────────────────────────────
   const [showF1Overlay, setShowF1Overlay] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showManualRecoveryModal, setShowManualRecoveryModal] = useState(false);
   const [showDuplicateReprintModal, setShowDuplicateReprintModal] = useState(false);
   const [showCancelBillModal, setShowCancelBillModal] = useState(false);
   const [receiptPrintContent, setReceiptPrintContent] = useState<string | null>(null);
-  const [selectedCartIndex, setSelectedCartIndex] = useState<number | null>(null);
+
+  const [scanAlertModal, setScanAlertModal] = useState<{
+    show: boolean;
+    type: 'NOT_FOUND' | 'ZERO_PRICE' | 'MALFORMED';
+    title: string;
+    message: string;
+    barcode?: string;
+  }>({ show: false, type: 'NOT_FOUND', title: '', message: '' });
 
   // ── Payment breakdown (paise) ───────────────────────────────────────────
   const [paidCash, setPaidCash] = useState(0);
@@ -154,7 +162,7 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
       // Redirect stray keystrokes to barcode box when no modal is open
       const active = document.activeElement as HTMLElement;
       const isInputFocused = active && (active.tagName === 'INPUT' || active.tagName === 'SELECT' || active.tagName === 'TEXTAREA');
-      const isModalOpen = showPaymentModal || showF1Overlay || showManualRecoveryModal || showDuplicateReprintModal || Boolean(receiptPrintContent);
+      const isModalOpen = showPaymentModal || showF1Overlay || showManualRecoveryModal || showDuplicateReprintModal || scanAlertModal.show || Boolean(receiptPrintContent);
       if (!isModalOpen && !isInputFocused && e.key.length === 1) {
         barcodeInputRef.current?.focus();
       }
@@ -164,9 +172,9 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, lastScannedItem, showPaymentModal, showF1Overlay, showManualRecoveryModal, showDuplicateReprintModal, receiptPrintContent]);
+  }, [cart, lastScannedItem, showPaymentModal, showF1Overlay, showManualRecoveryModal, showDuplicateReprintModal, scanAlertModal, receiptPrintContent]);
 
-  // ── Barcode scan ────────────────────────────────────────────────────────
+  // ── Barcode scan with 3 Strict Validations ──────────────────────────────
   const handleBarcodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
@@ -905,6 +913,36 @@ Software by Gous Khan · Mobile: 8625076618
                 <span>Print Receipt</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── BARCODE SCAN ERROR / ZERO PRICE ALERT MODAL ───────────────── */}
+      {scanAlertModal.show && (
+        <div className="modal-overlay" style={{ zIndex: 2500 }}>
+          <div className="modal-content" style={{ maxWidth: '440px', padding: '24px', textAlign: 'center', border: '2px solid #ef4444', borderRadius: '10px' }}>
+            <div style={{ padding: '12px', backgroundColor: 'rgba(239, 68, 68, 0.15)', borderRadius: '50%', width: '56px', height: '56px', margin: '0 auto 14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <AlertTriangle size={32} style={{ color: '#ef4444' }} />
+            </div>
+
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', color: '#ef4444', marginBottom: '8px' }}>
+              {scanAlertModal.title}
+            </h3>
+
+            <p style={{ fontSize: '13px', color: 'var(--text-main)', margin: '12px 0 20px', lineHeight: 1.5 }}>
+              {scanAlertModal.message}
+            </p>
+
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                setScanAlertModal({ show: false, type: 'NOT_FOUND', title: '', message: '' });
+                refocusBarcode();
+              }}
+              style={{ width: '100%', padding: '12px', backgroundColor: '#ef4444', borderColor: '#b91c1c', color: '#fff', fontSize: '14px', fontWeight: 'bold' }}
+            >
+              <span>Acknowledge & Re-Scan Barcode</span>
+            </button>
           </div>
         </div>
       )}

@@ -137,6 +137,13 @@
 
 ---
 
+### 🔍 17. POS Barcode Scanner Validations & Zero Price Guard
+- **Unregistered / Invalid Barcode Alert**: Scanned barcodes not present in the store catalog (e.g. unknown barcode `99999999`) trigger an instant red modal: `❌ BARCODE NOT FOUND: Barcode "99999999" is WRONG or NOT AVAILABLE in store catalog.`
+- **Zero Price Prevention Guard**: Items with an MRP / selling price of `₹0.00` are blocked from being added to the cart with an amber warning: `⚠️ INVALID ITEM PRICE: Item price cannot be ₹0.00. Please set valid price in Inventory master.`
+- **Malformed Scan Detection**: Truncated or partial scans (fewer than 3 digits) trigger an immediate alert: `⚠️ SCAN INCOMPLETE: Barcode was NOT PROPERLY SCANNED! Please align scanner and scan full barcode again.`
+
+---
+
 ## 📐 Monorepo Architecture & Tech Stack
 
 ```mermaid
