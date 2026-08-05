@@ -12,6 +12,7 @@ import {
   BarChart3,
   Settings,
   TrendingUp,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { RoleName } from '@afreen-mall/shared-types';
@@ -41,7 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentScreen, onNavigate }) =
     { id: 'warehouse', label: 'Warehouse', icon: WarehouseIcon },
     { id: 'customers', label: 'Customers (Loyalty)', icon: Users },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
-    { id: 'settings', label: 'Settings & Staff', icon: Settings, isSuperAdminOnly: true },
+    { id: 'settings', label: 'System Administration', icon: ShieldCheck, isSuperAdminOnly: true },
   ];
 
   // Cashier role sees strictly Sale, Sale Return, and Close Sale & Return
