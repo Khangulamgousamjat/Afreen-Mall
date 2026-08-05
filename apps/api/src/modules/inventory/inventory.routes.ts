@@ -116,4 +116,153 @@ router.post('/adjust', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
+// POST /api/v1/inventory/transfer - Inter-Warehouse Stock Transfer
+router.post('/transfer', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { inventoryId, sourceWarehouse, destinationWarehouse, transferQty, notes } = req.body;
+
+    if (!inventoryId || !sourceWarehouse || !destinationWarehouse || !transferQty || transferQty <= 0) {
+      return res.status(400).json({ error: 'Inventory ID, source warehouse, destination warehouse, and valid transfer quantity are required' });
+    }
+
+    const inventory = await prisma.inventory.findUnique({
+      where: { id: inventoryId },
+      include: { product: true },
+    });
+
+    if (!inventory) {
+      return res.status(404).json({ error: 'Inventory record not found' });
+    }
+
+    if (inventory.currentStock < transferQty) {
+      return res.status(400).json({ error: `Insufficient stock in ${sourceWarehouse}. Current stock is ${inventory.currentStock}, but tried to transfer ${transferQty}.` });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.stockMovement.create({
+        data: {
+          inventoryId,
+          type: 'TRANSFER_OUT',
+          quantity: -transferQty,
+          notes: `Transfer from ${sourceWarehouse} to ${destinationWarehouse}. ${notes || ''}`,
+        },
+      });
+
+      await tx.stockMovement.create({
+        data: {
+          inventoryId,
+          type: 'TRANSFER_IN',
+          quantity: transferQty,
+          notes: `Received at ${destinationWarehouse} from ${sourceWarehouse}. ${notes || ''}`,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          staffId: req.user!.staffId,
+          userName: req.user!.fullName,
+          userRole: req.user!.role,
+          action: 'STOCK_TRANSFER',
+          entityName: 'Inventory',
+          entityId: inventoryId,
+          reason: `Transferred ${transferQty} ${inventory.product.name} from ${sourceWarehouse} to ${destinationWarehouse}`,
+        },
+      });
+    });
+
+    return res.json({ message: `Successfully transferred ${transferQty} units from ${sourceWarehouse} to ${destinationWarehouse}` });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to process stock transfer' });
+  }
+});
+
+// POST /api/v1/inventory/repack - Bulk Goods Repacking & Pack Conversion
+router.post('/repack', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { bulkProductId, bulkQtyUsed, retailProductId, retailQtyProduced, wastageQty } = req.body;
+
+    if (!bulkProductId || !bulkQtyUsed || !retailProductId || !retailQtyProduced) {
+      return res.status(400).json({ error: 'Bulk product ID, bulk quantity used, retail product ID, and retail quantity produced are required' });
+    }
+
+    const bulkInventory = await prisma.inventory.findUnique({ where: { productId: bulkProductId }, include: { product: true } });
+    const retailInventory = await prisma.inventory.findUnique({ where: { productId: retailProductId }, include: { product: true } });
+
+    if (!bulkInventory || !retailInventory) {
+      return res.status(404).json({ error: 'Bulk or Retail product inventory record not found' });
+    }
+
+    if (bulkInventory.currentStock < bulkQtyUsed) {
+      return res.status(400).json({ error: `Insufficient bulk stock. Available: ${bulkInventory.currentStock}, Required: ${bulkQtyUsed}` });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.inventory.update({
+        where: { id: bulkInventory.id },
+        data: { currentStock: { decrement: bulkQtyUsed } },
+      });
+
+      await tx.stockMovement.create({
+        data: {
+          inventoryId: bulkInventory.id,
+          type: 'REPACKING_INPUT',
+          quantity: -bulkQtyUsed,
+          notes: `Repacked into ${retailQtyProduced} x ${retailInventory.product.name}`,
+        },
+      });
+
+      await tx.inventory.update({
+        where: { id: retailInventory.id },
+        data: { currentStock: { increment: retailQtyProduced } },
+      });
+
+      await tx.stockMovement.create({
+        data: {
+          inventoryId: retailInventory.id,
+          type: 'REPACKING_OUTPUT',
+          quantity: retailQtyProduced,
+          notes: `Produced from ${bulkQtyUsed} x ${bulkInventory.product.name}`,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          staffId: req.user!.staffId,
+          userName: req.user!.fullName,
+          userRole: req.user!.role,
+          action: 'REPACKING',
+          entityName: 'Inventory',
+          entityId: bulkInventory.id,
+          reason: `Repacked ${bulkQtyUsed} bulk units of ${bulkInventory.product.name} into ${retailQtyProduced} retail units of ${retailInventory.product.name} (Wastage: ${wastageQty || 0})`,
+        },
+      });
+    });
+
+    return res.json({ message: `Repacking completed: Produced ${retailQtyProduced} retail units!` });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to process repacking' });
+  }
+});
+
+// GET /api/v1/inventory/ledger - Immutable Stock Movement Ledger
+router.get('/ledger', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const movements = await prisma.stockMovement.findMany({
+      include: {
+        inventory: {
+          include: { product: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    return res.json({ movements });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to fetch stock ledger' });
+  }
+});
+
 export default router;

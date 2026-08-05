@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Search, Plus, AlertCircle, Edit3, Tag, Building2, Warehouse, RefreshCw } from 'lucide-react';
+import { Package, Search, Plus, AlertCircle, Edit3, Tag, Building2, Warehouse, RefreshCw, Truck, PackageCheck, FileText } from 'lucide-react';
 import { api } from '../services/api';
 import { ShelfTagGauge } from '../components/ShelfTagGauge';
 import { AddProductModal } from '../components/AddProductModal';
 import { BarcodeLabelModal } from '../components/BarcodeLabelModal';
+import { StockTransferModal } from '../components/StockTransferModal';
+import { RepackingModal } from '../components/RepackingModal';
+import { StockLedgerModal } from '../components/StockLedgerModal';
 
 export const InventoryScreen: React.FC = () => {
   const [search, setSearch] = useState('');
@@ -14,6 +17,9 @@ export const InventoryScreen: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showRepackModal, setShowRepackModal] = useState(false);
+  const [showLedgerModal, setShowLedgerModal] = useState(false);
 
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [newStock, setNewStock] = useState('');
@@ -94,12 +100,21 @@ export const InventoryScreen: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn btn-primary" onClick={() => setShowAddModal(true)} style={{ padding: '8px 16px' }}>
-            <Plus size={16} /> <span>+ Create New Product</span>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button className="btn btn-primary" onClick={() => setShowAddModal(true)} style={{ padding: '8px 14px' }}>
+            <Plus size={16} /> <span>+ Create Product</span>
           </button>
-          <button className="btn" onClick={() => setShowBarcodeModal(true)} style={{ padding: '8px 16px' }}>
-            <Tag size={16} style={{ color: 'var(--accent-lime)' }} /> <span>🏷️ Print Barcode Labels</span>
+          <button className="btn" onClick={() => setShowTransferModal(true)} style={{ padding: '8px 14px' }}>
+            <Truck size={16} style={{ color: '#3b82f6' }} /> <span>🚚 Transfer Stock</span>
+          </button>
+          <button className="btn" onClick={() => setShowRepackModal(true)} style={{ padding: '8px 14px' }}>
+            <PackageCheck size={16} style={{ color: 'var(--status-amber)' }} /> <span>🔄 Bulk Repacking</span>
+          </button>
+          <button className="btn" onClick={() => setShowLedgerModal(true)} style={{ padding: '8px 14px' }}>
+            <FileText size={16} style={{ color: 'var(--accent-lime)' }} /> <span>📋 Stock Ledger</span>
+          </button>
+          <button className="btn" onClick={() => setShowBarcodeModal(true)} style={{ padding: '8px 14px' }}>
+            <Tag size={16} style={{ color: 'var(--text-muted)' }} /> <span>🏷️ Barcode Labels</span>
           </button>
         </div>
       </div>
@@ -226,6 +241,25 @@ export const InventoryScreen: React.FC = () => {
         isOpen={showBarcodeModal}
         onClose={() => setShowBarcodeModal(false)}
         products={products}
+      />
+
+      <StockTransferModal
+        isOpen={showTransferModal}
+        onClose={() => setShowTransferModal(false)}
+        products={products}
+        onSuccess={fetchInventory}
+      />
+
+      <RepackingModal
+        isOpen={showRepackModal}
+        onClose={() => setShowRepackModal(false)}
+        products={products}
+        onSuccess={fetchInventory}
+      />
+
+      <StockLedgerModal
+        isOpen={showLedgerModal}
+        onClose={() => setShowLedgerModal(false)}
       />
 
       {/* STOCK ADJUSTMENT MODAL */}
