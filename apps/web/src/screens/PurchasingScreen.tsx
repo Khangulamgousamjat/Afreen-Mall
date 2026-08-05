@@ -4,12 +4,19 @@ import { api } from '../services/api';
 import { CreatePRModal } from '../components/CreatePRModal';
 import { CreatePOModal } from '../components/CreatePOModal';
 import { PRApprovalModal } from '../components/PRApprovalModal';
+import { ThreeWayMatchModal } from '../components/ThreeWayMatchModal';
+import { PurchaseReturnModal } from '../components/PurchaseReturnModal';
+import { SupplierPerformanceModal } from '../components/SupplierPerformanceModal';
+import { ShieldCheck, RotateCcw, Award } from 'lucide-react';
 
 export const PurchasingScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'REQUISITIONS' | 'ORDERS' | 'CONFIRMATIONS'>('ORDERS');
   const [showCreatePR, setShowCreatePR] = useState(false);
   const [showCreatePO, setShowCreatePO] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [showThreeWayModal, setShowThreeWayModal] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [selectedPR, setSelectedPR] = useState<any>(null);
 
   const [orders, setOrders] = useState([
@@ -84,12 +91,21 @@ export const PurchasingScreen: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn btn-primary" onClick={() => setShowCreatePR(true)} style={{ padding: '8px 16px' }}>
-            <FilePlus size={16} /> <span>+ New Purchase Requisition</span>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button className="btn btn-primary" onClick={() => setShowCreatePR(true)} style={{ padding: '8px 14px' }}>
+            <FilePlus size={16} /> <span>+ New PR</span>
           </button>
-          <button className="btn" onClick={() => setShowCreatePO(true)} style={{ padding: '8px 16px' }}>
-            <ShoppingBag size={16} style={{ color: 'var(--accent-lime)' }} /> <span>+ Issue Purchase Order</span>
+          <button className="btn" onClick={() => setShowCreatePO(true)} style={{ padding: '8px 14px' }}>
+            <ShoppingBag size={16} style={{ color: 'var(--accent-lime)' }} /> <span>+ Issue PO</span>
+          </button>
+          <button className="btn" onClick={() => setShowThreeWayModal(true)} style={{ padding: '8px 14px' }}>
+            <ShieldCheck size={16} style={{ color: 'var(--status-green)' }} /> <span>⚡ 3-Way Match</span>
+          </button>
+          <button className="btn" onClick={() => setShowReturnModal(true)} style={{ padding: '8px 14px' }}>
+            <RotateCcw size={16} style={{ color: 'var(--status-amber)' }} /> <span>↩️ Purchase Return</span>
+          </button>
+          <button className="btn" onClick={() => setShowSupplierModal(true)} style={{ padding: '8px 14px' }}>
+            <Award size={16} style={{ color: '#3b82f6' }} /> <span>🏆 Vendor Ratings</span>
           </button>
         </div>
       </div>
@@ -282,6 +298,24 @@ export const PurchasingScreen: React.FC = () => {
         onClose={() => setShowApprovalModal(false)}
         pr={selectedPR}
         onSuccess={fetchPurchasingData}
+      />
+
+      <ThreeWayMatchModal
+        isOpen={showThreeWayModal}
+        onClose={() => setShowThreeWayModal(false)}
+        orders={orders}
+        onSuccess={fetchPurchasingData}
+      />
+
+      <PurchaseReturnModal
+        isOpen={showReturnModal}
+        onClose={() => setShowReturnModal(false)}
+        onSuccess={fetchPurchasingData}
+      />
+
+      <SupplierPerformanceModal
+        isOpen={showSupplierModal}
+        onClose={() => setShowSupplierModal(false)}
       />
     </div>
   );
