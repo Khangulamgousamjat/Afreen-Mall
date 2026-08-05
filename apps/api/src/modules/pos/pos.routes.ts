@@ -745,5 +745,69 @@ router.post('/void', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
+// POST /api/v1/pos/sync-offline-queue - Upload queued offline sales idempotently
+router.post('/sync-offline-queue', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { offlineSales } = req.body;
+
+    if (!Array.isArray(offlineSales) || offlineSales.length === 0) {
+      return res.status(400).json({ error: 'offlineSales array is required and cannot be empty' });
+    }
+
+    const syncedInvoices: string[] = [];
+
+    for (const draft of offlineSales) {
+      const existing = await prisma.sale.findUnique({ where: { invoiceNo: draft.invoiceNo } });
+      if (existing) {
+        syncedInvoices.push(existing.invoiceNo);
+        continue;
+      }
+
+      await prisma.$transaction(async (tx) => {
+        const sale = await tx.sale.create({
+          data: {
+            invoiceNo: draft.invoiceNo,
+            registerId: draft.registerId || 'reg-01',
+            saleType: (draft.saleType as SaleType) || SaleType.RETAIL,
+            cashierStaffId: req.user!.staffId,
+            cashierName: req.user!.fullName,
+            paymentMode: (draft.paymentMode as PaymentMode) || PaymentMode.CASH,
+            totalQty: draft.totalQty || 1,
+            totalDiscount: draft.totalDiscount || 0,
+            totalAmount: draft.totalAmount,
+            paidCash: draft.paidCash || 0,
+            paidCard: draft.paidCard || 0,
+            paidUPI: draft.paidUPI || 0,
+            changeDue: draft.changeDue || 0,
+            customerPhone: draft.customerPhone,
+            customerName: draft.customerName,
+            status: 'COMPLETED',
+          },
+        });
+
+        for (const item of (draft.items || [])) {
+          const inventory = await tx.inventory.findUnique({ where: { productId: item.id } });
+          if (inventory) {
+            await tx.inventory.update({
+              where: { id: inventory.id },
+              data: { currentStock: { decrement: item.qty } },
+            });
+          }
+        }
+
+        syncedInvoices.push(sale.invoiceNo);
+      });
+    }
+
+    return res.json({
+      syncedCount: syncedInvoices.length,
+      syncedInvoices,
+      message: `Successfully synchronized ${syncedInvoices.length} offline transactions.`,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to sync offline queue' });
+  }
+});
+
 export default router;
 
