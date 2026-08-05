@@ -16,6 +16,7 @@ import hardwareRouter from './modules/hardware/hardware.routes.js';
 import salesRouter from './modules/sales/sales.routes.js';
 import suppliersRouter from './modules/suppliers/suppliers.routes.js';
 import accountingRouter from './modules/accounting/accounting.routes.js';
+import hrmsRouter from './modules/hrms/hrms.routes.js';
 
 import { sqlInjectionGuard } from './middleware/sqlInjectionGuard.middleware.js';
 
@@ -59,6 +60,7 @@ app.use('/api/v1/hardware', hardwareRouter);
 app.use('/api/v1/sales', salesRouter);
 app.use('/api/v1/suppliers', suppliersRouter);
 app.use('/api/v1/accounting', accountingRouter);
+app.use('/api/v1/hrms', hrmsRouter);
 
 // Start listening on 0.0.0.0 for Render compatibility
 app.listen(Number(PORT), '0.0.0.0', () => {

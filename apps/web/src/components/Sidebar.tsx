@@ -37,6 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentScreen, onNavigate }) =
     { id: 'suppliers', label: 'Supplier Management (VRM)', icon: Truck },
     { id: 'sales', label: 'Sales Management', icon: TrendingUp },
     { id: 'accounting', label: 'Accounting & Finance', icon: DollarSign },
+    { id: 'hrms', label: 'HRMS (Employees)', icon: Users },
     { id: 'warehouse', label: 'Warehouse', icon: WarehouseIcon },
     { id: 'customers', label: 'Customers (Loyalty)', icon: Users },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
