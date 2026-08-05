@@ -345,8 +345,32 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
     refocusBarcode();
   };
 
+  const validateBeforePayment = (): boolean => {
+    setCartError('');
+    if (!cart || cart.length === 0) {
+      setCartError('Cannot checkout: Cart is empty. Scan at least one item before pressing F10.');
+      return false;
+    }
+    for (const item of cart) {
+      if (!item.name || item.netRate <= 0) {
+        setCartError(`Validation Error: Product '${item.barcode}' has an invalid net rate.`);
+        return false;
+      }
+      if (item.qty <= 0) {
+        setCartError(`Validation Error: Product '${item.name}' has invalid quantity ${item.qty}.`);
+        return false;
+      }
+    }
+    if (!currentRegister.isActive) {
+      setCartError('Counter Status Error: Selected POS Register is currently INACTIVE.');
+      return false;
+    }
+    return true;
+  };
+
   // ── Payment flow ────────────────────────────────────────────────────────
   const openPaymentModal = () => {
+    if (!validateBeforePayment()) return;
     setPaidCash(totalAmount); setPaidCard(0); setPaidUPI(0); setReceivedAmount(totalAmount);
     setShowPaymentModal(true);
   };
