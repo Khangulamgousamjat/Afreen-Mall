@@ -66,7 +66,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
     const supplier = await prisma.supplier.create({
       data: {
         name: name.trim(),
-        gstNo: gstNo ? gstNo.trim() : null,
+        gstin: gstNo ? gstNo.trim() : null,
         contactPhone: contactPhone ? contactPhone.trim() : null,
         email: email ? email.trim() : null,
       },
