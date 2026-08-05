@@ -511,7 +511,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           <span style={{ margin: '0 8px' }}>·</span>
           <span>📞 <strong>+91 8625076618</strong></span>
           <span style={{ margin: '0 8px' }}>·</span>
-          <span>✉️ <strong>khangulamgousamjat@gmail.com</strong></span>
+          <span>✉️ <strong>gousk2004@gmail.com</strong></span>
         </div>
       </footer>
     </div>
