@@ -13,6 +13,7 @@ import warehouseRouter from './modules/warehouse/warehouse.routes.js';
 import customersRouter from './modules/customers/customers.routes.js';
 import reportsRouter from './modules/reports/reports.routes.js';
 import hardwareRouter from './modules/hardware/hardware.routes.js';
+import salesRouter from './modules/sales/sales.routes.js';
 
 import { sqlInjectionGuard } from './middleware/sqlInjectionGuard.middleware.js';
 
@@ -53,6 +54,7 @@ app.use('/api/v1/warehouse', warehouseRouter);
 app.use('/api/v1/customers', customersRouter);
 app.use('/api/v1/reports', reportsRouter);
 app.use('/api/v1/hardware', hardwareRouter);
+app.use('/api/v1/sales', salesRouter);
 
 // Start listening on 0.0.0.0 for Render compatibility
 app.listen(Number(PORT), '0.0.0.0', () => {

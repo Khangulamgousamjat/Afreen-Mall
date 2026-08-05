@@ -11,6 +11,7 @@ import {
   Users,
   BarChart3,
   Settings,
+  TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { RoleName } from '@afreen-mall/shared-types';
@@ -33,6 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentScreen, onNavigate }) =
     { id: 'cash', label: 'Cash Reconciliation', icon: DollarSign },
     { id: 'inventory', label: 'Inventory', icon: Package },
     { id: 'purchasing', label: 'Purchasing', icon: ShoppingBag },
+    { id: 'sales', label: 'Sales Management', icon: TrendingUp },
     { id: 'warehouse', label: 'Warehouse', icon: WarehouseIcon },
     { id: 'customers', label: 'Customers (Loyalty)', icon: Users },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
