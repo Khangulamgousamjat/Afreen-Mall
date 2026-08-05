@@ -34,6 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentScreen, onNavigate }) =
     { id: 'cash', label: 'Cash Reconciliation', icon: DollarSign },
     { id: 'inventory', label: 'Inventory', icon: Package },
     { id: 'purchasing', label: 'Purchasing', icon: ShoppingBag },
+    { id: 'suppliers', label: 'Supplier Management (VRM)', icon: Truck },
     { id: 'sales', label: 'Sales Management', icon: TrendingUp },
     { id: 'warehouse', label: 'Warehouse', icon: WarehouseIcon },
     { id: 'customers', label: 'Customers (Loyalty)', icon: Users },
