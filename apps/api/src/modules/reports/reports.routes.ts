@@ -103,7 +103,7 @@ router.get('/dashboard', async (req: AuthenticatedRequest, res: Response) => {
 
     // Customers & Suppliers
     const totalCustomers = await prisma.customer.count();
-    const totalSuppliers = await prisma.supplier.count({ where: { isActive: true } });
+    const totalSuppliers = await prisma.supplier.count();
 
     // 7-Day Revenue Trend Data Points
     const trendDays: { date: string; label: string; revenue: number }[] = [];
