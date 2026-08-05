@@ -3,13 +3,18 @@ import { Users, Search, Award, Target, UserPlus, Phone, ShieldAlert, CheckCircle
 import { api } from '../services/api';
 import { CustomerProfileModal } from '../components/CustomerProfileModal';
 import { CreateCampaignModal } from '../components/CreateCampaignModal';
+import { CreateSupportTicketModal } from '../components/CreateSupportTicketModal';
+import { CustomerFeedbackModal } from '../components/CustomerFeedbackModal';
+import { LifeBuoy, Star, LifeBuoy as HelpIcon } from 'lucide-react';
 
 export const CustomersScreen: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'DIRECTORY' | 'TIERS' | 'SEGMENTATION' | 'CAMPAIGNS'>('DIRECTORY');
+  const [activeTab, setActiveTab] = useState<'DIRECTORY' | 'TIERS' | 'SEGMENTATION' | 'CAMPAIGNS' | 'TICKETS'>('DIRECTORY');
   const [search, setSearch] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showCampaignModal, setShowCampaignModal] = useState(false);
+  const [showTicketModal, setShowTicketModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   const [customers, setCustomers] = useState([
     { id: '1', name: 'Vikram Mehta', phone: '9876543210', email: 'vikram.mehta@gmail.com', tier: 'GOLD', points: 450, lifetimeSpend: 4500000, lastVisit: '2026-07-28' },
@@ -65,9 +70,15 @@ export const CustomersScreen: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn btn-primary" onClick={() => setShowCampaignModal(true)} style={{ padding: '8px 16px' }}>
-            <Target size={16} /> <span>🎯 Create Marketing Campaign</span>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button className="btn btn-primary" onClick={() => setShowCampaignModal(true)} style={{ padding: '8px 14px' }}>
+            <Target size={16} /> <span>🎯 Create Campaign</span>
+          </button>
+          <button className="btn" onClick={() => setShowTicketModal(true)} style={{ padding: '8px 14px' }}>
+            <LifeBuoy size={16} style={{ color: 'var(--status-amber)' }} /> <span>🎧 Log Support Ticket</span>
+          </button>
+          <button className="btn" onClick={() => setShowFeedbackModal(true)} style={{ padding: '8px 14px' }}>
+            <Star size={16} style={{ color: '#eab308' }} /> <span>⭐ CSAT Survey</span>
           </button>
         </div>
       </div>
@@ -292,6 +303,18 @@ export const CustomersScreen: React.FC = () => {
       <CreateCampaignModal
         isOpen={showCampaignModal}
         onClose={() => setShowCampaignModal(false)}
+        onSuccess={fetchCustomers}
+      />
+
+      <CreateSupportTicketModal
+        isOpen={showTicketModal}
+        onClose={() => setShowTicketModal(false)}
+        onSuccess={fetchCustomers}
+      />
+
+      <CustomerFeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
         onSuccess={fetchCustomers}
       />
     </div>

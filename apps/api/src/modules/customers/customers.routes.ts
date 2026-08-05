@@ -187,4 +187,132 @@ router.post('/campaigns', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
+// GET /api/v1/customers/tickets - List Customer Support Tickets
+router.get('/tickets', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    return res.json({
+      tickets: [
+        {
+          id: 'tck-301',
+          ticketNo: 'TCK-2026-000084',
+          customerName: 'Ananya Deshmukh',
+          phone: '9820011223',
+          category: 'PRODUCT_COMPLAINT',
+          priority: 'HIGH',
+          status: 'IN_PROGRESS',
+          subject: 'Damaged outer seal on imported olive oil bottle',
+          assignedStaff: 'Rajesh Sharma',
+          createdAt: '2026-08-04 14:30',
+        },
+        {
+          id: 'tck-302',
+          ticketNo: 'TCK-2026-000083',
+          customerName: 'Vikram Mehta',
+          phone: '9876543210',
+          category: 'BILLING_ISSUE',
+          priority: 'MEDIUM',
+          status: 'RESOLVED',
+          subject: 'Double charge query on UPI checkout',
+          assignedStaff: 'Suresh Patil',
+          createdAt: '2026-08-02 11:15',
+        },
+      ],
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch customer support tickets' });
+  }
+});
+
+// POST /api/v1/customers/tickets - Create Support Ticket / Complaint
+router.post('/tickets', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { customerName, phone, category, priority, subject, description } = req.body;
+
+    if (!customerName || !phone || !category || !subject) {
+      return res.status(400).json({ error: 'Customer Name, Phone, Category, and Subject are required' });
+    }
+
+    const ticketNo = `TCK-2026-${Date.now().toString().slice(-6)}`;
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        staffId: req.user!.staffId,
+        userName: req.user!.fullName,
+        userRole: req.user!.role,
+        action: 'SUPPORT_TICKET_CREATED',
+        entityName: 'SupportTicket',
+        entityId: ticketNo,
+        reason: `Logged Support Ticket ${ticketNo} for ${customerName} (${category}: ${subject})`,
+      },
+    });
+
+    return res.status(201).json({
+      ticketNo,
+      message: `Support Ticket ${ticketNo} logged and assigned to Help Desk team.`,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to create support ticket' });
+  }
+});
+
+// POST /api/v1/customers/tickets/:id/resolve - Resolve Support Ticket
+router.post('/tickets/:id/resolve', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { resolutionNotes } = req.body;
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        staffId: req.user!.staffId,
+        userName: req.user!.fullName,
+        userRole: req.user!.role,
+        action: 'SUPPORT_TICKET_RESOLVED',
+        entityName: 'SupportTicket',
+        entityId: req.params.id,
+        reason: `Resolved Support Ticket ${req.params.id}. Notes: ${resolutionNotes || 'Resolution completed'}`,
+      },
+    });
+
+    return res.json({
+      message: `Support Ticket ${req.params.id} resolved successfully ✓`,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to resolve support ticket' });
+  }
+});
+
+// POST /api/v1/customers/feedback - Record CSAT Survey Feedback
+router.post('/feedback', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { customerName, rating, category, comments } = req.body;
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'Valid CSAT rating (1 to 5 stars) is required' });
+    }
+
+    const feedbackId = `FBK-2026-${Date.now().toString().slice(-6)}`;
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        staffId: req.user!.staffId,
+        userName: req.user!.fullName,
+        userRole: req.user!.role,
+        action: 'CUSTOMER_FEEDBACK_RECORDED',
+        entityName: 'CustomerFeedback',
+        entityId: feedbackId,
+        reason: `Recorded CSAT Feedback ${rating} Stars from ${customerName || 'Anonymous'}`,
+      },
+    });
+
+    return res.status(201).json({
+      feedbackId,
+      message: `Thank you! CSAT Feedback (${rating} Stars) recorded successfully.`,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to submit feedback' });
+  }
+});
+
 export default router;
