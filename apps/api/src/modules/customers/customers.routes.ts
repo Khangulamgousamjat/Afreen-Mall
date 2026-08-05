@@ -1,8 +1,9 @@
 import { Router, Response } from 'express';
-import { prisma } from '../../index';
-import { AuthenticatedRequest } from '../../middleware/auth.middleware';
+import { prisma } from '../../prisma.js';
+import { authenticateToken, AuthenticatedRequest } from '../../middleware/auth.js';
 
 const router = Router();
+router.use(authenticateToken);
 
 // GET /api/v1/customers - Search and list customer profiles
 router.get('/', async (req: AuthenticatedRequest, res: Response) => {
@@ -44,13 +45,12 @@ router.get('/:phone', async (req: AuthenticatedRequest, res: Response) => {
       return res.status(404).json({ error: `Customer with phone ${phone} not found` });
     }
 
-    // Fetch customer's total purchases & invoice count
     const sales = await prisma.sale.findMany({
       where: { customerPhone: phone, status: 'COMPLETED' },
       select: { totalAmount: true, createdAt: true },
     });
 
-    const lifetimeSpend = sales.reduce((sum, s) => sum + s.totalAmount, 0);
+    const lifetimeSpend = sales.reduce((sum: number, s: { totalAmount: number }) => sum + s.totalAmount, 0);
     const totalVisits = sales.length;
 
     return res.json({
@@ -58,7 +58,7 @@ router.get('/:phone', async (req: AuthenticatedRequest, res: Response) => {
         ...customer,
         lifetimeSpend,
         totalVisits,
-        availableCreditLimit: customer.tier === 'PLATINUM' ? 5000000 : customer.tier === 'GOLD' ? 2000000 : 500000, // in paise
+        availableCreditLimit: customer.tier === 'PLATINUM' ? 5000000 : customer.tier === 'GOLD' ? 2000000 : 500000,
       },
     });
   } catch (err: any) {
@@ -86,7 +86,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
         fullName: fullName.trim(),
         email: email ? email.trim() : null,
         tier: tier || 'SILVER',
-        loyaltyPoints: 50, // Welcome bonus points
+        loyaltyPoints: 50,
       },
     });
 
@@ -119,7 +119,6 @@ router.post('/redeem-points', async (req: AuthenticatedRequest, res: Response) =
       });
     }
 
-    // 1 Point = ₹0.10 (10 paise) discount -> 100 points = ₹10.00
     const discountAmountPaise = pointsToRedeem * 10;
 
     const updatedCustomer = await prisma.customer.update({
