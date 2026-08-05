@@ -3,12 +3,17 @@ import { Truck, Plus, FileCheck, ShieldCheck, Search, Award, ChevronRight } from
 import { api } from '../services/api';
 import { RegisterSupplierModal } from '../components/RegisterSupplierModal';
 import { VendorContractModal } from '../components/VendorContractModal';
+import { VendorScorecardModal } from '../components/VendorScorecardModal';
+import { SupplierPayablesModal } from '../components/SupplierPayablesModal';
+import { DollarSign, Award as ScorecardIcon } from 'lucide-react';
 
 export const SupplierScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'DIRECTORY' | 'CONTRACTS' | 'CATEGORIES'>('DIRECTORY');
   const [search, setSearch] = useState('');
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showContractModal, setShowContractModal] = useState(false);
+  const [showScorecardModal, setShowScorecardModal] = useState(false);
+  const [showPayablesModal, setShowPayablesModal] = useState(false);
 
   const [suppliers, setSuppliers] = useState([
     {
@@ -70,12 +75,18 @@ export const SupplierScreen: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn btn-primary" onClick={() => setShowRegisterModal(true)} style={{ padding: '8px 16px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button className="btn btn-primary" onClick={() => setShowRegisterModal(true)} style={{ padding: '8px 14px' }}>
             <Truck size={16} /> <span>+ Register Supplier</span>
           </button>
-          <button className="btn" onClick={() => setShowContractModal(true)} style={{ padding: '8px 16px' }}>
-            <FileCheck size={16} style={{ color: 'var(--accent-lime)' }} /> <span>📄 Issue Vendor Contract</span>
+          <button className="btn" onClick={() => setShowContractModal(true)} style={{ padding: '8px 14px' }}>
+            <FileCheck size={16} style={{ color: 'var(--accent-lime)' }} /> <span>📄 Issue Contract</span>
+          </button>
+          <button className="btn" onClick={() => setShowScorecardModal(true)} style={{ padding: '8px 14px' }}>
+            <Award size={16} style={{ color: '#3b82f6' }} /> <span>⭐ Vendor Scorecards</span>
+          </button>
+          <button className="btn" onClick={() => setShowPayablesModal(true)} style={{ padding: '8px 14px' }}>
+            <DollarSign size={16} style={{ color: 'var(--status-green)' }} /> <span>💳 Settle Payables</span>
           </button>
         </div>
       </div>
@@ -266,6 +277,17 @@ export const SupplierScreen: React.FC = () => {
       <VendorContractModal
         isOpen={showContractModal}
         onClose={() => setShowContractModal(false)}
+        onSuccess={fetchSuppliers}
+      />
+
+      <VendorScorecardModal
+        isOpen={showScorecardModal}
+        onClose={() => setShowScorecardModal(false)}
+      />
+
+      <SupplierPayablesModal
+        isOpen={showPayablesModal}
+        onClose={() => setShowPayablesModal(false)}
         onSuccess={fetchSuppliers}
       />
     </div>
