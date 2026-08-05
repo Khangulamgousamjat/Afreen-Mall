@@ -3,11 +3,18 @@ import { TrendingUp, Plus, FileText, ShoppingCart, Truck, CheckCircle2, RefreshC
 import { api } from '../services/api';
 import { CreateQuotationModal } from '../components/CreateQuotationModal';
 import { CreateSalesOrderModal } from '../components/CreateSalesOrderModal';
+import { SalesReturnModal } from '../components/SalesReturnModal';
+import { CustomerCollectionsModal } from '../components/CustomerCollectionsModal';
+import { SalesAnalyticsModal } from '../components/SalesAnalyticsModal';
+import { RotateCcw, DollarSign, Award, BarChart3 } from 'lucide-react';
 
 export const SalesScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'ORDERS' | 'QUOTATIONS' | 'DELIVERIES'>('ORDERS');
   const [showQuotationModal, setShowQuotationModal] = useState(false);
   const [showSOModal, setShowSOModal] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showCollectionModal, setShowCollectionModal] = useState(false);
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
 
   const [orders, setOrders] = useState([
     { id: 'so-201', soNumber: 'SO-2026-000045', customerName: 'Aman Retail Hypermarket', paymentTerms: 'NET_30', totalAmount: 3450000, status: 'CONFIRMED', reservedStock: true, orderDate: '2026-08-04', expectedDelivery: '2026-08-10' },
@@ -59,12 +66,21 @@ export const SalesScreen: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn btn-primary" onClick={() => setShowSOModal(true)} style={{ padding: '8px 16px' }}>
-            <ShoppingCart size={16} /> <span>+ New Sales Order</span>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button className="btn btn-primary" onClick={() => setShowSOModal(true)} style={{ padding: '8px 14px' }}>
+            <ShoppingCart size={16} /> <span>+ New SO</span>
           </button>
-          <button className="btn" onClick={() => setShowQuotationModal(true)} style={{ padding: '8px 16px' }}>
+          <button className="btn" onClick={() => setShowQuotationModal(true)} style={{ padding: '8px 14px' }}>
             <FileText size={16} style={{ color: 'var(--accent-lime)' }} /> <span>+ Create Quotation</span>
+          </button>
+          <button className="btn" onClick={() => setShowCollectionModal(true)} style={{ padding: '8px 14px' }}>
+            <DollarSign size={16} style={{ color: 'var(--status-green)' }} /> <span>⚡ Credit Recovery</span>
+          </button>
+          <button className="btn" onClick={() => setShowReturnModal(true)} style={{ padding: '8px 14px' }}>
+            <RotateCcw size={16} style={{ color: 'var(--status-amber)' }} /> <span>↩️ Sales Return</span>
+          </button>
+          <button className="btn" onClick={() => setShowAnalyticsModal(true)} style={{ padding: '8px 14px' }}>
+            <BarChart3 size={16} style={{ color: '#3b82f6' }} /> <span>📊 Target Analytics</span>
           </button>
         </div>
       </div>
@@ -221,6 +237,23 @@ export const SalesScreen: React.FC = () => {
         isOpen={showSOModal}
         onClose={() => setShowSOModal(false)}
         onSuccess={fetchSalesData}
+      />
+
+      <SalesReturnModal
+        isOpen={showReturnModal}
+        onClose={() => setShowReturnModal(false)}
+        onSuccess={fetchSalesData}
+      />
+
+      <CustomerCollectionsModal
+        isOpen={showCollectionModal}
+        onClose={() => setShowCollectionModal(false)}
+        onSuccess={fetchSalesData}
+      />
+
+      <SalesAnalyticsModal
+        isOpen={showAnalyticsModal}
+        onClose={() => setShowAnalyticsModal(false)}
       />
     </div>
   );
