@@ -7,6 +7,9 @@ import { BarcodeLabelModal } from '../components/BarcodeLabelModal';
 import { StockTransferModal } from '../components/StockTransferModal';
 import { RepackingModal } from '../components/RepackingModal';
 import { StockLedgerModal } from '../components/StockLedgerModal';
+import { ReorderSuggestionsModal } from '../components/ReorderSuggestionsModal';
+import { InventoryAnalyticsModal } from '../components/InventoryAnalyticsModal';
+import { ShoppingBag, BarChart3 } from 'lucide-react';
 
 export const InventoryScreen: React.FC = () => {
   const [search, setSearch] = useState('');
@@ -20,6 +23,8 @@ export const InventoryScreen: React.FC = () => {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showRepackModal, setShowRepackModal] = useState(false);
   const [showLedgerModal, setShowLedgerModal] = useState(false);
+  const [showReorderModal, setShowReorderModal] = useState(false);
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
 
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [newStock, setNewStock] = useState('');
@@ -103,6 +108,12 @@ export const InventoryScreen: React.FC = () => {
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <button className="btn btn-primary" onClick={() => setShowAddModal(true)} style={{ padding: '8px 14px' }}>
             <Plus size={16} /> <span>+ Create Product</span>
+          </button>
+          <button className="btn" onClick={() => setShowReorderModal(true)} style={{ padding: '8px 14px' }}>
+            <ShoppingBag size={16} style={{ color: 'var(--status-amber)' }} /> <span>⚡ Auto Reorder</span>
+          </button>
+          <button className="btn" onClick={() => setShowAnalyticsModal(true)} style={{ padding: '8px 14px' }}>
+            <BarChart3 size={16} style={{ color: '#3b82f6' }} /> <span>📊 ABC Analytics</span>
           </button>
           <button className="btn" onClick={() => setShowTransferModal(true)} style={{ padding: '8px 14px' }}>
             <Truck size={16} style={{ color: '#3b82f6' }} /> <span>🚚 Transfer Stock</span>
@@ -260,6 +271,16 @@ export const InventoryScreen: React.FC = () => {
       <StockLedgerModal
         isOpen={showLedgerModal}
         onClose={() => setShowLedgerModal(false)}
+      />
+
+      <ReorderSuggestionsModal
+        isOpen={showReorderModal}
+        onClose={() => setShowReorderModal(false)}
+      />
+
+      <InventoryAnalyticsModal
+        isOpen={showAnalyticsModal}
+        onClose={() => setShowAnalyticsModal(false)}
       />
 
       {/* STOCK ADJUSTMENT MODAL */}
