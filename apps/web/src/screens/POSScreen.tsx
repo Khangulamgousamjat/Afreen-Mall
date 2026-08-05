@@ -421,6 +421,7 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
 Invoice No : ${invoiceNo}
 Date       : ${new Date().toLocaleString()}
 Cashier    : ${user?.fullName || 'Cashier'} (ID: ${user?.staffId || 300003})
+Customer   : ${customerName || customerPhone || 'Walk-in Customer'}
 Type       : ${saleType}
 ----------------------------------------
 ${cart
@@ -432,6 +433,10 @@ ${cart
 ----------------------------------------
 TOTAL BILL : ₹${paiseToRupee(totalAmount)}
 Payment    : ${finalMode}
+Change     : ₹${paiseToRupee(changeDue)}
+----------------------------------------
+[ CASH DRAWER UNLOCKED ✓ ]
+Thank you for shopping at Afreen Mall!
 ========================================
 [ BARCODE: *${invoiceNo}* ]
 Software by Gous Khan · Mobile: 8625076618
@@ -440,7 +445,12 @@ Software by Gous Khan · Mobile: 8625076618
       setReceiptPrintContent(mockPrintReceipt);
       setTimeout(() => window.print(), 400);
     } finally {
-      setCart([]); setLastScannedItem(null); setShowPaymentModal(false); setCartError('');
+      setCart([]);
+      setLastScannedItem(null);
+      setShowPaymentModal(false);
+      setCustomerPhone('');
+      setCustomerName('');
+      setCartError('');
       await fetchNextInvoiceNo();
       await fetchLastInvoice();
       refocusBarcode();
