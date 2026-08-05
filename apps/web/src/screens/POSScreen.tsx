@@ -6,6 +6,8 @@ import { F1ShortcutOverlay } from '../components/F1ShortcutOverlay';
 import { ManualBillRecoveryModal } from '../components/ManualBillRecoveryModal';
 import { DuplicateBillReprintModal } from '../components/DuplicateBillReprintModal';
 import { RegisterSelectionModal, POSRegister } from '../components/RegisterSelectionModal';
+import { HeldBillsModal } from '../components/HeldBillsModal';
+import { VoidBillModal } from '../components/VoidBillModal';
 import { POSCartItem, PaymentMode, SaleType } from '@afreen-mall/shared-types';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -71,14 +73,56 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
   const [customerName, setCustomerName] = useState('');
   const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null);
 
-  // ── Modals ──────────────────────────────────────────────────────────────
   // ── Modals & Alerts ─────────────────────────────────────────────────────
   const [showF1Overlay, setShowF1Overlay] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showManualRecoveryModal, setShowManualRecoveryModal] = useState(false);
   const [showDuplicateReprintModal, setShowDuplicateReprintModal] = useState(false);
   const [showCancelBillModal, setShowCancelBillModal] = useState(false);
+  const [showHeldBillsModal, setShowHeldBillsModal] = useState(false);
+  const [showVoidModal, setShowVoidModal] = useState(false);
   const [receiptPrintContent, setReceiptPrintContent] = useState<string | null>(null);
+
+  const handleHoldBill = () => {
+    if (!cart || cart.length === 0) {
+      setCartError('Cannot hold empty bill. Scan at least one item first.');
+      setTimeout(() => setCartError(''), 4000);
+      return;
+    }
+
+    const newHold = {
+      id: `hold-${Date.now()}`,
+      holdNo: `HOLD-${Math.floor(1000 + Math.random() * 9000)}`,
+      customerPhone,
+      customerName,
+      items: cart,
+      totalAmount,
+      cashierName: user?.fullName || 'Cashier',
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      const saved = localStorage.getItem('afreen_held_bills');
+      const list = saved ? JSON.parse(saved) : [];
+      list.unshift(newHold);
+      localStorage.setItem('afreen_held_bills', JSON.stringify(list));
+      setCart([]);
+      setLastScannedItem(null);
+      setCustomerPhone('');
+      setCustomerName('');
+      setCartError('');
+      refocusBarcode();
+    } catch {
+      setCartError('Failed to save hold bill.');
+    }
+  };
+
+  const handleRecallBill = (bill: any) => {
+    setCart(bill.items || []);
+    if (bill.customerPhone) setCustomerPhone(bill.customerPhone);
+    if (bill.customerName) setCustomerName(bill.customerName);
+    refocusBarcode();
+  };
 
   const [scanAlertModal, setScanAlertModal] = useState<{
     show: boolean;
@@ -156,6 +200,7 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
       const isF1 = k === 'F1' || c === 'F1';
       const isF2 = k === 'F2' || c === 'F2';
       const isF3 = k === 'F3' || c === 'F3';
+      const isF4 = k === 'F4' || c === 'F4';
       const isF5 = k === 'F5' || c === 'F5';
       const isF7 = k === 'F7' || c === 'F7';
       const isF8 = k === 'F8' || c === 'F8';
@@ -168,6 +213,20 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
       if (isF1 && !e.shiftKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault(); e.stopPropagation();
         setShowF1Overlay(true);
+        return;
+      }
+
+      // F4: Hold Bill
+      if (isF4 && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault(); e.stopPropagation();
+        handleHoldBill();
+        return;
+      }
+
+      // F5: Recall Bill Modal
+      if (isF5 && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault(); e.stopPropagation();
+        setShowHeldBillsModal(true);
         return;
       }
 
@@ -794,9 +853,24 @@ Software by Gous Khan · Mobile: 8625076618
             <button className="btn btn-primary" onClick={openPaymentModal} disabled={cart.length === 0} style={{ padding: '13px', fontSize: '15px' }}>
               <Save size={16} /><span>Save & Pay (F10)</span>
             </button>
-            <button className="btn" onClick={() => { setCart([]); setLastScannedItem(null); refocusBarcode(); }} disabled={cart.length === 0} style={{ color: 'var(--status-red)' }}>
-              Void Invoice
-            </button>
+
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button className="btn" onClick={handleHoldBill} disabled={cart.length === 0} style={{ flex: 1, padding: '8px', fontSize: '12px', color: 'var(--status-amber)' }}>
+                Hold (F4)
+              </button>
+              <button className="btn" onClick={() => setShowHeldBillsModal(true)} style={{ flex: 1, padding: '8px', fontSize: '12px' }}>
+                Recall (F5)
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button className="btn" onClick={() => setShowVoidModal(true)} style={{ flex: 1, padding: '6px', fontSize: '11px', color: 'var(--status-red)' }}>
+                Manager Void
+              </button>
+              <button className="btn" onClick={() => setShowCancelBillModal(true)} disabled={cart.length === 0} style={{ flex: 1, padding: '6px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                Clear Cart
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -971,6 +1045,30 @@ Software by Gous Khan · Mobile: 8625076618
         }}
         onSuccess={(_, receiptContent) => {
           setReceiptPrintContent(receiptContent);
+        }}
+      />
+
+      {/* ── HELD BILLS MODAL (F5) ─────────────────────────────────────── */}
+      <HeldBillsModal
+        isOpen={showHeldBillsModal}
+        onClose={() => {
+          setShowHeldBillsModal(false);
+          refocusBarcode();
+        }}
+        onRecallBill={handleRecallBill}
+      />
+
+      {/* ── VOID INVOICE MODAL (MANAGER PIN REQUIRED) ─────────────────── */}
+      <VoidBillModal
+        isOpen={showVoidModal}
+        onClose={() => {
+          setShowVoidModal(false);
+          refocusBarcode();
+        }}
+        onSuccess={() => {
+          fetchNextInvoiceNo();
+          fetchLastInvoice();
+          refocusBarcode();
         }}
       />
 
