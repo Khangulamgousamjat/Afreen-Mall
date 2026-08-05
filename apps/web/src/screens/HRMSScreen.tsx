@@ -3,12 +3,17 @@ import { Users, UserPlus, Clock, Calendar, Briefcase, Search, Award, CheckCircle
 import { api } from '../services/api';
 import { OnboardEmployeeModal } from '../components/OnboardEmployeeModal';
 import { AttendancePunchModal } from '../components/AttendancePunchModal';
+import { ApplyLeaveModal } from '../components/ApplyLeaveModal';
+import { RunPayrollModal } from '../components/RunPayrollModal';
+import { DollarSign } from 'lucide-react';
 
 export const HRMSScreen: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'EMPLOYEES' | 'ATTENDANCE' | 'SHIFTS' | 'RECRUITMENT'>('EMPLOYEES');
+  const [activeTab, setActiveTab] = useState<'EMPLOYEES' | 'ATTENDANCE' | 'LEAVES' | 'PAYROLL' | 'SHIFTS' | 'RECRUITMENT'>('EMPLOYEES');
   const [search, setSearch] = useState('');
   const [showOnboardModal, setShowOnboardModal] = useState(false);
   const [showPunchModal, setShowPunchModal] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [showPayrollModal, setShowPayrollModal] = useState(false);
 
   const [employees, setEmployees] = useState([
     {
@@ -95,12 +100,18 @@ export const HRMSScreen: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn btn-primary" onClick={() => setShowOnboardModal(true)} style={{ padding: '8px 16px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button className="btn btn-primary" onClick={() => setShowOnboardModal(true)} style={{ padding: '8px 14px' }}>
             <UserPlus size={16} /> <span>+ Onboard Employee</span>
           </button>
-          <button className="btn" onClick={() => setShowPunchModal(true)} style={{ padding: '8px 16px' }}>
-            <Clock size={16} style={{ color: 'var(--accent-lime)' }} /> <span>⏰ Log Attendance Punch</span>
+          <button className="btn" onClick={() => setShowPunchModal(true)} style={{ padding: '8px 14px' }}>
+            <Clock size={16} style={{ color: 'var(--accent-lime)' }} /> <span>⏰ Log Punch</span>
+          </button>
+          <button className="btn" onClick={() => setShowLeaveModal(true)} style={{ padding: '8px 14px' }}>
+            <Calendar size={16} style={{ color: '#3b82f6' }} /> <span>📅 Apply Leave</span>
+          </button>
+          <button className="btn" onClick={() => setShowPayrollModal(true)} style={{ padding: '8px 14px' }}>
+            <DollarSign size={16} style={{ color: 'var(--status-green)' }} /> <span>💳 Run Payroll</span>
           </button>
         </div>
       </div>
@@ -304,6 +315,18 @@ export const HRMSScreen: React.FC = () => {
       <AttendancePunchModal
         isOpen={showPunchModal}
         onClose={() => setShowPunchModal(false)}
+        onSuccess={fetchHRMSData}
+      />
+
+      <ApplyLeaveModal
+        isOpen={showLeaveModal}
+        onClose={() => setShowLeaveModal(false)}
+        onSuccess={fetchHRMSData}
+      />
+
+      <RunPayrollModal
+        isOpen={showPayrollModal}
+        onClose={() => setShowPayrollModal(false)}
         onSuccess={fetchHRMSData}
       />
     </div>
