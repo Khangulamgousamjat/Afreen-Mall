@@ -241,6 +241,10 @@ router.post('/invoice', async (req: AuthenticatedRequest, res: Response) => {
       return sale;
     });
 
+    const luckyDrawTicket = result.totalAmount >= 100000
+      ? `\n----------------------------------------\n🎉 LUCKY DRAW CAMPAIGN ELIGIBLE!\nLucky Draw Ticket: LD-2026-${Math.floor(100000 + Math.random() * 900000)}\nKeep this receipt for Mega Draw!`
+      : '';
+
     // Generate formatted thermal receipt string with embedded barcode string
     const formattedReceipt = `
 ========================================
@@ -266,7 +270,7 @@ TOTAL BILL : ₹${(result.totalAmount / 100).toFixed(2)}
 Paid Cash  : ₹${(result.paidCash / 100).toFixed(2)}
 Paid Card  : ₹${(result.paidCard / 100).toFixed(2)}
 Paid UPI   : ₹${(result.paidUPI / 100).toFixed(2)}
-Change Due : ₹${(result.changeDue / 100).toFixed(2)}
+Change Due : ₹${(result.changeDue / 100).toFixed(2)}${luckyDrawTicket}
 ========================================
 [ BARCODE: *${result.invoiceNo}* ]
 Software by Gous Khan · Mobile: 8625076618
