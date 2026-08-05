@@ -768,10 +768,10 @@ router.post('/sync-offline-queue', async (req: AuthenticatedRequest, res: Respon
           data: {
             invoiceNo: draft.invoiceNo,
             registerId: draft.registerId || 'reg-01',
-            saleType: (draft.saleType as SaleType) || SaleType.RETAIL,
+            saleType: (draft.saleType as any) || SaleType.RETAIL,
             cashierStaffId: req.user!.staffId,
             cashierName: req.user!.fullName,
-            paymentMode: (draft.paymentMode as PaymentMode) || PaymentMode.CASH,
+            paymentMode: (draft.paymentMode as any) || PaymentMode.CASH,
             totalQty: draft.totalQty || 1,
             totalDiscount: draft.totalDiscount || 0,
             totalAmount: draft.totalAmount,
