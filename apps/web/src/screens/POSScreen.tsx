@@ -294,16 +294,18 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
   };
 
   // ── Cart operations ─────────────────────────────────────────────────────
-  const addItemToCart = (item: POSCartItem) => {
+  const addItemToCart = (item: POSCartItem & { weighedQty?: number }) => {
     setCartError('');
+    const addQty = item.weighedQty && item.weighedQty > 0 ? item.weighedQty : 1;
     setCart(prev => {
       const idx = prev.findIndex(i => i.barcode === item.barcode);
       if (idx >= 0) {
         const updated = [...prev];
-        updated[idx] = { ...updated[idx], qty: updated[idx].qty + 1, value: updated[idx].netRate * (updated[idx].qty + 1) };
+        const newQty = updated[idx].qty + addQty;
+        updated[idx] = { ...updated[idx], qty: newQty, value: Math.round(updated[idx].netRate * newQty) };
         return updated;
       }
-      return [...prev, { ...item, qty: 1, value: item.netRate }];
+      return [...prev, { ...item, qty: addQty, value: Math.round(item.netRate * addQty) }];
     });
   };
 
