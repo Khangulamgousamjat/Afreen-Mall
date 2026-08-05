@@ -3,12 +3,17 @@ import { DollarSign, BookOpen, Edit3, ShieldAlert, ArrowRight, RefreshCw, FileTe
 import { api } from '../services/api';
 import { CreateGLAccountModal } from '../components/CreateGLAccountModal';
 import { PostJournalModal } from '../components/PostJournalModal';
+import { FinancialStatementsModal } from '../components/FinancialStatementsModal';
+import { GSTComplianceModal } from '../components/GSTComplianceModal';
+import { ShieldCheck, BarChart3 } from 'lucide-react';
 
 export const AccountingScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'COA' | 'GL' | 'JOURNALS' | 'AR' | 'AP'>('COA');
   const [search, setSearch] = useState('');
   const [showCOAModal, setShowCOAModal] = useState(false);
   const [showJournalModal, setShowJournalModal] = useState(false);
+  const [showStatementsModal, setShowStatementsModal] = useState(false);
+  const [showGSTModal, setShowGSTModal] = useState(false);
 
   const [coa, setCoa] = useState([
     { code: '1001', name: 'Cash on Hand - Main Counter', category: 'ASSETS', type: 'Cash', balancePaise: 4850000 },
@@ -70,12 +75,18 @@ export const AccountingScreen: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn btn-primary" onClick={() => setShowCOAModal(true)} style={{ padding: '8px 16px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button className="btn btn-primary" onClick={() => setShowCOAModal(true)} style={{ padding: '8px 14px' }}>
             <BookOpen size={16} /> <span>+ Add GL Account</span>
           </button>
-          <button className="btn" onClick={() => setShowJournalModal(true)} style={{ padding: '8px 16px' }}>
-            <Edit3 size={16} style={{ color: 'var(--accent-lime)' }} /> <span>✏️ Post Manual Journal</span>
+          <button className="btn" onClick={() => setShowJournalModal(true)} style={{ padding: '8px 14px' }}>
+            <Edit3 size={16} style={{ color: 'var(--accent-lime)' }} /> <span>✏️ Post Journal</span>
+          </button>
+          <button className="btn" onClick={() => setShowStatementsModal(true)} style={{ padding: '8px 14px' }}>
+            <BarChart3 size={16} style={{ color: '#3b82f6' }} /> <span>📊 P&L & Balance Sheet</span>
+          </button>
+          <button className="btn" onClick={() => setShowGSTModal(true)} style={{ padding: '8px 14px' }}>
+            <ShieldCheck size={16} style={{ color: 'var(--status-green)' }} /> <span>🛡️ GST Tax Reports</span>
           </button>
         </div>
       </div>
@@ -287,6 +298,16 @@ export const AccountingScreen: React.FC = () => {
         isOpen={showJournalModal}
         onClose={() => setShowJournalModal(false)}
         onSuccess={fetchAccountingData}
+      />
+
+      <FinancialStatementsModal
+        isOpen={showStatementsModal}
+        onClose={() => setShowStatementsModal(false)}
+      />
+
+      <GSTComplianceModal
+        isOpen={showGSTModal}
+        onClose={() => setShowGSTModal(false)}
       />
     </div>
   );
