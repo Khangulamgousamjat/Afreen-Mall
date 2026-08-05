@@ -125,7 +125,7 @@ export const InventoryAnalyticsModal: React.FC<InventoryAnalyticsModalProps> = (
             {/* DEAD STOCK & OVERSTOCK ANALYTICS */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div className="card" style={{ padding: '12px', borderLeft: '3px solid var(--status-red)' }}>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Dead Stock Items (>60 Days Idle)</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Dead Stock Items (&gt;60 Days Idle)</div>
                 <div style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '2px', color: 'var(--status-red)' }}>
                   {analytics.deadStockCount} SKUs Requiring Review
                 </div>
