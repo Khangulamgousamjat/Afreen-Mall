@@ -85,7 +85,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let fullName = 'Gous Khan (Super Admin)';
     let canProcessSaleReturn = true;
 
-    if (staffId === 300001 || cleanId.toLowerCase().includes('manager')) {
+    // Check if user account was created locally in afreen_custom_staff
+    let foundCustom: any = null;
+    try {
+      const savedCustom = localStorage.getItem('afreen_custom_staff');
+      if (savedCustom) {
+        const parsedCustom = JSON.parse(savedCustom);
+        if (Array.isArray(parsedCustom)) {
+          foundCustom = parsedCustom.find(
+            (c: any) => c.staffId === staffId || (c.username && c.username.toLowerCase() === cleanId.toLowerCase())
+          );
+        }
+      }
+    } catch { /* no-op */ }
+
+    if (foundCustom) {
+      role = foundCustom.role || RoleName.CASHIER;
+      fullName = foundCustom.fullName || foundCustom.name || cleanId;
+      canProcessSaleReturn = Boolean(foundCustom.canProcessSaleReturn);
+    } else if (staffId === 300001 || cleanId.toLowerCase().includes('manager')) {
       role = RoleName.STORE_MANAGER;
       fullName = 'Sanjay Gupta (Store Manager)';
       canProcessSaleReturn = true;
@@ -106,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       fullName = 'Amit Verma (Senior Accountant)';
       canProcessSaleReturn = true;
     } else if (staffId !== 300000) {
-      fullName = `Vinayak Shinde (${cleanId})`;
+      fullName = `Staff Member (${cleanId})`;
       role = RoleName.CASHIER;
       canProcessSaleReturn = false;
     }

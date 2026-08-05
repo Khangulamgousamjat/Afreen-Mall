@@ -35,16 +35,16 @@
   --surface-color: #ffffff;
   --surface-hover: #f7f5f0;
   --border-color: #D4D0C5;
-  --border-focus: #004741;
+  --border-focus: #10b981;
   --text-main: #1a1a1a;
   --text-muted: #666666;
 
-  --accent-lime: #004741; /* In light mode, deep teal acts as primary accent for high contrast */
-  --accent-lime-hover: #00332e;
-  --accent-teal: #E4FD97;
-  --accent-soft: rgba(0, 71, 65, 0.08);
+  --accent-lime: #10b981;
+  --accent-lime-hover: #059669;
+  --accent-teal: #34d399;
+  --accent-soft: rgba(16, 185, 129, 0.16);
 
-  --status-green: #15803d;
+  --status-green: #10b981;
   --status-amber: #b45309;
   --status-red: #b91c1c;
 }
