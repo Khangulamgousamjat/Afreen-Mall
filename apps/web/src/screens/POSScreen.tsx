@@ -142,12 +142,33 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
   // ── Full-screen overlays ────────────────────────────────────────────────
   const [fullScreenOverlay, setFullScreenOverlay] = useState<'NONE' | 'UPI' | 'CARD'>('NONE');
   const [overlayStatus, setOverlayStatus] = useState('Processing...');
+  const [showQtyChangeModal, setShowQtyChangeModal] = useState(false);
+  const [qtyInputVal, setQtyInputVal] = useState('1');
 
-  // ── Derived totals ──────────────────────────────────────────────────────
+  // ── Derived totals & Cash Rounding Engine ────────────────────────────────
+  // Rule: Decimal <= 0.50 (in Rupees) -> Round Down, > 0.50 -> Round Up.
+  // Card & UPI payments are NOT rounded (paid at exact paise value).
   const totalQty      = cart.reduce((s, i) => s + i.qty, 0);
   const totalDiscount = cart.reduce((s, i) => s + i.discountAmount * i.qty, 0);
   const totalAmount   = cart.reduce((s, i) => s + i.netRate * i.qty, 0);
-  const changeDue     = Math.max(0, receivedAmount - totalAmount);
+
+  const cashRounded = useMemo(() => {
+    const rupeesDecimal = totalAmount / 100;
+    const wholeRupees = Math.floor(rupeesDecimal);
+    const decimalPart = rupeesDecimal - wholeRupees;
+
+    const roundedRupees = decimalPart > 0.50 ? Math.ceil(rupeesDecimal) : Math.floor(rupeesDecimal);
+    const roundedPaise = roundedRupees * 100;
+    const roundingDifference = roundedPaise - totalAmount;
+
+    return {
+      originalTotal: totalAmount,
+      roundedTotal: roundedPaise,
+      roundingDifference,
+    };
+  }, [totalAmount]);
+
+  const changeDue = Math.max(0, receivedAmount - (paymentModeUpfront === PaymentMode.CASH ? cashRounded.roundedTotal : totalAmount));
 
   // ── Barcode re-focus helper ─────────────────────────────────────────────
   const refocusBarcode = useCallback(() => {
@@ -203,12 +224,17 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
       const isF3 = k === 'F3' || c === 'F3';
       const isF4 = k === 'F4' || c === 'F4';
       const isF5 = k === 'F5' || c === 'F5';
+      const isF6 = k === 'F6' || c === 'F6';
       const isF7 = k === 'F7' || c === 'F7';
       const isF8 = k === 'F8' || c === 'F8';
+      const isF9 = k === 'F9' || c === 'F9';
       const isF10 = k === 'F10' || c === 'F10';
       const isF11 = k === 'F11' || c === 'F11';
       const isEscape = k === 'ESCAPE' || c === 'ESCAPE';
       const isEnter = k === 'ENTER' || c === 'ENTER' || c === 'NUMPADENTER';
+      const isUpArrow = k === 'ARROWUP' || c === 'ARROWUP';
+      const isDownArrow = k === 'ARROWDOWN' || c === 'ARROWDOWN';
+      const isDeleteKey = k === 'DELETE' || c === 'DELETE';
 
       // 1. F1: Shortcut Reference Help Overlay
       if (isF1 && !e.shiftKey && !e.ctrlKey && !e.altKey) {
@@ -217,56 +243,93 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
         return;
       }
 
-      // F4: Hold Bill
+      // 2. F2: New Sale / Refocus Barcode Box
+      if (isF2 && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault(); e.stopPropagation();
+        refocusBarcode();
+        return;
+      }
+
+      // 3. F4: Hold Bill
       if (isF4 && !e.shiftKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault(); e.stopPropagation();
         handleHoldBill();
         return;
       }
 
-      // F5: Recall Bill Modal
-      if (isF5 && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+      // 4. F5 / F6: Recall Held Bill Modal
+      if ((isF5 || isF6) && !e.shiftKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault(); e.stopPropagation();
         setShowHeldBillsModal(true);
         return;
       }
 
-      // 2. Shift + F8: Manual Bill Recovery Dialog
+      // 5. F9: Edit Quantity Popup for selected item
+      if (isF9 && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault(); e.stopPropagation();
+        if (cart.length > 0) {
+          const targetIdx = selectedCartIndex ?? 0;
+          setQtyInputVal(String(cart[targetIdx]?.qty || 1));
+          setShowQtyChangeModal(true);
+        }
+        return;
+      }
+
+      // 6. Delete Key: Delete selected item from cart
+      if (isDeleteKey && cart.length > 0 && selectedCartIndex !== null) {
+        e.preventDefault(); e.stopPropagation();
+        removeItem(selectedCartIndex);
+        return;
+      }
+
+      // 7. Arrow Up / Arrow Down: Navigate cart items
+      if (isUpArrow && cart.length > 0) {
+        e.preventDefault();
+        setSelectedCartIndex((prev) => (prev === null || prev <= 0 ? cart.length - 1 : prev - 1));
+        return;
+      }
+      if (isDownArrow && cart.length > 0) {
+        e.preventDefault();
+        setSelectedCartIndex((prev) => (prev === null || prev >= cart.length - 1 ? 0 : prev + 1));
+        return;
+      }
+
+      // 8. Shift + F8: Manual Bill Recovery Dialog
       if (isF8 && e.shiftKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault(); e.stopPropagation();
         setShowManualRecoveryModal(true);
         return;
       }
 
-      // 3. Ctrl + F5: Duplicate Bill Reprint Modal
+      // 9. Ctrl + F5: Duplicate Bill Reprint Modal
       if (isF5 && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
         e.preventDefault(); e.stopPropagation();
         setShowDuplicateReprintModal(true);
         return;
       }
 
-      // 4. Alt + F11: Toggle Sale Return Mode
+      // 10. Alt + F11: Toggle Sale Return Mode
       if (isF11 && e.altKey && !e.ctrlKey && !e.shiftKey) {
         e.preventDefault(); e.stopPropagation();
         handleToggleReturnMode();
         return;
       }
 
-      // 5. Shift + F2: Toggle Retail / Wholesale Sale Type
+      // 11. Shift + F2: Toggle Retail / Wholesale Sale Type
       if (isF2 && e.shiftKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault(); e.stopPropagation();
         setSaleType(p => p === SaleType.RETAIL ? SaleType.WHOLESALE : SaleType.RETAIL);
         return;
       }
 
-      // 6. F3: Repeat Last Scanned Item (+1 Qty)
+      // 12. F3: Repeat Last Scanned Item (+1 Qty)
       if (isF3 && !e.shiftKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault(); e.stopPropagation();
         if (lastScannedItem) addItemToCart(lastScannedItem);
         return;
       }
 
-      // 7. F7: Instant UPI QR Code Payment
+      // 13. F7: Instant UPI QR Code Payment
       if (isF7 && !e.shiftKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault(); e.stopPropagation();
         setPaymentModeUpfront(PaymentMode.UPI);
@@ -274,20 +337,21 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
         return;
       }
 
-      // 8. F10: Checkout / Open Payment Modal
+      // 14. F10: Checkout / Open Payment Modal
       if (isF10 && !e.shiftKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault(); e.stopPropagation();
         if (cart.length > 0) openPaymentModal();
         return;
       }
 
-      // 9. Escape: Close open modals & restore barcode focus
+      // 15. Escape: Close open modals & restore barcode focus
       if (isEscape) {
         setShowPaymentModal(false);
         setShowF1Overlay(false);
         setShowManualRecoveryModal(false);
         setShowDuplicateReprintModal(false);
         setShowCancelBillModal(false);
+        setShowQtyChangeModal(false);
         setReceiptPrintContent(null);
         setScanAlertModal({ show: false, type: 'NOT_FOUND', title: '', message: '' });
         refocusBarcode();
@@ -1182,6 +1246,54 @@ Software by Gous Khan · Mobile: 8625076618
             >
               <span>Acknowledge & Re-Scan Barcode</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── F9 QUANTITY CHANGE MODAL ────────────────────────────────────── */}
+      {showQtyChangeModal && (
+        <div className="modal-overlay" style={{ zIndex: 2000 }}>
+          <div className="modal-content" style={{ maxWidth: '380px', padding: '24px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '12px' }}>
+              Change Item Quantity (F9)
+            </h3>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+              {cart[selectedCartIndex ?? 0]?.name || 'Selected Item'}
+            </p>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const newQty = parseInt(qtyInputVal, 10);
+              if (!isNaN(newQty) && newQty > 0) {
+                updateItemQty(selectedCartIndex ?? 0, newQty);
+              }
+              setShowQtyChangeModal(false);
+              refocusBarcode();
+            }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                Enter New Quantity:
+              </label>
+              <input
+                type="number"
+                min={1}
+                autoFocus
+                className="input-field tabular-nums"
+                value={qtyInputVal}
+                onChange={(e) => setQtyInputVal(e.target.value)}
+                style={{ fontSize: '18px', padding: '8px 12px', fontWeight: 'bold', marginBottom: '20px' }}
+              />
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => { setShowQtyChangeModal(false); refocusBarcode(); }}
+                >
+                  Cancel (Esc)
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Update Qty (Enter)
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
