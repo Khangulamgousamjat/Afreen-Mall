@@ -37,16 +37,7 @@ router.post('/login', async (req, res) => {
     }
 
     const cleanIdentifier = String(identifier).trim();
-    const cleanPassword = String(password).trim();
-
-    // SQL Injection vector check on auth payloads
-    const sqliRegex = /('|"|--|\/\*|\*\/|;|\bOR\b|\bUNION\b|\bSELECT\b)/i;
-    if (sqliRegex.test(cleanIdentifier) || sqliRegex.test(cleanPassword)) {
-      return res.status(403).json({
-        error: 'Security Threat Intercepted: SQL Injection payload detected. Authentication attempt blocked.',
-        blocked: true,
-      });
-    }
+    const cleanPassword = String(password);
 
     // Try finding user by numeric staffId or string username
     const numericStaffId = parseInt(cleanIdentifier, 10);
