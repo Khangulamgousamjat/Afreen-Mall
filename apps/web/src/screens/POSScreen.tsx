@@ -320,32 +320,59 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
     handleBarcodeScan(code);
   };
 
+  // ── Supermarket Catalog Seed Items for Scan Fallback / Dev Mode ─────────
+  const SUPERMARKET_SEED_CATALOG: POSCartItem[] = [
+    { id: 'p-1', barcode: '890103000001', name: 'Amul Taaza Fresh Milk 1L', description: 'Dairy & Fresh Pack', qty: 1, mrp: 7200, rate: 7200, discountPercent: 0, discountAmount: 0, gstPercent: 0, netRate: 7200, value: 7200, unit: 'PACK', hsnCode: '0401' },
+    { id: 'p-2', barcode: '890103000002', name: 'Britannia Good Day Butter Biscuits 200g', description: 'Bakery & Snacks', qty: 1, mrp: 4000, rate: 3600, discountPercent: 10, discountAmount: 400, gstPercent: 18, netRate: 4248, value: 4248, unit: 'PACK', hsnCode: '1905' },
+    { id: 'p-3', barcode: '890103000003', name: 'Coca Cola Soft Drink Bottle 1.25L', description: 'Beverages', qty: 1, mrp: 6500, rate: 6000, discountPercent: 7.7, discountAmount: 500, gstPercent: 28, netRate: 7680, value: 7680, unit: 'BOT', hsnCode: '2202' },
+    { id: 'p-4', barcode: '890103000004', name: 'Amul Pasteurized Butter 500g', description: 'Dairy & Staples', qty: 1, mrp: 27500, rate: 26000, discountPercent: 5.4, discountAmount: 1500, gstPercent: 12, netRate: 29120, value: 29120, unit: 'PACK', hsnCode: '0405' },
+    { id: 'p-5', barcode: '890103000005', name: 'Fortune Refined Sunflower Oil 1L', description: 'Edible Oils', qty: 1, mrp: 14500, rate: 13800, discountPercent: 4.8, discountAmount: 700, gstPercent: 5, netRate: 14490, value: 14490, unit: 'PACK', hsnCode: '1512' },
+    { id: 'p-6', barcode: '890103000006', name: 'Tata Iodized Vacuum Evaporated Salt 1kg', description: 'Staples', qty: 1, mrp: 2800, rate: 2800, discountPercent: 0, discountAmount: 0, gstPercent: 0, netRate: 2800, value: 2800, unit: 'PACK', hsnCode: '2501' },
+    { id: 'p-7', barcode: '890103000007', name: 'Aashirvaad Shuddh Chakki Atta 5kg', description: 'Flour & Grains', qty: 1, mrp: 24000, rate: 22500, discountPercent: 6.25, discountAmount: 1500, gstPercent: 0, netRate: 22500, value: 22500, unit: 'BAG', hsnCode: '1101' },
+    { id: 'p-8', barcode: '890103000008', name: 'Surf Excel Easy Wash Detergent Powder 1kg', description: 'Household Care', qty: 1, mrp: 14000, rate: 13000, discountPercent: 7.14, discountAmount: 1000, gstPercent: 18, netRate: 15340, value: 15340, unit: 'PACK', hsnCode: '3402' },
+    { id: 'p-9', barcode: '890103000009', name: 'Maggi 2-Minute Masala Instant Noodles 280g', description: 'Instant Foods', qty: 1, mrp: 5600, rate: 5200, discountPercent: 7.14, discountAmount: 400, gstPercent: 12, netRate: 5824, value: 5824, unit: 'PACK', hsnCode: '1902' },
+    { id: 'p-10', barcode: '890103000010', name: 'Nescafe Classic 100% Pure Instant Coffee 50g', description: 'Beverages', qty: 1, mrp: 18500, rate: 17500, discountPercent: 5.4, discountAmount: 1000, gstPercent: 18, netRate: 20650, value: 20650, unit: 'JAR', hsnCode: '2101' },
+  ];
+
   const handleBarcodeScan = async (code: string) => {
+    const cleanCode = code.trim();
+    if (!cleanCode) return;
+
     setBarcodeError('');
     setBarcodeInput('');
+    let foundItem: POSCartItem | null = null;
+
     try {
-      const res = await api.get(`/pos/product/${encodeURIComponent(code)}`);
+      const res = await api.get(`/pos/product/${encodeURIComponent(cleanCode)}`);
       if (res.data?.product) {
-        const item: POSCartItem = res.data.product;
-        setLastScannedItem({ ...item, qty: 1 });
-        addItemToCart(item);
-        flashLastScanned();
+        foundItem = res.data.product;
       }
     } catch {
-      // Fallback mock for offline/dev
-      const mock: POSCartItem = {
-        id: `prod-${Date.now()}`, barcode: code,
-        name: `Item (${code})`, description: 'Retail Pack',
-        qty: 1, mrp: 10000, rate: 9000,
-        discountPercent: 10, discountAmount: 900,
-        gstPercent: 12, netRate: 9100, value: 9100, unit: 'PCS', hsnCode: '1905',
-      };
-      setLastScannedItem({ ...mock, qty: 1 });
-      addItemToCart(mock);
-      flashLastScanned();
-    } finally {
-      refocusBarcode();
+      // Search in seed catalog if backend API returns 404 or cold start
+      const seedMatch = SUPERMARKET_SEED_CATALOG.find(
+        (p) => p.barcode === cleanCode || p.barcode.includes(cleanCode) || p.name.toLowerCase().includes(cleanCode.toLowerCase())
+      );
+      if (seedMatch) {
+        foundItem = seedMatch;
+      }
     }
+
+    if (foundItem) {
+      setLastScannedItem({ ...foundItem, qty: 1 });
+      addItemToCart(foundItem);
+      flashLastScanned();
+    } else {
+      // Product not found in database or catalog -> Display Barcode Not Found Modal
+      setScanAlertModal({
+        show: true,
+        type: 'NOT_FOUND',
+        title: 'Barcode Not Found',
+        message: `The scanned barcode "${cleanCode}" is not registered in the system product master. Please verify the code or register it in Inventory Management.`,
+        barcode: cleanCode,
+      });
+    }
+
+    refocusBarcode();
   };
 
   const flashLastScanned = () => {

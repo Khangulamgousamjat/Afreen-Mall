@@ -70,8 +70,13 @@ router.get('/product/:barcode', async (req: AuthenticatedRequest, res: Response)
       }
     }
 
-    const product = await prisma.product.findUnique({
-      where: { barcode },
+    const product: any = await prisma.product.findFirst({
+      where: {
+        OR: [
+          { barcode: { equals: barcode, mode: 'insensitive' } },
+          { name: { contains: barcode, mode: 'insensitive' } },
+        ],
+      },
       include: {
         category: true,
         unit: true,
@@ -82,14 +87,19 @@ router.get('/product/:barcode', async (req: AuthenticatedRequest, res: Response)
     });
 
     if (!product) {
-      return res.status(404).json({ error: `No product found with barcode '${barcode}'` });
+      return res.status(404).json({
+        success: false,
+        notFound: true,
+        error: `No product found with barcode or name matching '${barcode}'`,
+      });
     }
 
     // Convert values to paise representation & calculate net rate
-    const mrp = product.mrp; // paise
-    const rate = product.saleRate; // paise
-    const discountAmt = Math.round(mrp * (product.discountPct / 100));
-    const gstPct = product.taxRate.rate;
+    const mrp = product.mrp || 0; // paise
+    const rate = product.saleRate || 0; // paise
+    const discountPct = product.discountPct || 0;
+    const discountAmt = Math.round(mrp * (discountPct / 100));
+    const gstPct = product.taxRate?.rate || 0;
     const netRate = Math.round(rate * (1 + gstPct / 100));
 
     return res.json({
@@ -97,15 +107,15 @@ router.get('/product/:barcode', async (req: AuthenticatedRequest, res: Response)
         id: product.id,
         barcode: product.barcode,
         name: product.name,
-        description: product.description,
+        description: product.description || '',
         mrp,
         rate,
-        discountPercent: product.discountPct,
+        discountPercent: discountPct,
         discountAmount: discountAmt,
         gstPercent: gstPct,
         netRate,
         value: netRate,
-        unit: product.unit.name,
+        unit: product.unit?.name || 'PCS',
         hsnCode: product.hsnCode?.code || '1905',
         stock: product.inventory?.currentStock || 0,
       },
