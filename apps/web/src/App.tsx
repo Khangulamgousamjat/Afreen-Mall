@@ -24,6 +24,7 @@ import { SystemAdminScreen } from './screens/SystemAdminScreen';
 import { BusinessIntelligenceScreen } from './screens/BusinessIntelligenceScreen';
 
 import { SecurityGuard } from './components/SecurityGuard';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 export const AppContent: React.FC = () => {
   const { user } = useAuth();
@@ -56,23 +57,25 @@ export const AppContent: React.FC = () => {
       <div className="main-content">
         <Topbar />
         <main className="page-content">
-          {currentScreen === 'dashboard' && <DashboardScreen onNavigate={setCurrentScreen} />}
-          {currentScreen === 'pos' && <POSScreen initialReturnMode={false} />}
-          {currentScreen === 'pos-return' && <POSScreen initialReturnMode={true} />}
-          {currentScreen === 'dayclose' && <DayCloseScreen />}
-          {currentScreen === 'cash' && <CashReconciliationScreen />}
-          {currentScreen === 'inventory' && <InventoryScreen />}
-          {currentScreen === 'purchasing' && <PurchasingScreen />}
-          {currentScreen === 'suppliers' && <SupplierScreen />}
-          {currentScreen === 'accounting' && <AccountingScreen />}
-          {currentScreen === 'hrms' && <HRMSScreen />}
-          {currentScreen === 'sales' && <SalesScreen />}
-          {currentScreen === 'warehouse' && <WarehouseScreen />}
-          {currentScreen === 'customers' && <CustomersScreen />}
-          {currentScreen === 'reports' && <ReportsScreen />}
-          {currentScreen === 'bi' && <BusinessIntelligenceScreen />}
-          {currentScreen === 'settings' && <SystemAdminScreen />}
-          {currentScreen === 'admin' && <SystemAdminScreen />}
+          <ErrorBoundary>
+            {currentScreen === 'dashboard' && <DashboardScreen onNavigate={setCurrentScreen} />}
+            {currentScreen === 'pos' && <POSScreen initialReturnMode={false} />}
+            {currentScreen === 'pos-return' && <POSScreen initialReturnMode={true} />}
+            {currentScreen === 'dayclose' && <DayCloseScreen />}
+            {currentScreen === 'cash' && <CashReconciliationScreen />}
+            {currentScreen === 'inventory' && <InventoryScreen />}
+            {currentScreen === 'purchasing' && <PurchasingScreen />}
+            {currentScreen === 'suppliers' && <SupplierScreen />}
+            {currentScreen === 'accounting' && <AccountingScreen />}
+            {currentScreen === 'hrms' && <HRMSScreen />}
+            {currentScreen === 'sales' && <SalesScreen />}
+            {currentScreen === 'warehouse' && <WarehouseScreen />}
+            {currentScreen === 'customers' && <CustomersScreen />}
+            {currentScreen === 'reports' && <ReportsScreen />}
+            {currentScreen === 'bi' && <BusinessIntelligenceScreen />}
+            {currentScreen === 'settings' && <SystemAdminScreen />}
+            {currentScreen === 'admin' && <SystemAdminScreen />}
+          </ErrorBoundary>
         </main>
       </div>
 
