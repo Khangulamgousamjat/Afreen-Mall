@@ -13,6 +13,7 @@ import {
   Settings,
   TrendingUp,
   ShieldCheck,
+  Activity,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { RoleName } from '@afreen-mall/shared-types';
@@ -41,6 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentScreen, onNavigate }) =
     { id: 'hrms', label: 'HRMS (Employees)', icon: Users },
     { id: 'warehouse', label: 'Warehouse', icon: WarehouseIcon },
     { id: 'customers', label: 'Customers (Loyalty)', icon: Users },
+    { id: 'bi', label: 'Executive BI & Analytics', icon: Activity },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'settings', label: 'System Administration', icon: ShieldCheck, isSuperAdminOnly: true },
   ];

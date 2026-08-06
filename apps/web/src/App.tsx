@@ -21,6 +21,7 @@ import { SupplierScreen } from './screens/SupplierScreen';
 import { AccountingScreen } from './screens/AccountingScreen';
 import { HRMSScreen } from './screens/HRMSScreen';
 import { SystemAdminScreen } from './screens/SystemAdminScreen';
+import { BusinessIntelligenceScreen } from './screens/BusinessIntelligenceScreen';
 
 import { SecurityGuard } from './components/SecurityGuard';
 
@@ -69,6 +70,7 @@ export const AppContent: React.FC = () => {
           {currentScreen === 'warehouse' && <WarehouseScreen />}
           {currentScreen === 'customers' && <CustomersScreen />}
           {currentScreen === 'reports' && <ReportsScreen />}
+          {currentScreen === 'bi' && <BusinessIntelligenceScreen />}
           {currentScreen === 'settings' && <SystemAdminScreen />}
           {currentScreen === 'admin' && <SystemAdminScreen />}
         </main>
