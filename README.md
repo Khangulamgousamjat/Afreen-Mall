@@ -184,12 +184,12 @@ graph TD
 
 <div align="center">
 
-### 💖 Made by **Gous Organisation**
+###  Made by **Gous Organisation**
 
 *Software Architect: **Gous Khan** · Afreen Mall Enterprise Platform*
 
-📞 **Mobile**: `+91 8625076618` | ✉️ **Email**: `gousk2004@gmail.com`
+📞 **Mobile**: `+91 862507****` | ✉️ **Email**: `gousk2004@gmail.com`
 
-![Made with Love by Gous Organisation](https://img.shields.io/badge/Crafted%20With-%E2%9D%A4%EF%B8%8F%20by%20Gous%20Organisation-FF1493?style=for-the-badge)
+![Made by Gous Organisation](https://img.shields.io/badge/Crafted%20With-%E2%9D%A4%EF%B8%8F%20by%20Gous%20Organisation-FF1493?style=for-the-badge)
 
 </div>
