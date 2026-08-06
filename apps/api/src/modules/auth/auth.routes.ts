@@ -79,38 +79,10 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Check account lockout
-    if (user.isLocked) {
-      if (user.lockoutUntil && user.lockoutUntil > new Date()) {
-        return res.status(423).json({
-          error: `Account is locked due to repeated failed login attempts. Please try again after ${user.lockoutUntil.toLocaleTimeString()} or contact Super Admin.`,
-        });
-      } else {
-        // Unlock after expiry
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { isLocked: false, failedAttempts: 0, lockoutUntil: null },
-        });
-      }
-    }
-
     // Password check
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!isPasswordValid) {
-      const newFailedAttempts = user.failedAttempts + 1;
-      const shouldLock = newFailedAttempts >= 5;
-      const lockoutUntil = shouldLock ? new Date(Date.now() + 15 * 60 * 1000) : null; // 15 min lock
-
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          failedAttempts: newFailedAttempts,
-          isLocked: shouldLock,
-          lockoutUntil: lockoutUntil,
-        },
-      });
-
       await prisma.loginHistory.create({
         data: {
           userId: user.id,
@@ -122,14 +94,8 @@ router.post('/login', async (req, res) => {
         },
       });
 
-      if (shouldLock) {
-        return res.status(423).json({
-          error: 'Account locked due to 5 consecutive failed attempts. Contact Super Admin or wait 15 minutes.',
-        });
-      }
-
       return res.status(401).json({
-        error: `Invalid password. ${5 - newFailedAttempts} attempt(s) remaining before lockout.`,
+        error: 'Invalid Staff ID or Password',
       });
     }
 
