@@ -215,7 +215,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) 
           style={{
             borderLeft: '4px solid var(--accent-lime)',
             display: 'flex',
-            justify: 'space-between',
+            justifyContent: 'space-between',
             alignItems: 'center',
             flexWrap: 'wrap',
             gap: '16px',
@@ -255,28 +255,28 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) 
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
-            <div style={{ padding: '8px 12px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justify: 'space-between' }}>
+            <div style={{ padding: '8px 12px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: '12px' }}>Barcode Scanner:</span>
               <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--status-green)', padding: '2px 6px', backgroundColor: 'rgba(16, 185, 129, 0.15)', border: '1px solid var(--status-green)' }}>
                 CONNECTED ✓
               </span>
             </div>
 
-            <div style={{ padding: '8px 12px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justify: 'space-between' }}>
+            <div style={{ padding: '8px 12px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: '12px' }}>Thermal Printer:</span>
               <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--status-green)', padding: '2px 6px', backgroundColor: 'rgba(16, 185, 129, 0.15)', border: '1px solid var(--status-green)' }}>
                 READY (203 DPI)
               </span>
             </div>
 
-            <div style={{ padding: '8px 12px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justify: 'space-between' }}>
+            <div style={{ padding: '8px 12px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: '12px' }}>Cash Drawer:</span>
               <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--status-green)', padding: '2px 6px', backgroundColor: 'rgba(16, 185, 129, 0.15)', border: '1px solid var(--status-green)' }}>
                 CLOSED (RJ11)
               </span>
             </div>
 
-            <div style={{ padding: '8px 12px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justify: 'space-between' }}>
+            <div style={{ padding: '8px 12px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: '12px' }}>Customer Display:</span>
               <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--status-green)', padding: '2px 6px', backgroundColor: 'rgba(16, 185, 129, 0.15)', border: '1px solid var(--status-green)' }}>
                 ONLINE
@@ -403,7 +403,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) 
         {/* CASHIER MODALS */}
         {showPriceChecker && <PriceCheckerModal onClose={() => setShowPriceChecker(false)} />}
         {showCustomerLookup && <CustomerLookupModal onClose={() => setShowCustomerLookup(false)} />}
-        {showF1Overlay && <F1ShortcutOverlay onClose={() => setShowF1Overlay(false)} />}
+        {showF1Overlay && <F1ShortcutOverlay isOpen={showF1Overlay} onClose={() => setShowF1Overlay(false)} />}
       </div>
     );
   }
@@ -724,7 +724,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) 
                   backgroundColor: 'var(--bg-color)',
                   border: '1px solid var(--border-color)',
                   display: 'flex',
-                  justify: 'space-between',
+                  justifyContent: 'space-between',
                   alignItems: 'center',
                 }}
               >

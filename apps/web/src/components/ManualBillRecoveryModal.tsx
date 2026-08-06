@@ -258,7 +258,7 @@ Software by Gous Khan · Mobile: 8625076618
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justify: 'center',
+                    justifyContent: 'center',
                     gap: '8px',
                     padding: '10px',
                     borderRadius: '6px',
@@ -279,7 +279,7 @@ Software by Gous Khan · Mobile: 8625076618
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justify: 'center',
+                    justifyContent: 'center',
                     gap: '8px',
                     padding: '10px',
                     borderRadius: '6px',

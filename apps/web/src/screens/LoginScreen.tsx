@@ -313,7 +313,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                justify: 'space-between',
+                justifyContent: 'space-between',
                 transition: 'all 0.15s ease',
               }}
               title="Click to select staff member from directory"

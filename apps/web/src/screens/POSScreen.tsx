@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Trash2, ShoppingCart, QrCode, CreditCard, RefreshCw, HelpCircle, User, Save, Printer, Copy, Monitor } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Trash2, ShoppingCart, QrCode, CreditCard, RefreshCw, HelpCircle, User, Save, Printer, Copy, Monitor, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { F1ShortcutOverlay } from '../components/F1ShortcutOverlay';
@@ -8,7 +8,7 @@ import { DuplicateBillReprintModal } from '../components/DuplicateBillReprintMod
 import { RegisterSelectionModal, POSRegister } from '../components/RegisterSelectionModal';
 import { HeldBillsModal } from '../components/HeldBillsModal';
 import { VoidBillModal } from '../components/VoidBillModal';
-import { POSCartItem, PaymentMode, SaleType } from '@afreen-mall/shared-types';
+import { POSCartItem, PaymentMode, SaleType, RoleName } from '@afreen-mall/shared-types';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 const formatDate = (d: Date) =>

@@ -82,7 +82,7 @@ export const OfflineSyncStatusBanner: React.FC = () => {
         backgroundColor: !isOnline ? 'rgba(239, 68, 68, 0.9)' : 'rgba(212, 168, 67, 0.9)',
         color: '#ffffff',
         display: 'flex',
-        justify: 'space-between',
+        justifyContent: 'space-between',
         alignItems: 'center',
         fontSize: '12px',
         fontWeight: 'bold',
