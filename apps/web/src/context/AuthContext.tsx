@@ -17,7 +17,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserSession | null>(() => {
-    // Purge legacy persistent localStorage tokens on initial load to prevent overnight session leakage
+    // Purge legacy unauthenticated localStorage tokens
     localStorage.removeItem('afreen_token');
     localStorage.removeItem('afreen_user');
 
@@ -53,115 +53,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
-  // Instant 1-second login with fast server check & instant local fallback
+  // Strict Backend Authentication Login — Zero Client-Side Bypasses
   const login = async (identifier: string, password: string) => {
-    // Set 8-hour shift maximum session expiry window
-    const sessionExpiresAt = Date.now() + 8 * 60 * 60 * 1000;
+    const sessionExpiresAt = Date.now() + 12 * 60 * 60 * 1000;
 
-    try {
-      const res = await api.post('/auth/login', { identifier, password }, { timeout: 2500 });
+    // Send credentials strictly to backend auth endpoint
+    const res = await api.post('/auth/login', { identifier, password });
 
-      if (res.data && typeof res.data === 'object' && res.data.token && res.data.user) {
-        const { token: jwtToken, user: userPayload } = res.data;
-        setToken(jwtToken);
-        setUser(userPayload);
-        sessionStorage.setItem('afreen_token', jwtToken);
-        sessionStorage.setItem('afreen_user', JSON.stringify(userPayload));
-        sessionStorage.setItem('afreen_session_expires', String(sessionExpiresAt));
-        return res.data;
-      }
-    } catch (err: any) {
-      if (err.response && (err.response.status === 401 || err.response.status === 400 || err.response.status === 423)) {
-        throw err;
-      }
-      // On network timeout / cold start / 502: proceed to instant fallback session
+    if (res.data && res.data.token && res.data.user) {
+      const { token: jwtToken, user: userPayload } = res.data;
+      setToken(jwtToken);
+      setUser(userPayload);
+      sessionStorage.setItem('afreen_token', jwtToken);
+      sessionStorage.setItem('afreen_user', JSON.stringify(userPayload));
+      sessionStorage.setItem('afreen_session_expires', String(sessionExpiresAt));
+      return res.data;
     }
 
-    // Instant local session generation
-    const cleanId = identifier.trim();
-    const numericId = parseInt(cleanId, 10);
-    const staffId = isNaN(numericId) ? 300000 : numericId;
-    let role = RoleName.SUPER_ADMIN;
-    let fullName = 'Gous Khan (Super Admin)';
-    let canProcessSaleReturn = true;
-
-    // Check if user account was created locally in afreen_custom_staff
-    let foundCustom: any = null;
-    try {
-      const savedCustom = localStorage.getItem('afreen_custom_staff');
-      if (savedCustom) {
-        const parsedCustom = JSON.parse(savedCustom);
-        if (Array.isArray(parsedCustom)) {
-          foundCustom = parsedCustom.find(
-            (c: any) => c.staffId === staffId || (c.username && c.username.toLowerCase() === cleanId.toLowerCase())
-          );
-        }
-      }
-    } catch { /* no-op */ }
-
-    if (foundCustom) {
-      role = foundCustom.role || RoleName.CASHIER;
-      fullName = foundCustom.fullName || foundCustom.name || cleanId;
-      canProcessSaleReturn = Boolean(foundCustom.canProcessSaleReturn);
-    } else if (staffId === 300001 || cleanId.toLowerCase().includes('manager')) {
-      role = RoleName.STORE_MANAGER;
-      fullName = 'Sanjay Gupta (Store Manager)';
-      canProcessSaleReturn = true;
-    } else if (staffId === 300002 || cleanId.toLowerCase().includes('pooja')) {
-      role = RoleName.CASHIER;
-      fullName = 'Pooja Sharma (Head Cashier)';
-      canProcessSaleReturn = true;
-    } else if (staffId === 300003 || cleanId.toLowerCase().includes('vinayak')) {
-      role = RoleName.CASHIER;
-      fullName = 'Vinayak Shinde (Cashier)';
-      canProcessSaleReturn = false; // Cashier restricted to sales only by default
-    } else if (staffId === 300004 || cleanId.toLowerCase().includes('babuji')) {
-      role = RoleName.CASH_OFFICER;
-      fullName = 'Babuji Namole (Cash Officer)';
-      canProcessSaleReturn = true;
-    } else if (staffId === 300005 || cleanId.toLowerCase().includes('amit')) {
-      role = RoleName.ACCOUNTANT;
-      fullName = 'Amit Verma (Senior Accountant)';
-      canProcessSaleReturn = true;
-    } else if (staffId !== 300000) {
-      fullName = `Staff Member (${cleanId})`;
-      role = RoleName.CASHIER;
-      canProcessSaleReturn = false;
-    }
-
-    const fallbackUser: UserSession = {
-      id: `usr-${Date.now()}`,
-      staffId: staffId,
-      username: cleanId,
-      fullName: fullName,
-      role: role,
-      mustChangePassword: false,
-      isDeactivated: false,
-      canProcessSaleReturn: canProcessSaleReturn,
-      lastLoginAt: new Date().toISOString(),
-    };
-    const fallbackToken = `afreen-token-${Date.now()}`;
-
-    setToken(fallbackToken);
-    setUser(fallbackUser);
-    sessionStorage.setItem('afreen_token', fallbackToken);
-    sessionStorage.setItem('afreen_user', JSON.stringify(fallbackUser));
-    sessionStorage.setItem('afreen_session_expires', String(sessionExpiresAt));
-
-    return { token: fallbackToken, user: fallbackUser };
+    throw new Error('Authentication failed: Invalid response from server');
   };
 
+  // Strict Password Change with Backend Verification
   const changePassword = async (newPassword: string, currentPassword?: string) => {
-    try {
-      await api.post('/auth/change-password', { newPassword, currentPassword });
-    } catch {
-      // Graceful offline change
-    }
+    const res = await api.post('/auth/change-password', { newPassword, currentPassword });
     if (user) {
       const updated = { ...user, mustChangePassword: false };
       setUser(updated);
       sessionStorage.setItem('afreen_user', JSON.stringify(updated));
     }
+    return res.data;
   };
 
   const logout = () => {
