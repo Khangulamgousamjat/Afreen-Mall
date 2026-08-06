@@ -1074,4 +1074,554 @@ router.get('/login-history', async (req: AuthenticatedRequest, res: Response) =>
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTIVITY LOG
+// ─────────────────────────────────────────────────────────────────────────────
+
+let activityLog: any[] = [
+  { id: 'ACT-001', module: 'Scheduler', event: 'DAILY_BACKUP_COMPLETED', severity: 'INFO', status: 'SUCCESS', message: 'Nightly database backup completed. Size: 42 MB.', createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
+  { id: 'ACT-002', module: 'HRMS', event: 'PAYROLL_BATCH_PROCESSED', severity: 'INFO', status: 'SUCCESS', message: 'Monthly payroll batch PAYROLL-BATCH-2026-0801 processed for 24 employees.', createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString() },
+  { id: 'ACT-003', module: 'Notification', event: 'EMAIL_DELIVERY_FAILED', severity: 'WARNING', status: 'FAILED', message: 'Email delivery failed for 2 recipients. SMTP timeout.', createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString() },
+  { id: 'ACT-004', module: 'Inventory', event: 'LOW_STOCK_RECALCULATION', severity: 'INFO', status: 'SUCCESS', message: 'Inventory low-stock thresholds recalculated for 1,240 SKUs.', createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString() },
+  { id: 'ACT-005', module: 'API', event: 'RATE_LIMIT_EXCEEDED', severity: 'ERROR', status: 'BLOCKED', message: 'IP 203.101.45.22 exceeded rate limit (500 req/min). Temporarily blocked.', createdAt: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString() },
+  { id: 'ACT-006', module: 'Database', event: 'INDEX_MAINTENANCE_COMPLETED', severity: 'INFO', status: 'SUCCESS', message: 'Database index maintenance completed. Performance improved by ~12%.', createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString() },
+  { id: 'ACT-007', module: 'CRM', event: 'LOYALTY_EXPIRY_PROCESSED', severity: 'INFO', status: 'SUCCESS', message: '47 loyalty accounts with expired points processed and notified.', createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() },
+];
+
+router.get('/activity-log', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const module = req.query.module ? String(req.query.module) : undefined;
+    const severity = req.query.severity ? String(req.query.severity) : undefined;
+    const status = req.query.status ? String(req.query.status) : undefined;
+    const limit = parseInt(String(req.query.limit || '50'), 10);
+
+    let filtered = [...activityLog];
+    if (module) filtered = filtered.filter((a) => a.module === module);
+    if (severity) filtered = filtered.filter((a) => a.severity === severity);
+    if (status) filtered = filtered.filter((a) => a.status === status);
+
+    return res.json({ activities: filtered.slice(0, limit), total: filtered.length });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch activity log' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BACKUP MANAGEMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+let backups: any[] = [
+  { id: 'BCK-001', type: 'FULL', status: 'COMPLETED', sizeMb: 42.8, target: 'LOCAL', duration: 94, completedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), triggeredBy: 'SCHEDULER', verified: true },
+  { id: 'BCK-002', type: 'INCREMENTAL', status: 'COMPLETED', sizeMb: 3.2, target: 'LOCAL', duration: 12, completedAt: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(), triggeredBy: 'SCHEDULER', verified: true },
+  { id: 'BCK-003', type: 'FULL', status: 'COMPLETED', sizeMb: 41.1, target: 'LOCAL', duration: 88, completedAt: new Date(Date.now() - 50 * 60 * 60 * 1000).toISOString(), triggeredBy: 'MANUAL', verified: true },
+];
+
+const disasterRecoveryConfig = {
+  rto: '4 hours',
+  rpo: '1 hour',
+  backupRetentionDays: 30,
+  offSiteEnabled: false,
+  cloudEnabled: false,
+  recoveryContacts: ['admin@afreenmall.com', 'it@afreenmall.com'],
+  lastDrTestDate: '2026-07-15',
+};
+
+router.get('/backups', async (req: AuthenticatedRequest, res: Response) => {
+  return res.json({ backups, disasterRecovery: disasterRecoveryConfig });
+});
+
+router.post('/backups/run', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { type = 'FULL', target = 'LOCAL' } = req.body;
+    const validTypes = ['FULL', 'INCREMENTAL', 'DIFFERENTIAL'];
+    if (!validTypes.includes(type)) return res.status(400).json({ error: 'Invalid backup type' });
+
+    // Simulate backup
+    const backup: any = {
+      id: `BCK-${String(backups.length + 1).padStart(3, '0')}`,
+      type, status: 'RUNNING', sizeMb: 0, target,
+      duration: 0, triggeredBy: 'MANUAL', verified: false,
+      startedAt: new Date().toISOString(),
+      startedBy: req.user!.fullName,
+    };
+    backups.unshift(backup);
+
+    // Simulate completion after a delay (in-memory)
+    setTimeout(() => {
+      const idx = backups.findIndex((b) => b.id === backup.id);
+      if (idx !== -1) {
+        backups[idx].status = 'COMPLETED';
+        backups[idx].sizeMb = type === 'FULL' ? 42.5 + Math.random() * 5 : 3 + Math.random() * 2;
+        backups[idx].duration = type === 'FULL' ? 85 + Math.floor(Math.random() * 20) : 10 + Math.floor(Math.random() * 5);
+        backups[idx].completedAt = new Date().toISOString();
+        backups[idx].verified = true;
+        activityLog.unshift({ id: `ACT-${Date.now()}`, module: 'Backup', event: 'BACKUP_COMPLETED', severity: 'INFO', status: 'SUCCESS', message: `${type} backup ${backup.id} completed. Size: ${backups[idx].sizeMb.toFixed(1)} MB.`, createdAt: new Date().toISOString() });
+      }
+    }, 3000);
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id, staffId: req.user!.staffId,
+        userName: req.user!.fullName, userRole: req.user!.role,
+        action: 'ADMIN_BACKUP_RUN', entityName: 'Backup', entityId: backup.id,
+        afterValue: { type, target }, reason: `Manual ${type} backup initiated by ${req.user!.fullName}.`,
+      },
+    });
+
+    return res.status(201).json({ backup, message: `${type} backup started. ID: ${backup.id}` });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to start backup' });
+  }
+});
+
+router.get('/backups/:id/status', async (req: AuthenticatedRequest, res: Response) => {
+  const backup = backups.find((b) => b.id === req.params.id);
+  if (!backup) return res.status(404).json({ error: 'Backup not found' });
+  return res.json({ backup });
+});
+
+router.post('/backups/:id/restore', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { confirmed } = req.body;
+    const backup = backups.find((b) => b.id === id);
+    if (!backup) return res.status(404).json({ error: 'Backup not found' });
+    if (!confirmed) return res.status(400).json({ error: 'Restore requires explicit confirmation', requiresConfirmation: true });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id, staffId: req.user!.staffId,
+        userName: req.user!.fullName, userRole: req.user!.role,
+        action: 'ADMIN_RESTORE_INITIATED', entityName: 'Backup', entityId: id,
+        reason: `Restore from backup ${id} (${backup.type}) initiated by ${req.user!.fullName}. WARNING: This operation overwrites current data.`,
+      },
+    });
+
+    activityLog.unshift({ id: `ACT-${Date.now()}`, module: 'Backup', event: 'RESTORE_INITIATED', severity: 'WARNING', status: 'RUNNING', message: `Restore from ${id} initiated by ${req.user!.fullName}.`, createdAt: new Date().toISOString() });
+
+    return res.json({ message: `Restore from ${id} initiated. This operation will complete within the configured RTO window.` });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to initiate restore' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SYSTEM HEALTH MONITORING
+// ─────────────────────────────────────────────────────────────────────────────
+
+router.get('/system-health', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const now = new Date();
+    const last5Min = new Date(now.getTime() - 5 * 60 * 1000);
+
+    // Real DB health check
+    let dbStatus = 'HEALTHY';
+    let dbResponseMs = 0;
+    try {
+      const dbStart = Date.now();
+      await prisma.$queryRaw`SELECT 1`;
+      dbResponseMs = Date.now() - dbStart;
+    } catch {
+      dbStatus = 'DEGRADED';
+    }
+
+    // Session / active user counts
+    const [activeSessions, failedLoginsLast5Min, totalLogsToday] = await Promise.all([
+      prisma.session.count({ where: { expiresAt: { gte: now } } }),
+      prisma.loginHistory.count({ where: { success: false, createdAt: { gte: last5Min } } }),
+      prisma.auditLog.count({ where: { createdAt: { gte: new Date(now.setHours(0, 0, 0, 0)) } } }),
+    ]);
+
+    // Simulate system metrics (in production these would come from OS/cloud APIs)
+    const memoryUsed = process.memoryUsage();
+    const memoryMb = Math.round(memoryUsed.heapUsed / 1024 / 1024);
+    const memoryTotalMb = Math.round(memoryUsed.heapTotal / 1024 / 1024);
+
+    return res.json({
+      health: {
+        timestamp: new Date().toISOString(),
+        overall: dbStatus === 'HEALTHY' ? 'HEALTHY' : 'DEGRADED',
+        api: { status: 'ONLINE', responseMs: 12, requestsPerMin: 84 },
+        database: { status: dbStatus, responseMs: dbResponseMs, connections: 5 },
+        memory: { usedMb: memoryMb, totalMb: memoryTotalMb, percentUsed: Math.round((memoryMb / memoryTotalMb) * 100) },
+        storage: { usedGb: 2.4, totalGb: 50, percentUsed: 4.8 },
+        queue: { pending: 0, processing: 0, failed: 0, status: 'IDLE' },
+        activeSessions,
+        failedLoginsLast5Min,
+        totalAuditEventsToday: totalLogsToday,
+        uptime: { seconds: Math.floor(process.uptime()), formatted: `${Math.floor(process.uptime() / 3600)}h ${Math.floor((process.uptime() % 3600) / 60)}m` },
+      },
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch system health' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SCHEDULER
+// ─────────────────────────────────────────────────────────────────────────────
+
+let schedulerJobs: any[] = [
+  { id: 'JOB-001', name: 'Daily Database Backup', module: 'Backup', action: 'FULL_BACKUP', cron: '0 2 * * *', cronDesc: 'Every day at 2:00 AM', enabled: true, lastRunAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), lastStatus: 'SUCCESS', nextRunAt: new Date(Date.now() + 22 * 60 * 60 * 1000).toISOString(), runCount: 127 },
+  { id: 'JOB-002', name: 'Loyalty Points Expiry Check', module: 'CRM', action: 'LOYALTY_EXPIRY', cron: '0 8 * * *', cronDesc: 'Every day at 8:00 AM', enabled: true, lastRunAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), lastStatus: 'SUCCESS', nextRunAt: new Date(Date.now() + 20 * 60 * 60 * 1000).toISOString(), runCount: 245 },
+  { id: 'JOB-003', name: 'Monthly GST Report Generation', module: 'Accounting', action: 'GST_REPORT', cron: '0 9 1 * *', cronDesc: '1st of every month at 9:00 AM', enabled: true, lastRunAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), lastStatus: 'SUCCESS', nextRunAt: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000).toISOString(), runCount: 8 },
+  { id: 'JOB-004', name: 'Inventory Low Stock Recalculation', module: 'Inventory', action: 'STOCK_RECALC', cron: '*/30 * * * *', cronDesc: 'Every 30 minutes', enabled: true, lastRunAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(), lastStatus: 'SUCCESS', nextRunAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(), runCount: 4820 },
+  { id: 'JOB-005', name: 'Weekly Sales Summary Email', module: 'Reports', action: 'SALES_SUMMARY_EMAIL', cron: '0 7 * * 1', cronDesc: 'Every Monday at 7:00 AM', enabled: false, lastRunAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), lastStatus: 'SUCCESS', nextRunAt: null, runCount: 32 },
+  { id: 'JOB-006', name: 'Database Index Maintenance', module: 'Database', action: 'INDEX_MAINTENANCE', cron: '0 3 * * 0', cronDesc: 'Every Sunday at 3:00 AM', enabled: true, lastRunAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), lastStatus: 'SUCCESS', nextRunAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), runCount: 18 },
+  { id: 'JOB-007', name: 'Old Audit Log Archival', module: 'Admin', action: 'ARCHIVE_AUDIT_LOGS', cron: '0 1 1 * *', cronDesc: '1st of every month at 1:00 AM', enabled: true, lastRunAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), lastStatus: 'SUCCESS', nextRunAt: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000).toISOString(), runCount: 8 },
+];
+
+router.get('/scheduler/jobs', async (req: AuthenticatedRequest, res: Response) => {
+  return res.json({ jobs: schedulerJobs });
+});
+
+router.post('/scheduler/jobs', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { name, module, action, cron, cronDesc, enabled } = req.body;
+    if (!name || !cron || !module || !action) return res.status(400).json({ error: 'name, module, action, and cron are required' });
+
+    const job = {
+      id: `JOB-${String(schedulerJobs.length + 1).padStart(3, '0')}`,
+      name, module, action, cron, cronDesc: cronDesc || cron,
+      enabled: enabled !== false,
+      lastRunAt: null, lastStatus: 'PENDING',
+      nextRunAt: null, runCount: 0,
+      createdAt: new Date().toISOString(),
+    };
+    schedulerJobs.push(job);
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id, staffId: req.user!.staffId,
+        userName: req.user!.fullName, userRole: req.user!.role,
+        action: 'ADMIN_SCHEDULER_CREATE', entityName: 'SchedulerJob', entityId: job.id,
+        afterValue: job, reason: `Scheduler job '${name}' created by ${req.user!.fullName}.`,
+      },
+    });
+
+    return res.status(201).json({ job, message: 'Scheduled job created.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create scheduled job' });
+  }
+});
+
+router.patch('/scheduler/jobs/:id', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { enabled, cron, cronDesc } = req.body;
+    const idx = schedulerJobs.findIndex((j) => j.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Job not found' });
+
+    if (enabled !== undefined) schedulerJobs[idx].enabled = Boolean(enabled);
+    if (cron) schedulerJobs[idx].cron = cron;
+    if (cronDesc) schedulerJobs[idx].cronDesc = cronDesc;
+
+    return res.json({ job: schedulerJobs[idx], message: 'Job updated.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update job' });
+  }
+});
+
+router.post('/scheduler/jobs/:id/run-now', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const idx = schedulerJobs.findIndex((j) => j.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Job not found' });
+
+    // Simulate run
+    schedulerJobs[idx].lastRunAt = new Date().toISOString();
+    schedulerJobs[idx].lastStatus = 'SUCCESS';
+    schedulerJobs[idx].runCount += 1;
+
+    activityLog.unshift({ id: `ACT-${Date.now()}`, module: schedulerJobs[idx].module, event: 'MANUAL_JOB_RUN', severity: 'INFO', status: 'SUCCESS', message: `Job '${schedulerJobs[idx].name}' executed manually by ${req.user!.fullName}.`, createdAt: new Date().toISOString() });
+
+    return res.json({ job: schedulerJobs[idx], message: `Job '${schedulerJobs[idx].name}' executed.` });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to run job' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FEATURE FLAGS
+// ─────────────────────────────────────────────────────────────────────────────
+
+let featureFlags: any[] = [
+  { key: 'LOYALTY_MODULE', name: 'Loyalty Program', description: 'Customer loyalty points, tiers, and redemptions', enabled: true, scope: 'COMPANY', module: 'CRM', rolloutPercent: 100 },
+  { key: 'GIFT_CARDS', name: 'Gift Cards', description: 'Issue and redeem gift cards at POS', enabled: false, scope: 'BRANCH', module: 'POS', rolloutPercent: 0 },
+  { key: 'ONLINE_ORDERS', name: 'Online Orders', description: 'Accept and process orders from digital channels', enabled: false, scope: 'COMPANY', module: 'Sales', rolloutPercent: 0 },
+  { key: 'MULTI_CURRENCY', name: 'Multi-Currency', description: 'Accept payments in foreign currencies', enabled: false, scope: 'COMPANY', module: 'Finance', rolloutPercent: 0 },
+  { key: 'WAREHOUSE_TRANSFERS', name: 'Warehouse Transfers', description: 'Inter-warehouse stock movement', enabled: true, scope: 'COMPANY', module: 'Inventory', rolloutPercent: 100 },
+  { key: 'VENDOR_PORTAL', name: 'Vendor Self-Service Portal', description: 'Allow vendors to view orders and invoices online', enabled: false, scope: 'COMPANY', module: 'Suppliers', rolloutPercent: 0 },
+  { key: 'MOBILE_APP', name: 'Mobile App Access', description: 'Allow ERP access via mobile application', enabled: false, scope: 'COMPANY', module: 'Admin', rolloutPercent: 0 },
+  { key: 'BIOMETRIC_AUTH', name: 'Biometric Authentication', description: 'Fingerprint/face login for POS terminals', enabled: false, scope: 'BRANCH', module: 'Auth', rolloutPercent: 0 },
+  { key: 'AI_INSIGHTS', name: 'AI Business Insights', description: 'AI-powered analytics and forecasting', enabled: false, scope: 'COMPANY', module: 'Reports', rolloutPercent: 0 },
+  { key: 'WHATSAPP_NOTIFICATIONS', name: 'WhatsApp Notifications', description: 'Send customer notifications via WhatsApp Business', enabled: false, scope: 'COMPANY', module: 'CRM', rolloutPercent: 0 },
+  { key: 'ADVANCED_ANALYTICS', name: 'Advanced Analytics Dashboard', description: 'Extended BI dashboards and drill-down reports', enabled: true, scope: 'COMPANY', module: 'Reports', rolloutPercent: 100 },
+  { key: 'TWO_FACTOR_AUTH', name: 'Two-Factor Authentication', description: 'Require OTP in addition to password for admins', enabled: false, scope: 'USER_GROUP', module: 'Auth', rolloutPercent: 0 },
+];
+
+router.get('/feature-flags', async (req: AuthenticatedRequest, res: Response) => {
+  return res.json({ flags: featureFlags });
+});
+
+router.patch('/feature-flags/:key', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { key } = req.params;
+    const { enabled, rolloutPercent, scope } = req.body;
+    const idx = featureFlags.findIndex((f) => f.key === key);
+    if (idx === -1) return res.status(404).json({ error: 'Feature flag not found' });
+
+    const old = { ...featureFlags[idx] };
+    if (enabled !== undefined) featureFlags[idx].enabled = Boolean(enabled);
+    if (rolloutPercent !== undefined) featureFlags[idx].rolloutPercent = Math.min(100, Math.max(0, Number(rolloutPercent)));
+    if (scope) featureFlags[idx].scope = scope;
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id, staffId: req.user!.staffId,
+        userName: req.user!.fullName, userRole: req.user!.role,
+        action: 'ADMIN_FEATURE_FLAG_CHANGE', entityName: 'FeatureFlag', entityId: key,
+        beforeValue: old, afterValue: featureFlags[idx],
+        reason: `Feature flag '${key}' set to ${featureFlags[idx].enabled ? 'ENABLED' : 'DISABLED'} by ${req.user!.fullName}.`,
+      },
+    });
+
+    return res.json({ flag: featureFlags[idx], message: `Feature '${featureFlags[idx].name}' updated.` });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update feature flag' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// API MANAGEMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+let apiKeys: any[] = [
+  { id: 'AK-001', name: 'External POS Integration', key: 'afreen_live_xxxxxxxxxxxxxxxxxxxxxxxx', keyPreview: 'afreen_live_xxxx…xxxx', scope: 'READ_WRITE', allowedOrigins: ['https://pos.afreenmall.com'], rateLimit: 300, requestsToday: 1247, isActive: true, createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), expiresAt: new Date(Date.now() + 335 * 24 * 60 * 60 * 1000).toISOString() },
+  { id: 'AK-002', name: 'Accounting Integration', key: 'afreen_live_yyyyyyyyyyyyyyyyyyyyyyyy', keyPreview: 'afreen_live_yyyy…yyyy', scope: 'READ', allowedOrigins: ['https://accounting.afreenmall.com'], rateLimit: 60, requestsToday: 89, isActive: true, createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(), expiresAt: new Date(Date.now() + 350 * 24 * 60 * 60 * 1000).toISOString() },
+];
+
+const apiMonitorData = {
+  totalRequestsToday: 14826,
+  failedRequestsToday: 42,
+  avgResponseTimeMs: 28,
+  authFailuresToday: 7,
+  rateLimitViolationsToday: 3,
+  topEndpoints: [
+    { endpoint: 'POST /api/v1/auth/login', requests: 3241, avgMs: 45 },
+    { endpoint: 'GET /api/v1/catalog', requests: 2890, avgMs: 12 },
+    { endpoint: 'POST /api/v1/pos/transaction', requests: 2156, avgMs: 67 },
+    { endpoint: 'GET /api/v1/inventory', requests: 1842, avgMs: 18 },
+    { endpoint: 'GET /api/v1/reports', requests: 954, avgMs: 142 },
+  ],
+};
+
+router.get('/api-keys', async (req: AuthenticatedRequest, res: Response) => {
+  const maskedKeys = apiKeys.map((k) => ({ ...k, key: undefined })); // Never expose raw key
+  return res.json({ apiKeys: maskedKeys });
+});
+
+router.post('/api-keys', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { name, scope, allowedOrigins, rateLimit, expiresInDays } = req.body;
+    if (!name || !scope) return res.status(400).json({ error: 'name and scope are required' });
+
+    const rawKey = `afreen_live_${Math.random().toString(36).substring(2, 18)}${Math.random().toString(36).substring(2, 18)}`;
+    const apiKey = {
+      id: `AK-${String(apiKeys.length + 1).padStart(3, '0')}`,
+      name, key: rawKey, keyPreview: `${rawKey.substring(0, 16)}…${rawKey.substring(rawKey.length - 4)}`,
+      scope: scope || 'READ', allowedOrigins: allowedOrigins || ['*'],
+      rateLimit: Number(rateLimit) || 60, requestsToday: 0, isActive: true,
+      createdAt: new Date().toISOString(),
+      expiresAt: expiresInDays ? new Date(Date.now() + Number(expiresInDays) * 24 * 60 * 60 * 1000).toISOString() : null,
+    };
+    apiKeys.push(apiKey);
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id, staffId: req.user!.staffId,
+        userName: req.user!.fullName, userRole: req.user!.role,
+        action: 'ADMIN_API_KEY_CREATED', entityName: 'ApiKey', entityId: apiKey.id,
+        afterValue: { name, scope, rateLimit }, reason: `API key '${name}' created by ${req.user!.fullName}.`,
+      },
+    });
+
+    return res.status(201).json({ apiKey: { ...apiKey, key: rawKey }, message: 'API key created. Copy the key — it will not be shown again.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create API key' });
+  }
+});
+
+router.delete('/api-keys/:id', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const idx = apiKeys.findIndex((k) => k.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'API key not found' });
+
+    const keyName = apiKeys[idx].name;
+    apiKeys.splice(idx, 1);
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id, staffId: req.user!.staffId,
+        userName: req.user!.fullName, userRole: req.user!.role,
+        action: 'ADMIN_API_KEY_REVOKED', entityName: 'ApiKey', entityId: id,
+        reason: `API key '${keyName}' revoked by ${req.user!.fullName}.`,
+      },
+    });
+
+    return res.json({ message: `API key '${keyName}' revoked.` });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to revoke API key' });
+  }
+});
+
+router.get('/api-monitor', async (req: AuthenticatedRequest, res: Response) => {
+  return res.json({ monitor: apiMonitorData });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LICENSING
+// ─────────────────────────────────────────────────────────────────────────────
+
+let licenseData: any = {
+  key: 'AFREEN-MALL-ENT-2026-XXXX-YYYY-ZZZZ',
+  type: 'ENTERPRISE',
+  status: 'ACTIVE',
+  issuedTo: 'Afreen Mall Enterprises Pvt. Ltd.',
+  issuedDate: '2026-04-01',
+  expiryDate: '2027-03-31',
+  daysUntilExpiry: 238,
+  activatedModules: ['POS', 'Inventory', 'Purchasing', 'Sales', 'CRM', 'Suppliers', 'Accounting', 'HRMS', 'Admin', 'Reports'],
+  limits: {
+    companies: { allowed: 5, used: 1 },
+    branches: { allowed: 10, used: 1 },
+    users: { allowed: 50, used: 7 },
+    posTerminals: { allowed: 10, used: 2 },
+    storageGb: { allowed: 50, used: 2.4 },
+  },
+  supportTier: 'PREMIUM',
+  supportExpiry: '2027-03-31',
+};
+
+router.get('/license', async (req: AuthenticatedRequest, res: Response) => {
+  return res.json({ license: licenseData });
+});
+
+router.get('/license/usage', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const [userCount, sessionCount] = await Promise.all([
+      prisma.user.count({ where: { deletedAt: null, isDeactivated: false } }),
+      prisma.session.count({ where: { expiresAt: { gte: new Date() } } }),
+    ]);
+
+    const usage = {
+      ...licenseData.limits,
+      users: { ...licenseData.limits.users, used: userCount },
+      activeSessions: sessionCount,
+    };
+
+    return res.json({ usage });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch license usage' });
+  }
+});
+
+router.post('/license/activate', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { key } = req.body;
+    if (!key) return res.status(400).json({ error: 'License key is required' });
+
+    // Simulate validation
+    if (!key.startsWith('AFREEN-')) {
+      return res.status(400).json({ error: 'Invalid license key format. Expected AFREEN-XXXXX-XXXXX-XXXXX.' });
+    }
+
+    licenseData.key = key;
+    licenseData.status = 'ACTIVE';
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id, staffId: req.user!.staffId,
+        userName: req.user!.fullName, userRole: req.user!.role,
+        action: 'ADMIN_LICENSE_ACTIVATED', entityName: 'License', entityId: 'LICENSE',
+        reason: `License key activated by ${req.user!.fullName}.`,
+      },
+    });
+
+    return res.json({ license: licenseData, message: 'License activated successfully.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to activate license' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAINTENANCE MODE
+// ─────────────────────────────────────────────────────────────────────────────
+
+let maintenanceMode: any = {
+  enabled: false,
+  message: 'Afreen Mall ERP is currently undergoing scheduled maintenance. We will be back shortly.',
+  scheduledStart: null,
+  scheduledEnd: null,
+  enabledBy: null,
+  enabledAt: null,
+  allowedRoles: ['SUPER_ADMIN', 'STORE_MANAGER'],
+};
+
+router.get('/maintenance', async (req: AuthenticatedRequest, res: Response) => {
+  return res.json({ maintenance: maintenanceMode });
+});
+
+router.post('/maintenance/enable', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { message, scheduledStart, scheduledEnd } = req.body;
+
+    maintenanceMode.enabled = true;
+    maintenanceMode.message = message || maintenanceMode.message;
+    maintenanceMode.scheduledStart = scheduledStart || new Date().toISOString();
+    maintenanceMode.scheduledEnd = scheduledEnd || null;
+    maintenanceMode.enabledBy = req.user!.fullName;
+    maintenanceMode.enabledAt = new Date().toISOString();
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id, staffId: req.user!.staffId,
+        userName: req.user!.fullName, userRole: req.user!.role,
+        action: 'ADMIN_MAINTENANCE_ENABLED', entityName: 'MaintenanceMode', entityId: 'SYSTEM',
+        afterValue: maintenanceMode, reason: `Maintenance mode ENABLED by ${req.user!.fullName}.`,
+      },
+    });
+
+    activityLog.unshift({ id: `ACT-${Date.now()}`, module: 'Admin', event: 'MAINTENANCE_ENABLED', severity: 'WARNING', status: 'ACTIVE', message: `System maintenance mode enabled by ${req.user!.fullName}. Regular users blocked.`, createdAt: new Date().toISOString() });
+
+    return res.json({ maintenance: maintenanceMode, message: 'Maintenance mode enabled.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to enable maintenance mode' });
+  }
+});
+
+router.post('/maintenance/disable', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    maintenanceMode.enabled = false;
+    maintenanceMode.enabledBy = null;
+    maintenanceMode.enabledAt = null;
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id, staffId: req.user!.staffId,
+        userName: req.user!.fullName, userRole: req.user!.role,
+        action: 'ADMIN_MAINTENANCE_DISABLED', entityName: 'MaintenanceMode', entityId: 'SYSTEM',
+        reason: `Maintenance mode DISABLED by ${req.user!.fullName}. System restored to normal operation.`,
+      },
+    });
+
+    activityLog.unshift({ id: `ACT-${Date.now()}`, module: 'Admin', event: 'MAINTENANCE_DISABLED', severity: 'INFO', status: 'SUCCESS', message: `System maintenance mode disabled by ${req.user!.fullName}. Normal operation resumed.`, createdAt: new Date().toISOString() });
+
+    return res.json({ maintenance: maintenanceMode, message: 'Maintenance mode disabled. Normal operation resumed.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to disable maintenance mode' });
+  }
+});
+
 export default router;

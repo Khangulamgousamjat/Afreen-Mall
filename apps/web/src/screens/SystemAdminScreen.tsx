@@ -3,7 +3,9 @@ import {
   ShieldCheck, Users, Lock, Unlock, Key, Activity, Building2, GitBranch,
   Settings, Hash, Zap, GitMerge, Bell, Monitor, BookOpen, History,
   AlertTriangle, CheckCircle2, XCircle, RefreshCw, LogOut, UserX, UserCheck,
-  Eye, EyeOff, ChevronRight, RotateCcw, Wifi,
+  Eye, EyeOff, ChevronRight, RotateCcw, Wifi, Database, Clock, Flag,
+  ToggleLeft, ToggleRight, Tag, Wrench, Server, HardDrive, Cpu, MemoryStick,
+  Play, Pause, ListChecks, Radio, Globe, Trash2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
@@ -15,6 +17,11 @@ import { RolePermissionsModal } from '../components/RolePermissionsModal';
 import { ApprovalRuleModal } from '../components/ApprovalRuleModal';
 import { WorkflowEditorModal } from '../components/WorkflowEditorModal';
 import { NumberSeriesModal } from '../components/NumberSeriesModal';
+import { BackupRestoreModal } from '../components/BackupRestoreModal';
+import { SchedulerJobModal } from '../components/SchedulerJobModal';
+import { CreateApiKeyModal } from '../components/CreateApiKeyModal';
+import { LicenseActivateModal } from '../components/LicenseActivateModal';
+import { MaintenanceModeModal } from '../components/MaintenanceModeModal';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -22,9 +29,19 @@ import { NumberSeriesModal } from '../components/NumberSeriesModal';
 type AdminTab =
   | 'dashboard' | 'users' | 'roles' | 'permissions' | 'companies'
   | 'branches' | 'config' | 'number-series' | 'approvals' | 'workflows'
-  | 'sessions' | 'audit' | 'login-history';
+  | 'sessions' | 'audit' | 'login-history'
+  | 'activity-log' | 'backup' | 'system-health' | 'scheduler'
+  | 'feature-flags' | 'api-management' | 'licensing' | 'maintenance';
 
-const TABS: { id: AdminTab; label: string; icon: React.ElementType; adminOnly?: boolean }[] = [
+const TAB_GROUPS = [
+  { label: 'Identity & Access', tabs: ['dashboard','users','roles','permissions','sessions','audit','login-history'] },
+  { label: 'Organisation', tabs: ['companies','branches','config','number-series'] },
+  { label: 'Engines', tabs: ['approvals','workflows'] },
+  { label: 'Operations', tabs: ['activity-log','backup','system-health','scheduler','maintenance'] },
+  { label: 'Platform', tabs: ['feature-flags','api-management','licensing'] },
+];
+
+const TABS: { id: AdminTab; label: string; icon: React.ElementType }[] = [
   { id: 'dashboard', label: 'Security Dashboard', icon: Monitor },
   { id: 'users', label: 'User Management', icon: Users },
   { id: 'roles', label: 'Roles & Permissions', icon: ShieldCheck },
@@ -38,6 +55,15 @@ const TABS: { id: AdminTab; label: string; icon: React.ElementType; adminOnly?: 
   { id: 'sessions', label: 'Active Sessions', icon: Wifi },
   { id: 'audit', label: 'Audit Log', icon: BookOpen },
   { id: 'login-history', label: 'Login History', icon: History },
+  // Part 2
+  { id: 'activity-log', label: 'Activity Log', icon: Activity },
+  { id: 'backup', label: 'Backup & Restore', icon: Database },
+  { id: 'system-health', label: 'System Health', icon: Server },
+  { id: 'scheduler', label: 'Scheduler', icon: Clock },
+  { id: 'feature-flags', label: 'Feature Flags', icon: Flag },
+  { id: 'api-management', label: 'API Management', icon: Globe },
+  { id: 'licensing', label: 'Licensing', icon: Tag },
+  { id: 'maintenance', label: 'Maintenance Mode', icon: Wrench },
 ];
 
 const STATUS_COLOR: Record<string, string> = {
@@ -108,6 +134,44 @@ export const SystemAdminScreen: React.FC = () => {
 
   // ── Notifications ──
   const [notifications, setNotifications] = useState<any[]>([]);
+
+  // ── Part 2: Activity Log ──
+  const [activities, setActivities] = useState<any[]>([]);
+  const [activityModuleFilter, setActivityModuleFilter] = useState('');
+  const [activitySeverityFilter, setActivitySeverityFilter] = useState('');
+
+  // ── Part 2: Backup & Restore ──
+  const [backups, setBackups] = useState<any[]>([]);
+  const [disasterRecovery, setDisasterRecovery] = useState<any>(null);
+  const [showBackupModal, setShowBackupModal] = useState(false);
+
+  // ── Part 2: System Health ──
+  const [systemHealth, setSystemHealth] = useState<any>(null);
+  const [healthRefreshing, setHealthRefreshing] = useState(false);
+
+  // ── Part 2: Scheduler ──
+  const [schedulerJobs, setSchedulerJobs] = useState<any[]>([]);
+  const [showSchedulerModal, setShowSchedulerModal] = useState(false);
+  const [runningJobId, setRunningJobId] = useState<string | null>(null);
+
+  // ── Part 2: Feature Flags ──
+  const [featureFlags, setFeatureFlags] = useState<any[]>([]);
+  const [togglingFlag, setTogglingFlag] = useState<string | null>(null);
+
+  // ── Part 2: API Management ──
+  const [apiKeys, setApiKeys] = useState<any[]>([]);
+  const [apiMonitor, setApiMonitor] = useState<any>(null);
+  const [showCreateApiKey, setShowCreateApiKey] = useState(false);
+  const [newlyCreatedApiKey, setNewlyCreatedApiKey] = useState<{ key: string; id: string } | null>(null);
+
+  // ── Part 2: Licensing ──
+  const [licenseData, setLicenseData] = useState<any>(null);
+  const [licenseUsage, setLicenseUsage] = useState<any>(null);
+  const [showLicenseModal, setShowLicenseModal] = useState(false);
+
+  // ── Part 2: Maintenance Mode ──
+  const [maintenanceMode, setMaintenanceMode] = useState<any>(null);
+  const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
 
   // ─────────────────────────────────────────────────────────────────────────
   // DATA LOADERS
@@ -230,6 +294,77 @@ export const SystemAdminScreen: React.FC = () => {
     } catch { setNotifications([]); }
   };
 
+  // Part 2 loaders
+  const loadActivities = async () => {
+    try {
+      const params: any = {};
+      if (activityModuleFilter) params.module = activityModuleFilter;
+      if (activitySeverityFilter) params.severity = activitySeverityFilter;
+      const res = await api.get('/admin/activity-log', { params });
+      setActivities(res.data.activities || []);
+    } catch { setActivities([]); }
+  };
+
+  const loadBackups = async () => {
+    try {
+      const res = await api.get('/admin/backups');
+      setBackups(res.data.backups || []);
+      setDisasterRecovery(res.data.disasterRecovery);
+    } catch { setBackups([]); }
+  };
+
+  const loadSystemHealth = async () => {
+    setHealthRefreshing(true);
+    try {
+      const res = await api.get('/admin/system-health');
+      setSystemHealth(res.data.health);
+    } catch { setSystemHealth(null); }
+    finally { setHealthRefreshing(false); }
+  };
+
+  const loadScheduler = async () => {
+    try {
+      const res = await api.get('/admin/scheduler/jobs');
+      setSchedulerJobs(res.data.jobs || []);
+    } catch { setSchedulerJobs([]); }
+  };
+
+  const loadFeatureFlags = async () => {
+    try {
+      const res = await api.get('/admin/feature-flags');
+      setFeatureFlags(res.data.flags || []);
+    } catch { setFeatureFlags([]); }
+  };
+
+  const loadApiManagement = async () => {
+    try {
+      const [keysRes, monitorRes] = await Promise.all([
+        api.get('/admin/api-keys'),
+        api.get('/admin/api-monitor'),
+      ]);
+      setApiKeys(keysRes.data.apiKeys || []);
+      setApiMonitor(monitorRes.data.monitor);
+    } catch { setApiKeys([]); setApiMonitor(null); }
+  };
+
+  const loadLicense = async () => {
+    try {
+      const [licRes, usageRes] = await Promise.all([
+        api.get('/admin/license'),
+        api.get('/admin/license/usage'),
+      ]);
+      setLicenseData(licRes.data.license);
+      setLicenseUsage(usageRes.data.usage);
+    } catch { setLicenseData(null); }
+  };
+
+  const loadMaintenance = async () => {
+    try {
+      const res = await api.get('/admin/maintenance');
+      setMaintenanceMode(res.data.maintenance);
+    } catch { setMaintenanceMode(null); }
+  };
+
   // ── Load on tab change ──
   useEffect(() => {
     if (!isAuthorized) return;
@@ -246,6 +381,15 @@ export const SystemAdminScreen: React.FC = () => {
     if (activeTab === 'sessions') loadSessions();
     if (activeTab === 'audit') loadAuditLogs(1);
     if (activeTab === 'login-history') loadLoginHistory();
+    // Part 2
+    if (activeTab === 'activity-log') loadActivities();
+    if (activeTab === 'backup') loadBackups();
+    if (activeTab === 'system-health') loadSystemHealth();
+    if (activeTab === 'scheduler') loadScheduler();
+    if (activeTab === 'feature-flags') loadFeatureFlags();
+    if (activeTab === 'api-management') loadApiManagement();
+    if (activeTab === 'licensing') loadLicense();
+    if (activeTab === 'maintenance') loadMaintenance();
   }, [activeTab, isAuthorized]);
 
   useEffect(() => {
@@ -255,6 +399,10 @@ export const SystemAdminScreen: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'login-history') loadLoginHistory();
   }, [loginFilter]);
+
+  useEffect(() => {
+    if (activeTab === 'activity-log') loadActivities();
+  }, [activityModuleFilter, activitySeverityFilter]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // ACCESS GUARD
@@ -1040,6 +1188,467 @@ export const SystemAdminScreen: React.FC = () => {
   );
 
   // ─────────────────────────────────────────────────────────────────────────
+  // PART 2 RENDERERS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const SEVERITY_COLOR: Record<string, string> = { INFO: '#06b6d4', WARNING: '#f59e0b', ERROR: '#ef4444', SUCCESS: '#10b981' };
+
+  const renderActivityLog = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <select className="input-field" style={{ width: '160px' }} value={activityModuleFilter} onChange={(e) => setActivityModuleFilter(e.target.value)}>
+          <option value="">All Modules</option>
+          {['Scheduler','HRMS','Notification','Inventory','API','Database','CRM','Backup','Admin'].map((m) => <option key={m} value={m}>{m}</option>)}
+        </select>
+        <select className="input-field" style={{ width: '140px' }} value={activitySeverityFilter} onChange={(e) => setActivitySeverityFilter(e.target.value)}>
+          <option value="">All Severities</option>
+          {['INFO','WARNING','ERROR'].map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <button className="btn" style={{ marginLeft: 'auto' }} onClick={loadActivities}><RefreshCw size={14} /></button>
+      </div>
+      <div className="card" style={{ padding: 0 }}>
+        <div className="table-container">
+          <table>
+            <thead><tr><th>Timestamp</th><th>Module</th><th>Event</th><th>Severity</th><th>Status</th><th>Message</th></tr></thead>
+            <tbody>
+              {activities.length === 0 ? (
+                <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '28px' }}>No activity logs found</td></tr>
+              ) : activities.map((a) => (
+                <tr key={a.id}>
+                  <td className="tabular-nums" style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{new Date(a.createdAt).toLocaleString('en-IN')}</td>
+                  <td style={{ fontSize: '11px', fontWeight: 'bold' }}>{a.module}</td>
+                  <td style={{ fontFamily: 'monospace', fontSize: '10px', color: '#06b6d4' }}>{a.event}</td>
+                  <td><span style={{ fontSize: '10px', fontWeight: 'bold', color: SEVERITY_COLOR[a.severity] || '#6b7280' }}>{a.severity}</span></td>
+                  <td><span style={{ fontSize: '10px', color: a.status === 'SUCCESS' ? '#10b981' : a.status === 'FAILED' ? '#ef4444' : '#f59e0b' }}>{a.status}</span></td>
+                  <td style={{ fontSize: '12px', maxWidth: '320px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.message}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderBackup = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+        <button className="btn" onClick={loadBackups}><RefreshCw size={14} /></button>
+        <button className="btn btn-primary" onClick={() => setShowBackupModal(true)}><Database size={14} /> Run Backup / Restore</button>
+      </div>
+
+      {/* Disaster Recovery Config */}
+      {disasterRecovery && (
+        <div className="card" style={{ padding: '14px 16px', borderLeft: '3px solid #06b6d4' }}>
+          <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '10px', color: '#06b6d4' }}>Disaster Recovery Configuration</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', fontSize: '12px' }}>
+            <div><div style={{ color: 'var(--text-muted)', fontSize: '10px' }}>RTO</div><div style={{ fontWeight: 'bold', fontSize: '18px' }} className="tabular-nums">{disasterRecovery.rto}</div></div>
+            <div><div style={{ color: 'var(--text-muted)', fontSize: '10px' }}>RPO</div><div style={{ fontWeight: 'bold', fontSize: '18px' }} className="tabular-nums">{disasterRecovery.rpo}</div></div>
+            <div><div style={{ color: 'var(--text-muted)', fontSize: '10px' }}>Retention</div><div style={{ fontWeight: 'bold', fontSize: '18px' }} className="tabular-nums">{disasterRecovery.backupRetentionDays} days</div></div>
+            <div><div style={{ color: 'var(--text-muted)', fontSize: '10px' }}>Last DR Test</div><div style={{ fontWeight: 'bold' }}>{disasterRecovery.lastDrTestDate}</div></div>
+          </div>
+          <div style={{ marginTop: '10px', fontSize: '12px', color: 'var(--text-muted)' }}>
+            Recovery Contacts: {disasterRecovery.recoveryContacts?.join(', ')}
+          </div>
+        </div>
+      )}
+
+      {/* Backup History */}
+      <div className="card" style={{ padding: 0 }}>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)', fontWeight: 'bold', fontSize: '14px' }}>Backup History</div>
+        <div className="table-container">
+          <table>
+            <thead><tr><th>Backup ID</th><th>Type</th><th>Target</th><th>Size</th><th>Duration</th><th>Triggered By</th><th>Completed</th><th>Verified</th><th>Status</th></tr></thead>
+            <tbody>
+              {backups.map((b) => (
+                <tr key={b.id}>
+                  <td style={{ fontFamily: 'monospace', color: '#06b6d4', fontWeight: 'bold', fontSize: '12px' }}>{b.id}</td>
+                  <td><span style={{ fontSize: '10px', padding: '2px 6px', border: '1px solid var(--border-color)' }}>{b.type}</span></td>
+                  <td style={{ fontSize: '12px' }}>{b.target}</td>
+                  <td className="tabular-nums" style={{ fontSize: '12px' }}>{b.sizeMb > 0 ? `${b.sizeMb.toFixed(1)} MB` : '—'}</td>
+                  <td className="tabular-nums" style={{ fontSize: '12px' }}>{b.duration > 0 ? `${b.duration}s` : '—'}</td>
+                  <td style={{ fontSize: '12px' }}>{b.triggeredBy}</td>
+                  <td style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{b.completedAt ? new Date(b.completedAt).toLocaleString('en-IN') : b.startedAt ? `Started ${new Date(b.startedAt).toLocaleTimeString('en-IN')}` : '—'}</td>
+                  <td style={{ textAlign: 'center' }}>{b.verified ? <CheckCircle2 size={14} style={{ color: '#10b981' }} /> : <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>—</span>}</td>
+                  <td><span style={{ fontSize: '10px', color: b.status === 'COMPLETED' ? '#10b981' : b.status === 'RUNNING' ? '#f59e0b' : '#ef4444', fontWeight: 'bold' }}>{b.status}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const HealthGauge = ({ label, value, unit, max, color, icon: Icon }: any) => {
+    const pct = Math.min(100, Math.round((value / max) * 100));
+    const gaugeColor = pct > 85 ? '#ef4444' : pct > 65 ? '#f59e0b' : color || '#10b981';
+    return (
+      <div className="card" style={{ padding: '14px 16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</div>
+          {Icon && <Icon size={16} style={{ color: gaugeColor, opacity: 0.6 }} />}
+        </div>
+        <div className="tabular-nums" style={{ fontSize: '26px', fontWeight: 'bold', color: gaugeColor, marginBottom: '8px' }}>
+          {value}{unit}
+        </div>
+        <div style={{ height: '4px', backgroundColor: 'var(--border-color)', borderRadius: '2px' }}>
+          <div style={{ height: '4px', width: `${pct}%`, backgroundColor: gaugeColor, borderRadius: '2px', transition: 'width 0.5s' }} />
+        </div>
+        <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>{pct}% of {max}{unit}</div>
+      </div>
+    );
+  };
+
+  const renderSystemHealth = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            Last updated: {systemHealth?.timestamp ? new Date(systemHealth.timestamp).toLocaleTimeString('en-IN') : '—'}
+          </span>
+          {systemHealth?.overall && (
+            <span style={{ fontSize: '11px', padding: '2px 8px', backgroundColor: systemHealth.overall === 'HEALTHY' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)', color: systemHealth.overall === 'HEALTHY' ? '#10b981' : '#f59e0b', border: `1px solid ${systemHealth.overall === 'HEALTHY' ? '#10b981' : '#f59e0b'}`, fontWeight: 'bold' }}>
+              ● {systemHealth.overall}
+            </span>
+          )}
+        </div>
+        <button className="btn" onClick={loadSystemHealth} disabled={healthRefreshing}>
+          <RefreshCw size={14} style={{ animation: healthRefreshing ? 'spin 1s linear infinite' : 'none' }} /> Refresh
+        </button>
+      </div>
+
+      {!systemHealth ? (
+        <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '48px' }}>
+          <Server size={32} style={{ marginBottom: '8px', opacity: 0.3 }} />
+          <div>Loading system health metrics…</div>
+        </div>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+            <HealthGauge label="Memory Used" value={systemHealth.memory?.usedMb} unit=" MB" max={systemHealth.memory?.totalMb || 512} color="#06b6d4" icon={Cpu} />
+            <HealthGauge label="Storage Used" value={systemHealth.storage?.usedGb} unit=" GB" max={systemHealth.storage?.totalGb || 50} color="#8b5cf6" icon={HardDrive} />
+            <HealthGauge label="DB Response" value={systemHealth.database?.responseMs} unit=" ms" max={500} color="#10b981" icon={Database} />
+            <HealthGauge label="API req/min" value={systemHealth.api?.requestsPerMin} unit="" max={500} color="#f59e0b" icon={Globe} />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+            {[
+              { label: 'API Server', status: systemHealth.api?.status, detail: `${systemHealth.api?.responseMs}ms avg` },
+              { label: 'Database', status: systemHealth.database?.status, detail: `${systemHealth.database?.connections} connections` },
+              { label: 'Queue', status: systemHealth.queue?.status === 'IDLE' ? 'ONLINE' : 'DEGRADED', detail: `${systemHealth.queue?.pending} pending` },
+            ].map((item) => (
+              <div key={item.label} className="card" style={{ padding: '14px 16px', borderLeft: `3px solid ${item.status === 'ONLINE' || item.status === 'HEALTHY' ? '#10b981' : '#ef4444'}` }}>
+                <div style={{ fontWeight: 'bold', fontSize: '13px', marginBottom: '4px' }}>{item.label}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '11px', color: item.status === 'ONLINE' || item.status === 'HEALTHY' ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>● {item.status}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{item.detail}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+            {[
+              { label: 'Active Sessions', value: systemHealth.activeSessions, color: '#10b981' },
+              { label: 'Audit Events Today', value: systemHealth.totalAuditEventsToday, color: '#06b6d4' },
+              { label: 'Failed Logins (5m)', value: systemHealth.failedLoginsLast5Min, color: systemHealth.failedLoginsLast5Min > 5 ? '#ef4444' : '#f59e0b' },
+            ].map((stat) => (
+              <div key={stat.label} className="card" style={{ padding: '14px 16px', textAlign: 'center' }}>
+                <div className="tabular-nums" style={{ fontSize: '32px', fontWeight: 'bold', color: stat.color }}>{stat.value}</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {systemHealth.uptime && (
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'right' }}>
+              Server Uptime: <strong style={{ color: 'var(--text-color)' }}>{systemHealth.uptime.formatted}</strong>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+
+  const renderScheduler = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+        <button className="btn" onClick={loadScheduler}><RefreshCw size={14} /></button>
+        <button className="btn btn-primary" onClick={() => setShowSchedulerModal(true)}><Clock size={14} /> New Job</button>
+      </div>
+      <div className="card" style={{ padding: 0 }}>
+        <div className="table-container">
+          <table>
+            <thead><tr><th>Job Name</th><th>Module</th><th>Schedule</th><th>Last Run</th><th>Status</th><th>Next Run</th><th>Runs</th><th>Actions</th></tr></thead>
+            <tbody>
+              {schedulerJobs.map((job) => (
+                <tr key={job.id}>
+                  <td style={{ fontWeight: 'bold', fontSize: '13px' }}>{job.name}</td>
+                  <td style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{job.module}</td>
+                  <td>
+                    <div style={{ fontFamily: 'monospace', fontSize: '10px', color: '#8b5cf6' }}>{job.cron}</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{job.cronDesc}</div>
+                  </td>
+                  <td style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    {job.lastRunAt ? new Date(job.lastRunAt).toLocaleString('en-IN') : '—'}
+                    {job.lastStatus && <div style={{ fontSize: '10px', color: job.lastStatus === 'SUCCESS' ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>{job.lastStatus}</div>}
+                  </td>
+                  <td>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={job.enabled} onChange={async (e) => {
+                        try { await api.patch(`/admin/scheduler/jobs/${job.id}`, { enabled: e.target.checked }); loadScheduler(); } catch { loadScheduler(); }
+                      }} />
+                      <span style={{ fontSize: '11px', color: job.enabled ? '#10b981' : 'var(--text-muted)' }}>{job.enabled ? 'ENABLED' : 'DISABLED'}</span>
+                    </label>
+                  </td>
+                  <td style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    {job.nextRunAt ? new Date(job.nextRunAt).toLocaleString('en-IN') : '—'}
+                  </td>
+                  <td className="tabular-nums" style={{ fontSize: '13px', textAlign: 'center' }}>{job.runCount.toLocaleString('en-IN')}</td>
+                  <td>
+                    <button className="btn" style={{ padding: '2px 8px', fontSize: '10px', color: '#10b981' }}
+                      disabled={runningJobId === job.id}
+                      onClick={async () => {
+                        setRunningJobId(job.id);
+                        try { await api.post(`/admin/scheduler/jobs/${job.id}/run-now`); loadScheduler(); } catch { loadScheduler(); }
+                        finally { setRunningJobId(null); }
+                      }}>
+                      <Play size={10} /> {runningJobId === job.id ? 'Running…' : 'Run Now'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderFeatureFlags = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+        Enable or disable features without code changes. Changes take effect immediately. All changes are audit-logged.
+      </div>
+      {['CRM', 'POS', 'Inventory', 'Finance', 'Sales', 'Auth', 'Suppliers', 'Reports', 'Admin'].map((module) => {
+        const moduleFlags = featureFlags.filter((f) => f.module === module);
+        if (moduleFlags.length === 0) return null;
+        return (
+          <div key={module} className="card" style={{ padding: '14px 16px' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#10b981', marginBottom: '10px' }}>{module}</div>
+            {moduleFlags.map((flag) => (
+              <div key={flag.key} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{flag.name}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{flag.description}</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    Scope: <strong>{flag.scope}</strong> · Key: <code style={{ fontFamily: 'monospace' }}>{flag.key}</code>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {flag.enabled && (
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{flag.rolloutPercent}%</div>
+                  )}
+                  <button
+                    onClick={async () => {
+                      setTogglingFlag(flag.key);
+                      try { await api.patch(`/admin/feature-flags/${flag.key}`, { enabled: !flag.enabled }); loadFeatureFlags(); } catch { loadFeatureFlags(); }
+                      finally { setTogglingFlag(null); }
+                    }}
+                    disabled={togglingFlag === flag.key}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: flag.enabled ? '#10b981' : 'var(--text-muted)', padding: 0 }}>
+                    {flag.enabled ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
+                  </button>
+                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: flag.enabled ? '#10b981' : 'var(--text-muted)', minWidth: '55px' }}>
+                    {flag.enabled ? 'ENABLED' : 'DISABLED'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const renderApiManagement = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {/* API Monitor */}
+      {apiMonitor && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px' }}>
+          {[
+            { label: 'Total Requests', value: apiMonitor.totalRequestsToday.toLocaleString('en-IN'), color: '#10b981' },
+            { label: 'Failed Requests', value: apiMonitor.failedRequestsToday, color: '#ef4444' },
+            { label: 'Avg Response', value: `${apiMonitor.avgResponseTimeMs}ms`, color: '#06b6d4' },
+            { label: 'Auth Failures', value: apiMonitor.authFailuresToday, color: '#f59e0b' },
+            { label: 'Rate Limit Hits', value: apiMonitor.rateLimitViolationsToday, color: '#8b5cf6' },
+          ].map((stat) => (
+            <div key={stat.label} className="card" style={{ padding: '12px 14px' }}>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>{stat.label}</div>
+              <div className="tabular-nums" style={{ fontSize: '22px', fontWeight: 'bold', color: stat.color }}>{stat.value}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Top Endpoints */}
+      {apiMonitor?.topEndpoints && (
+        <div className="card" style={{ padding: '14px 16px' }}>
+          <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '10px' }}>Top Endpoints Today</div>
+          {apiMonitor.topEndpoints.map((ep: any) => (
+            <div key={ep.endpoint} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--border-color)' }}>
+              <code style={{ fontSize: '12px', color: '#06b6d4' }}>{ep.endpoint}</code>
+              <div style={{ display: 'flex', gap: '16px', fontSize: '12px' }}>
+                <span className="tabular-nums">{ep.requests.toLocaleString('en-IN')} req</span>
+                <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>{ep.avgMs}ms avg</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* API Keys */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+        <button className="btn" onClick={loadApiManagement}><RefreshCw size={14} /></button>
+        <button className="btn btn-primary" onClick={() => setShowCreateApiKey(true)}><Key size={14} /> Generate API Key</button>
+      </div>
+      <div className="card" style={{ padding: 0 }}>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)', fontWeight: 'bold', fontSize: '14px' }}>API Keys ({apiKeys.length})</div>
+        <div className="table-container">
+          <table>
+            <thead><tr><th>Name</th><th>Key Preview</th><th>Scope</th><th>Rate Limit</th><th>Requests Today</th><th>Allowed Origins</th><th>Expires</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody>
+              {apiKeys.map((k) => (
+                <tr key={k.id}>
+                  <td style={{ fontWeight: 'bold', fontSize: '13px' }}>{k.name}</td>
+                  <td style={{ fontFamily: 'monospace', fontSize: '11px', color: '#f59e0b' }}>{k.keyPreview}</td>
+                  <td><span style={{ fontSize: '10px', padding: '2px 6px', border: '1px solid var(--border-color)' }}>{k.scope}</span></td>
+                  <td className="tabular-nums" style={{ fontSize: '12px' }}>{k.rateLimit} req/min</td>
+                  <td className="tabular-nums" style={{ fontSize: '12px' }}>{k.requestsToday.toLocaleString('en-IN')}</td>
+                  <td style={{ fontSize: '11px', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{k.allowedOrigins?.join(', ')}</td>
+                  <td style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{k.expiresAt ? new Date(k.expiresAt).toLocaleDateString('en-IN') : 'Never'}</td>
+                  <td><span style={{ fontSize: '10px', color: k.isActive ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>{k.isActive ? 'ACTIVE' : 'REVOKED'}</span></td>
+                  <td>
+                    <button className="btn" style={{ padding: '2px 8px', fontSize: '10px', color: '#ef4444' }}
+                      onClick={async () => { if (!confirm(`Revoke API key "${k.name}"?`)) return; try { await api.delete(`/admin/api-keys/${k.id}`); loadApiManagement(); } catch { loadApiManagement(); } }}>
+                      <Trash2 size={10} /> Revoke
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const UsageBar = ({ label, used, allowed, unit = '' }: any) => {
+    const pct = Math.min(100, Math.round((used / allowed) * 100));
+    const color = pct > 85 ? '#ef4444' : pct > 65 ? '#f59e0b' : '#10b981';
+    return (
+      <div style={{ marginBottom: '14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+          <span style={{ fontSize: '13px' }}>{label}</span>
+          <span className="tabular-nums" style={{ fontSize: '12px', color }}>{used}{unit} / {allowed}{unit} ({pct}%)</span>
+        </div>
+        <div style={{ height: '6px', backgroundColor: 'var(--border-color)', borderRadius: '3px' }}>
+          <div style={{ height: '6px', width: `${pct}%`, backgroundColor: color, borderRadius: '3px', transition: 'width 0.5s' }} />
+        </div>
+      </div>
+    );
+  };
+
+  const renderLicensing = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {licenseData && (
+        <div className="card" style={{ padding: '20px', borderLeft: `3px solid ${licenseData.daysUntilExpiry < 30 ? '#ef4444' : '#10b981'}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+            <div>
+              <div style={{ fontSize: '16px', fontWeight: 'bold' }}>Afreen Mall ERP — {licenseData.type} License</div>
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>{licenseData.issuedTo}</div>
+              <div style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>{licenseData.key}</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Expiry</div>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: licenseData.daysUntilExpiry < 30 ? '#ef4444' : '#10b981' }} className="tabular-nums">{licenseData.expiryDate}</div>
+              <div style={{ fontSize: '12px', color: licenseData.daysUntilExpiry < 30 ? '#ef4444' : 'var(--text-muted)' }}>{licenseData.daysUntilExpiry} days remaining</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+            {licenseData.activatedModules?.map((m: string) => (
+              <span key={m} style={{ fontSize: '10px', padding: '2px 8px', backgroundColor: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
+                ✓ {m}
+              </span>
+            ))}
+          </div>
+          <button className="btn btn-primary" onClick={() => setShowLicenseModal(true)} style={{ alignSelf: 'flex-start' }}>
+            <Tag size={14} /> Renew / Activate License
+          </button>
+        </div>
+      )}
+
+      {licenseUsage && (
+        <div className="card" style={{ padding: '16px' }}>
+          <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '16px' }}>License Usage</div>
+          <UsageBar label="Users" used={licenseUsage.users?.used} allowed={licenseUsage.users?.allowed} />
+          <UsageBar label="Companies" used={licenseUsage.companies?.used} allowed={licenseUsage.companies?.allowed} />
+          <UsageBar label="Branches" used={licenseUsage.branches?.used} allowed={licenseUsage.branches?.allowed} />
+          <UsageBar label="POS Terminals" used={licenseUsage.posTerminals?.used} allowed={licenseUsage.posTerminals?.allowed} />
+          <UsageBar label="Storage" used={licenseUsage.storageGb?.used} allowed={licenseUsage.storageGb?.allowed} unit=" GB" />
+        </div>
+      )}
+    </div>
+  );
+
+  const renderMaintenance = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {maintenanceMode?.enabled && (
+        <div style={{ backgroundColor: 'rgba(245,158,11,0.08)', border: '2px solid #f59e0b', padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <AlertTriangle size={20} style={{ color: '#f59e0b' }} />
+            <span style={{ fontWeight: 'bold', fontSize: '15px', color: '#f59e0b' }}>MAINTENANCE MODE IS ACTIVE</span>
+          </div>
+          <div style={{ fontSize: '13px' }}>Message shown to users: <em>"{maintenanceMode.message}"</em></div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>
+            Enabled by: <strong>{maintenanceMode.enabledBy}</strong> · {maintenanceMode.enabledAt ? `at ${new Date(maintenanceMode.enabledAt).toLocaleString('en-IN')}` : ''}
+          </div>
+        </div>
+      )}
+
+      <div className="card" style={{ padding: '16px' }}>
+        <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '12px' }}>Maintenance Mode Control</div>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.6' }}>
+          When maintenance mode is enabled, all regular users see a maintenance message and cannot access the ERP.
+          Super Administrators and Store Managers retain full access. Background jobs continue unless individually paused.
+        </p>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            className="btn"
+            style={{ flex: 1, padding: '12px', backgroundColor: maintenanceMode?.enabled ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)', borderColor: maintenanceMode?.enabled ? '#10b981' : '#f59e0b', color: maintenanceMode?.enabled ? '#10b981' : '#f59e0b', fontWeight: 'bold' }}
+            onClick={() => setShowMaintenanceModal(true)}>
+            <Wrench size={15} />
+            {maintenanceMode?.enabled ? '✓ Disable Maintenance Mode' : '⚠ Configure & Enable Maintenance Mode'}
+          </button>
+          <button className="btn" onClick={loadMaintenance}><RefreshCw size={14} /></button>
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: '16px' }}>
+        <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '12px' }}>Allowed Roles During Maintenance</div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {(maintenanceMode?.allowedRoles || ['SUPER_ADMIN', 'STORE_MANAGER']).map((role: string) => (
+            <span key={role} style={{ fontSize: '11px', padding: '4px 10px', backgroundColor: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
+              ✓ {role.replace(/_/g, ' ')}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────
   // MAIN RENDER
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -1068,32 +1677,39 @@ export const SystemAdminScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Tab Strip */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '20px', overflowX: 'auto', gap: '0' }}>
-        {TABS.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
+      {/* Tab Strip — Grouped */}
+      <div style={{ marginBottom: '20px' }}>
+        {TAB_GROUPS.map((group) => {
+          const groupTabs = TABS.filter((t) => group.tabs.includes(t.id));
+          const isGroupActive = group.tabs.includes(activeTab);
           return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '8px 14px', fontSize: '12px', background: 'none',
-                border: 'none', borderBottom: isActive ? '2px solid #10b981' : '2px solid transparent',
-                color: isActive ? '#10b981' : 'var(--text-muted)',
-                cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: isActive ? 'bold' : 'normal',
-                transition: 'all 0.15s',
-              }}
-            >
-              <Icon size={13} />
-              {tab.label}
-            </button>
+            <div key={group.label} style={{ marginBottom: '0' }}>
+              <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', padding: '4px 4px 0', marginTop: '4px' }}>{group.label}</div>
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', overflowX: 'auto', gap: '0' }}>
+                {groupTabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '5px',
+                        padding: '6px 12px', fontSize: '11px', background: 'none', border: 'none',
+                        borderBottom: isActive ? '2px solid #10b981' : '2px solid transparent',
+                        color: isActive ? '#10b981' : 'var(--text-muted)',
+                        cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: isActive ? 'bold' : 'normal',
+                        transition: 'all 0.15s',
+                      }}>
+                      <Icon size={12} />{tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </div>
 
-      {/* Tab Content */}
+      {/* Tab Content — Part 1 */}
       {activeTab === 'dashboard' && renderDashboard()}
       {activeTab === 'users' && renderUsers()}
       {activeTab === 'roles' && renderRoles()}
@@ -1108,7 +1724,17 @@ export const SystemAdminScreen: React.FC = () => {
       {activeTab === 'audit' && renderAuditLog()}
       {activeTab === 'login-history' && renderLoginHistory()}
 
-      {/* ─── Modals ─── */}
+      {/* Tab Content — Part 2 */}
+      {activeTab === 'activity-log' && renderActivityLog()}
+      {activeTab === 'backup' && renderBackup()}
+      {activeTab === 'system-health' && renderSystemHealth()}
+      {activeTab === 'scheduler' && renderScheduler()}
+      {activeTab === 'feature-flags' && renderFeatureFlags()}
+      {activeTab === 'api-management' && renderApiManagement()}
+      {activeTab === 'licensing' && renderLicensing()}
+      {activeTab === 'maintenance' && renderMaintenance()}
+
+      {/* ─── Modals — Part 1 ─── */}
       {showCreateUser && (
         <CreateUserModal
           onClose={() => setShowCreateUser(false)}
@@ -1190,6 +1816,45 @@ export const SystemAdminScreen: React.FC = () => {
             </button>
           </div>
         </div>
+      )}
+
+      {/* ─── Modals — Part 2 ─── */}
+      {showBackupModal && (
+        <BackupRestoreModal
+          backups={backups}
+          onClose={() => setShowBackupModal(false)}
+          onBackupStarted={(backup) => { setBackups((prev) => [backup, ...prev]); setShowBackupModal(false); }}
+        />
+      )}
+
+      {showSchedulerModal && (
+        <SchedulerJobModal
+          onClose={() => setShowSchedulerModal(false)}
+          onCreated={(job) => { setSchedulerJobs((prev) => [...prev, job]); setShowSchedulerModal(false); }}
+        />
+      )}
+
+      {showCreateApiKey && (
+        <CreateApiKeyModal
+          onClose={() => { setShowCreateApiKey(false); setNewlyCreatedApiKey(null); loadApiManagement(); }}
+          onCreated={(key, rawKey) => { setNewlyCreatedApiKey({ key: rawKey, id: key.id }); }}
+        />
+      )}
+
+      {showLicenseModal && licenseData && (
+        <LicenseActivateModal
+          currentLicense={licenseData}
+          onClose={() => setShowLicenseModal(false)}
+          onActivated={(license) => { setLicenseData(license); setShowLicenseModal(false); }}
+        />
+      )}
+
+      {showMaintenanceModal && (
+        <MaintenanceModeModal
+          maintenance={maintenanceMode}
+          onClose={() => setShowMaintenanceModal(false)}
+          onUpdated={(m) => { setMaintenanceMode(m); setShowMaintenanceModal(false); }}
+        />
       )}
     </div>
   );
