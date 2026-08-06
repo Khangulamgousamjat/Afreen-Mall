@@ -55,6 +55,7 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
   const [lastScannedItem, setLastScannedItem] = useState<POSCartItem | null>(null);
   const [lastScannedFlash, setLastScannedFlash] = useState(false);
   const [cart, setCart] = useState<POSCartItem[]>([]);
+  const [selectedCartIndex, setSelectedCartIndex] = useState<number | null>(null);
 
   // ── Cart Unload Guard ───────────────────────────────────────────────────
   useEffect(() => {
