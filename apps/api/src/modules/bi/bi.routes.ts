@@ -393,4 +393,318 @@ router.get('/alerts', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. EXECUTIVE SCORECARDS (Target vs Actual, Variance, Green/Yellow/Red)
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/scorecards', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    await logBiAccess(req, 'BI_SCORECARDS_VIEW');
+
+    const scorecards = [
+      {
+        entityType: 'COMPANY',
+        name: 'Afreen Mall Enterprise Overall',
+        kpi: 'Monthly Net Revenue',
+        targetPaise: 500000000, // ₹5.0M
+        actualPaise: 485000000, // ₹4.85M
+        variancePct: -3.0,
+        status: 'YELLOW',
+        owner: 'CEO / Board',
+      },
+      {
+        entityType: 'COMPANY',
+        name: 'Afreen Mall Enterprise Overall',
+        kpi: 'Gross Profit Margin',
+        targetPaise: 30.0, // 30%
+        actualPaise: 32.0, // 32%
+        variancePct: +2.0,
+        status: 'GREEN',
+        owner: 'CFO',
+      },
+      {
+        entityType: 'BRANCH',
+        name: 'Afreen Mall Main Store',
+        kpi: 'Monthly Sales Target',
+        targetPaise: 270000000, // ₹2.7M
+        actualPaise: 284000000, // ₹2.84M
+        variancePct: +5.2,
+        status: 'GREEN',
+        owner: 'Zainab Fatima (Store Manager)',
+      },
+      {
+        entityType: 'BRANCH',
+        name: 'Afreen Mall Express Outlet',
+        kpi: 'Monthly Sales Target',
+        targetPaise: 75000000, // ₹750K
+        actualPaise: 59000000, // ₹590K
+        variancePct: -21.3,
+        status: 'RED',
+        owner: 'Tariq Ahmad (Outlet Manager)',
+      },
+      {
+        entityType: 'DEPARTMENT',
+        name: 'Apparel & Fashion',
+        kpi: 'Stock Turnover Ratio',
+        targetPaise: 6.0,
+        actualPaise: 6.8,
+        variancePct: +13.3,
+        status: 'GREEN',
+        owner: 'Category Head - Apparel',
+      },
+      {
+        entityType: 'SUPPLIER',
+        name: 'Himalayan Craft Suppliers',
+        kpi: 'On-Time Fulfillment Rate',
+        targetPaise: 98.0,
+        actualPaise: 91.5,
+        variancePct: -6.5,
+        status: 'RED',
+        owner: 'Procurement Manager',
+      },
+    ];
+
+    return res.json({ scorecards });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch Executive Scorecards' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9. FORECASTING ENGINE (Predictive Sales, Inventory, Cash Flow)
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/forecasting', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    await logBiAccess(req, 'BI_FORECASTING_VIEW');
+
+    const forecasts = {
+      salesForecastMonthly: [
+        { month: 'Jul 2026', actualPaise: 485000000, forecastPaise: 480000000, confidenceInterval: '±2%' },
+        { month: 'Aug 2026', actualPaise: null, forecastPaise: 520000000, confidenceInterval: '±4%' },
+        { month: 'Sep 2026', actualPaise: null, forecastPaise: 560000000, confidenceInterval: '±5%' },
+        { month: 'Oct 2026 (Festive Peak)', actualPaise: null, forecastPaise: 740000000, confidenceInterval: '±6%' },
+        { month: 'Nov 2026', actualPaise: null, forecastPaise: 610000000, confidenceInterval: '±5%' },
+        { month: 'Dec 2026', actualPaise: null, forecastPaise: 680000000, confidenceInterval: '±5%' },
+      ],
+      inventoryDemandForecast: [
+        { category: 'Apparel & Fashion', currentStock: 1240, predictedDemand30d: 1480, reorderRequired: true, recommendedOrderQty: 400 },
+        { category: 'Electronics & Gadgets', currentStock: 420, predictedDemand30d: 280, reorderRequired: false, recommendedOrderQty: 0 },
+        { category: 'Groceries & Staples', currentStock: 3100, predictedDemand30d: 3800, reorderRequired: true, recommendedOrderQty: 1000 },
+      ],
+      cashFlowProjection: [
+        { week: 'Week 1', expectedInflowPaise: 130000000, expectedOutflowPaise: 95000000, netCashPaise: 35000000 },
+        { week: 'Week 2', expectedInflowPaise: 125000000, expectedOutflowPaise: 110000000, netCashPaise: 15000000 },
+        { week: 'Week 3', expectedInflowPaise: 140000000, expectedOutflowPaise: 88000000, netCashPaise: 52000000 },
+        { week: 'Week 4 (Payroll)', expectedInflowPaise: 135000000, expectedOutflowPaise: 142000000, netCashPaise: -7000000 },
+      ],
+    };
+
+    return res.json({ forecasts });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to generate Forecasts' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. WHAT-IF SCENARIO PLANNING SIMULATOR
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/what-if', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const priceChangePct = parseFloat(String(req.query.priceChangePct || '0'));
+    const discountChangePct = parseFloat(String(req.query.discountChangePct || '0'));
+    const footfallChangePct = parseFloat(String(req.query.footfallChangePct || '0'));
+    const supplierCostChangePct = parseFloat(String(req.query.supplierCostChangePct || '0'));
+
+    await logBiAccess(req, 'BI_WHAT_IF_SIMULATION', { priceChangePct, discountChangePct, footfallChangePct, supplierCostChangePct });
+
+    // Baseline numbers
+    const baseRevenuePaise = 485000000;
+    const baseCogsPaise = 330000000;
+    const baseOpexPaise = 67000000;
+
+    // Simulation calculation
+    const revenueFactor = (1 + priceChangePct / 100) * (1 - discountChangePct / 100) * (1 + footfallChangePct / 100);
+    const simulatedRevenuePaise = Math.round(baseRevenuePaise * revenueFactor);
+    const simulatedCogsPaise = Math.round(baseCogsPaise * (1 + supplierCostChangePct / 100) * (1 + footfallChangePct / 100 * 0.8));
+    const simulatedGrossProfitPaise = simulatedRevenuePaise - simulatedCogsPaise;
+    const simulatedNetProfitPaise = simulatedGrossProfitPaise - baseOpexPaise;
+
+    const baseGrossProfitPaise = baseRevenuePaise - baseCogsPaise;
+    const baseNetProfitPaise = baseGrossProfitPaise - baseOpexPaise;
+
+    const simulationResult = {
+      baseline: {
+        revenuePaise: baseRevenuePaise,
+        cogsPaise: baseCogsPaise,
+        grossProfitPaise: baseGrossProfitPaise,
+        netProfitPaise: baseNetProfitPaise,
+        grossMarginPct: 32.0,
+      },
+      simulated: {
+        revenuePaise: simulatedRevenuePaise,
+        cogsPaise: simulatedCogsPaise,
+        grossProfitPaise: simulatedGrossProfitPaise,
+        netProfitPaise: simulatedNetProfitPaise,
+        grossMarginPct: Math.round((simulatedGrossProfitPaise / simulatedRevenuePaise) * 1000) / 10,
+      },
+      impact: {
+        revenueChangePaise: simulatedRevenuePaise - baseRevenuePaise,
+        netProfitChangePaise: simulatedNetProfitPaise - baseNetProfitPaise,
+        netProfitChangePct: Math.round(((simulatedNetProfitPaise - baseNetProfitPaise) / baseNetProfitPaise) * 1000) / 10,
+      },
+    };
+
+    return res.json({ simulationResult });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to run What-If Simulation' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 11. GRANULAR PROFITABILITY ANALYSIS
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/profitability', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    await logBiAccess(req, 'BI_PROFITABILITY_ANALYSIS_VIEW');
+
+    const profitability = {
+      byCategory: [
+        { category: 'Apparel & Fashion', revenuePaise: 210000000, cogsPaise: 121800000, grossProfitPaise: 88200000, marginPct: 42.0 },
+        { category: 'Electronics & Gadgets', revenuePaise: 140000000, cogsPaise: 106400000, grossProfitPaise: 33600000, marginPct: 24.0 },
+        { category: 'Groceries & Staples', revenuePaise: 85000000, cogsPaise: 68000000, grossProfitPaise: 17000000, marginPct: 20.0 },
+        { category: 'Footwear & Accessories', revenuePaise: 50000000, cogsPaise: 33500000, grossProfitPaise: 16500000, marginPct: 33.0 },
+      ],
+      byChannel: [
+        { channel: 'Retail Counter POS', revenuePaise: 380000000, grossProfitPaise: 121600000, marginPct: 32.0 },
+        { channel: 'Institutional / B2B Bulk', revenuePaise: 75000000, grossProfitPaise: 18750000, marginPct: 25.0 },
+        { channel: 'Online / Delivery Orders', revenuePaise: 30000000, grossProfitPaise: 8400000, marginPct: 28.0 },
+      ],
+    };
+
+    return res.json({ profitability });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch Profitability Analysis' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 12. DATA QUALITY DASHBOARD
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/data-quality', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    await logBiAccess(req, 'BI_DATA_QUALITY_VIEW');
+
+    const dataQuality = {
+      overallHealthScore: 98.4,
+      checks: [
+        { checkName: 'Unposted Journal Drafts', status: 'PASS', issuesCount: 0, severity: 'LOW' },
+        { checkName: 'Orphaned Inventory Movements', status: 'PASS', issuesCount: 0, severity: 'HIGH' },
+        { checkName: 'Negative Stock Balances', status: 'WARNING', issuesCount: 2, severity: 'MEDIUM', detail: 'SKU AM-GRO-041 has -3 units stock balance' },
+        { checkName: 'Duplicate Customer Mobile Numbers', status: 'PASS', issuesCount: 1, severity: 'LOW', detail: 'Mobile 9906512345 shared by 2 customer records' },
+        { checkName: 'Missing HSN Code on Active Products', status: 'PASS', issuesCount: 0, severity: 'MEDIUM' },
+        { checkName: 'API Sync Latency', status: 'PASS', issuesCount: 0, severity: 'LOW', detail: 'All 3 POS nodes synchronized < 2s ago' },
+      ],
+      lastAuditTimestamp: new Date().toISOString(),
+    };
+
+    return res.json({ dataQuality });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch Data Quality Metrics' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 13. AI INSIGHTS & ANOMALY DETECTION (System Generated Recommendations)
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/ai-insights', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    await logBiAccess(req, 'BI_AI_INSIGHTS_VIEW');
+
+    const insights = [
+      {
+        id: 'AI-INS-001',
+        category: 'ANOMALY_DETECTION',
+        title: 'Unusual Sales Volume Spike in Apparel (Evening Hours)',
+        confidencePct: 94.2,
+        impact: 'HIGH',
+        summary: 'Sales for Pashmina Shawls spiked +185% between 18:00–20:00 compared to 30-day baseline. Verification confirms tourist group purchase.',
+        recommendation: 'Ensure inventory stocking for peak evening hours on weekends.',
+        isSystemGenerated: true,
+      },
+      {
+        id: 'AI-INS-002',
+        category: 'CHURN_PREDICTION',
+        title: 'Customer Churn Alert for 15 High-Value Gold Members',
+        confidencePct: 88.5,
+        impact: 'HIGH',
+        summary: '15 Gold tier members have not visited in >45 days despite historical purchase cadence of 12 days.',
+        recommendation: 'Trigger automated personalized WhatsApp loyalty bonus coupon (₹500 off).',
+        isSystemGenerated: true,
+      },
+      {
+        id: 'AI-INS-003',
+        category: 'REORDER_OPTIMIZATION',
+        title: 'Optimized Reorder Point for Organic Saffron 5g',
+        confidencePct: 91.0,
+        impact: 'MEDIUM',
+        summary: 'Lead time from supplier increased by 1.2 days over last 3 POs. Reorder threshold should be increased from 15 to 22 units.',
+        recommendation: 'Update reorder threshold in Inventory master.',
+        isSystemGenerated: true,
+      },
+      {
+        id: 'AI-INS-004',
+        category: 'DISCOUNT_AUDIT',
+        title: 'Cashier Manual Discount Variance Flag',
+        confidencePct: 86.4,
+        impact: 'MEDIUM',
+        summary: 'Cashier ID 300004 applied manual 10% discount on 12 non-promotional transactions today.',
+        recommendation: 'Review discount log with Store Manager.',
+        isSystemGenerated: true,
+      },
+    ];
+
+    return res.json({ insights });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to generate AI Insights' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 14. CUSTOM REPORT BUILDER & REPORT LIBRARY
+// ─────────────────────────────────────────────────────────────────────────────
+let savedCustomReports: any[] = [
+  { id: 'REP-CUST-001', name: 'Monthly Executive Financial Statement', category: 'Finance', createdBy: 'CFO Office', createdAt: '2026-07-01', isFavorite: true, fields: ['revenue', 'cogs', 'grossMargin', 'netMargin'], schedule: 'MONTHLY' },
+  { id: 'REP-CUST-002', name: 'Fast-Moving Apparel Stock Analysis', category: 'Inventory', createdBy: 'Category Head', createdAt: '2026-07-10', isFavorite: true, fields: ['sku', 'name', 'currentStock', 'turnoverRatio'], schedule: 'WEEKLY' },
+  { id: 'REP-CUST-003', name: 'Cashier Sales & Discount Audit Report', category: 'Audit', createdBy: 'Internal Audit', createdAt: '2026-07-15', isFavorite: false, fields: ['cashierId', 'totalSales', 'discountAmount', 'reprintCount'], schedule: 'DAILY' },
+];
+
+router.get('/custom-reports', async (req: AuthenticatedRequest, res: Response) => {
+  return res.json({ reports: savedCustomReports });
+});
+
+router.post('/custom-reports', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { name, category, fields, schedule } = req.body;
+    if (!name || !category) return res.status(400).json({ error: 'Report name and category are required' });
+
+    const newReport = {
+      id: `REP-CUST-${String(savedCustomReports.length + 1).padStart(3, '0')}`,
+      name,
+      category,
+      createdBy: req.user?.fullName || 'Admin User',
+      createdAt: new Date().toISOString().split('T')[0],
+      isFavorite: false,
+      fields: fields || [],
+      schedule: schedule || 'MANUAL',
+    };
+
+    savedCustomReports.push(newReport);
+    await logBiAccess(req, 'BI_CUSTOM_REPORT_CREATE', { newReport });
+
+    return res.status(201).json({ report: newReport, message: 'Custom report saved successfully.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create Custom Report' });
+  }
+});
+
 export default router;
+

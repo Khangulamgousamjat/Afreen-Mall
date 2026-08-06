@@ -3,12 +3,27 @@ import {
   BarChart3, TrendingUp, DollarSign, Package, Users, Building2,
   AlertTriangle, ArrowUpRight, ArrowDownRight, RefreshCw, Download,
   Sliders, ShieldCheck, CheckCircle2, Clock, Eye, FileText, ShoppingBag,
-  Award, PieChart, Layers, Truck, Target, ChevronRight, Activity, Filter, Calendar, Mail
+  Award, PieChart, Layers, Truck, Target, ChevronRight, Activity, Filter, Calendar, Mail,
+  Sparkles, HelpCircle, Database, Plus, Check, Play
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 
-type BITab = 'executive' | 'kpis' | 'cross-module' | 'branches' | 'products-customers' | 'alerts' | 'scheduler';
+type BITab =
+  | 'executive'
+  | 'kpis'
+  | 'cross-module'
+  | 'branches'
+  | 'products-customers'
+  | 'scorecards'
+  | 'forecasting'
+  | 'what-if'
+  | 'profitability'
+  | 'data-quality'
+  | 'ai-insights'
+  | 'report-builder'
+  | 'alerts'
+  | 'scheduler';
 
 export const BusinessIntelligenceScreen: React.FC = () => {
   const { user } = useAuth();
@@ -18,7 +33,7 @@ export const BusinessIntelligenceScreen: React.FC = () => {
   const [selectedBranch, setSelectedBranch] = useState('ALL');
   const [rolePerspective, setRolePerspective] = useState(user?.role || 'SUPER_ADMIN');
 
-  // BI Data States
+  // BI Data States - Part 1
   const [execSummary, setExecSummary] = useState<any>(null);
   const [kpiCategory, setKpiCategory] = useState('sales');
   const [kpisData, setKpisData] = useState<any>(null);
@@ -29,10 +44,22 @@ export const BusinessIntelligenceScreen: React.FC = () => {
   const [alertsData, setAlertsData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // BI Data States - Part 2
+  const [scorecards, setScorecards] = useState<any[]>([]);
+  const [forecasts, setForecasts] = useState<any>(null);
+  const [whatIfParams, setWhatIfParams] = useState({ priceChangePct: 5, discountChangePct: 0, footfallChangePct: 10, supplierCostChangePct: 2 });
+  const [whatIfResult, setWhatIfResult] = useState<any>(null);
+  const [profitability, setProfitability] = useState<any>(null);
+  const [dataQuality, setDataQuality] = useState<any>(null);
+  const [aiInsights, setAiInsights] = useState<any[]>([]);
+  const [customReports, setCustomReports] = useState<any[]>([]);
+  const [showCreateReportModal, setShowCreateReportModal] = useState(false);
+  const [newReportForm, setNewReportForm] = useState({ name: '', category: 'Finance', schedule: 'WEEKLY' });
+
   // Drill-down Modal State
   const [drilldownWidget, setDrilldownWidget] = useState<{ title: string; data: any } | null>(null);
 
-  // Load BI Data
+  // Load BI Data - Part 1
   const loadExecutiveSummary = async () => {
     try {
       const res = await api.get('/bi/executive-summary', { params: { dateRange, branchId: selectedBranch } });
@@ -90,6 +117,68 @@ export const BusinessIntelligenceScreen: React.FC = () => {
     } catch { setAlertsData([]); }
   };
 
+  // Load BI Data - Part 2
+  const loadScorecards = async () => {
+    try {
+      const res = await api.get('/bi/scorecards');
+      setScorecards(res.data.scorecards || []);
+    } catch { setScorecards([]); }
+  };
+
+  const loadForecasting = async () => {
+    try {
+      const res = await api.get('/bi/forecasting');
+      setForecasts(res.data.forecasts);
+    } catch { setForecasts(null); }
+  };
+
+  const runWhatIfSimulation = async () => {
+    try {
+      const res = await api.get('/bi/what-if', { params: whatIfParams });
+      setWhatIfResult(res.data.simulationResult);
+    } catch { setWhatIfResult(null); }
+  };
+
+  const loadProfitability = async () => {
+    try {
+      const res = await api.get('/bi/profitability');
+      setProfitability(res.data.profitability);
+    } catch { setProfitability(null); }
+  };
+
+  const loadDataQuality = async () => {
+    try {
+      const res = await api.get('/bi/data-quality');
+      setDataQuality(res.data.dataQuality);
+    } catch { setDataQuality(null); }
+  };
+
+  const loadAiInsights = async () => {
+    try {
+      const res = await api.get('/bi/ai-insights');
+      setAiInsights(res.data.insights || []);
+    } catch { setAiInsights([]); }
+  };
+
+  const loadCustomReports = async () => {
+    try {
+      const res = await api.get('/bi/custom-reports');
+      setCustomReports(res.data.reports || []);
+    } catch { setCustomReports([]); }
+  };
+
+  const handleCreateReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.post('/bi/custom-reports', newReportForm);
+      setShowCreateReportModal(false);
+      setNewReportForm({ name: '', category: 'Finance', schedule: 'WEEKLY' });
+      loadCustomReports();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to create report');
+    }
+  };
+
   useEffect(() => {
     setLoading(true);
     if (activeTab === 'executive') loadExecutiveSummary();
@@ -97,6 +186,13 @@ export const BusinessIntelligenceScreen: React.FC = () => {
     if (activeTab === 'cross-module') loadCrossModule();
     if (activeTab === 'branches') loadBranchPerformance();
     if (activeTab === 'products-customers') loadProductCustomerAnalytics();
+    if (activeTab === 'scorecards') loadScorecards();
+    if (activeTab === 'forecasting') loadForecasting();
+    if (activeTab === 'what-if') runWhatIfSimulation();
+    if (activeTab === 'profitability') loadProfitability();
+    if (activeTab === 'data-quality') loadDataQuality();
+    if (activeTab === 'ai-insights') loadAiInsights();
+    if (activeTab === 'report-builder') loadCustomReports();
     if (activeTab === 'alerts') loadAlerts();
     setLoading(false);
   }, [activeTab, dateRange, selectedBranch, kpiCategory]);
@@ -106,9 +202,8 @@ export const BusinessIntelligenceScreen: React.FC = () => {
     return `₹${val.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
   };
 
-  // Helper for Exporting BI Reports
   const handleExport = (format: 'EXCEL' | 'PDF' | 'CSV') => {
-    alert(`Exporting BI ${activeTab.toUpperCase()} report in ${format} format. Applied Filters: DateRange=${dateRange}, Branch=${selectedBranch}.`);
+    alert(`Exporting BI ${activeTab.toUpperCase()} report in ${format} format. Filters: DateRange=${dateRange}, Branch=${selectedBranch}.`);
   };
 
   return (
@@ -121,7 +216,7 @@ export const BusinessIntelligenceScreen: React.FC = () => {
             Business Intelligence & Executive Analytics
           </h1>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-            Department 12 · Real-Time KPI Engine · Cross-Module Analytics · Executive Decision Control
+            Department 12 · Real-Time KPI Engine · Forecasting · AI Insights · Data Warehouse · Executive Governance
           </div>
         </div>
 
@@ -162,7 +257,7 @@ export const BusinessIntelligenceScreen: React.FC = () => {
           {/* Export Dropdown */}
           <div style={{ display: 'flex', gap: '4px' }}>
             <button className="btn" onClick={() => handleExport('EXCEL')} style={{ padding: '6px 10px', fontSize: '11px' }}>
-              <Download size={13} /> Export Excel
+              <Download size={13} /> Excel
             </button>
             <button className="btn" onClick={() => handleExport('PDF')} style={{ padding: '6px 10px', fontSize: '11px' }}>
               PDF
@@ -172,15 +267,22 @@ export const BusinessIntelligenceScreen: React.FC = () => {
       </div>
 
       {/* ── BI TAB STRIP ── */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', gap: '0', backgroundColor: 'var(--card-bg)' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', gap: '0', backgroundColor: 'var(--card-bg)', overflowX: 'auto' }}>
         {[
           { id: 'executive', label: 'Executive Dashboard', icon: Activity },
-          { id: 'kpis', label: 'KPI Calculation Engine', icon: Target },
-          { id: 'cross-module', label: 'Cross-Module Analytics', icon: Layers },
-          { id: 'branches', label: 'Branch Performance & Ranking', icon: Building2 },
-          { id: 'products-customers', label: 'Product & Customer Intelligence', icon: Award },
-          { id: 'alerts', label: 'Operational Alert Center', icon: AlertTriangle },
-          { id: 'scheduler', label: 'Report Delivery Scheduler', icon: Mail },
+          { id: 'kpis', label: 'KPI Engine', icon: Target },
+          { id: 'cross-module', label: 'Cross-Module', icon: Layers },
+          { id: 'branches', label: 'Branch Ranking', icon: Building2 },
+          { id: 'products-customers', label: 'Products & Customers', icon: Award },
+          { id: 'scorecards', label: 'Executive Scorecards', icon: ShieldCheck },
+          { id: 'forecasting', label: 'Forecasting', icon: TrendingUp },
+          { id: 'what-if', label: 'What-If Sandbox', icon: HelpCircle },
+          { id: 'profitability', label: 'Profitability Matrix', icon: DollarSign },
+          { id: 'data-quality', label: 'Data Quality', icon: Database },
+          { id: 'ai-insights', label: 'AI Insights', icon: Sparkles },
+          { id: 'report-builder', label: 'Custom Reports', icon: FileText },
+          { id: 'alerts', label: 'Alerts', icon: AlertTriangle },
+          { id: 'scheduler', label: 'Scheduler', icon: Mail },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -190,10 +292,11 @@ export const BusinessIntelligenceScreen: React.FC = () => {
               onClick={() => setActiveTab(tab.id as BITab)}
               style={{
                 display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '10px 16px', fontSize: '12px', background: 'none', border: 'none',
+                padding: '10px 14px', fontSize: '12px', background: 'none', border: 'none',
                 borderBottom: isActive ? '2px solid #06b6d4' : '2px solid transparent',
                 color: isActive ? '#06b6d4' : 'var(--text-muted)',
                 cursor: 'pointer', fontWeight: isActive ? 'bold' : 'normal', transition: 'all 0.15s',
+                whiteSpace: 'nowrap'
               }}
             >
               <Icon size={14} /> {tab.label}
@@ -278,50 +381,12 @@ export const BusinessIntelligenceScreen: React.FC = () => {
               </div>
             </div>
           </div>
-
-          {/* Executive Overview Visual Highlights */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
-            <div className="card">
-              <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Sales Trend & Revenue Trajectory</span>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Real-Time Processing</span>
-              </div>
-              <div style={{ height: '180px', backgroundColor: 'var(--bg-color)', border: '1px dashed var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '8px' }}>
-                <Activity size={32} style={{ color: '#06b6d4' }} />
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Live Revenue Trajectory Chart (Integrated Aggregate Engine)</div>
-                <div style={{ fontSize: '11px', color: '#10b981' }}>Peak Hour Today: 19:00 (₹1,100,000.00)</div>
-              </div>
-            </div>
-
-            <div className="card">
-              <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '12px' }}>Operational Health Indicator</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px' }}>
-                  <span>POS Terminal Uptime</span>
-                  <strong style={{ color: '#10b981' }}>100% (10/10)</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px' }}>
-                  <span>Inventory Stocking Rate</span>
-                  <strong style={{ color: '#10b981' }}>98.2%</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px' }}>
-                  <span>Supplier On-Time Delivery</span>
-                  <strong style={{ color: '#06b6d4' }}>94.2%</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px' }}>
-                  <span>Cash Reconciliation Status</span>
-                  <strong style={{ color: '#10b981' }}>VERIFIED (0 Variance)</strong>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
       {/* ── 2. KPI CALCULATION ENGINE ── */}
       {activeTab === 'kpis' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          {/* Category Selector */}
           <div style={{ display: 'flex', gap: '8px' }}>
             {['sales', 'inventory', 'purchase', 'finance', 'hr', 'crm'].map((cat) => (
               <button
@@ -342,7 +407,7 @@ export const BusinessIntelligenceScreen: React.FC = () => {
           {kpisData && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
               {Object.entries(kpisData).map(([key, val]: any) => {
-                if (typeof val === 'object') return null; // skip array trends for main cards
+                if (typeof val === 'object') return null;
                 const label = key.replace(/Paise$/i, '').replace(/Pct$/i, ' %').replace(/([A-Z])/g, ' $1').toUpperCase();
                 const formattedVal = key.endsWith('Paise') ? formatRupees(val) : String(val);
                 return (
@@ -362,7 +427,6 @@ export const BusinessIntelligenceScreen: React.FC = () => {
       {/* ── 3. CROSS-MODULE ANALYTICS ── */}
       {activeTab === 'cross-module' && crossModuleData && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Sales vs Inventory Turnover */}
           <div className="card">
             <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '10px', color: '#06b6d4' }}>
               Sales Volume vs Inventory Valuation & Turnover (Monthly Trend)
@@ -385,116 +449,52 @@ export const BusinessIntelligenceScreen: React.FC = () => {
               </table>
             </div>
           </div>
-
-          {/* Sales vs Payroll Ratio */}
-          <div className="card">
-            <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '10px', color: '#8b5cf6' }}>
-              Departmental Sales vs Payroll Efficiency Ratio
-            </div>
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr><th>Department</th><th>Generated Revenue</th><th>Payroll Cost</th><th>Payroll % of Revenue</th></tr>
-                </thead>
-                <tbody>
-                  {crossModuleData.salesVsPayroll?.map((row: any) => (
-                    <tr key={row.department}>
-                      <td style={{ fontWeight: 'bold' }}>{row.department}</td>
-                      <td className="tabular-nums">{row.revenuePaise > 0 ? formatRupees(row.revenuePaise) : 'N/A (Cost Center)'}</td>
-                      <td className="tabular-nums">{formatRupees(row.payrollCostPaise)}</td>
-                      <td className="tabular-nums" style={{ fontWeight: 'bold', color: row.ratioPct > 10 ? '#f59e0b' : '#10b981' }}>
-                        {row.ratioPct > 0 ? `${row.ratioPct}%` : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Customer Loyalty Tier vs Revenue */}
-          <div className="card">
-            <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '10px', color: '#f59e0b' }}>
-              Customer Loyalty Tier Contribution to Total Revenue
-            </div>
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr><th>Loyalty Tier</th><th>Customer Count</th><th>Avg Annual Spend</th><th>Total Revenue Generated</th><th>Revenue Share %</th></tr>
-                </thead>
-                <tbody>
-                  {crossModuleData.customerLoyaltyVsRevenue?.map((row: any) => (
-                    <tr key={row.tier}>
-                      <td style={{ fontWeight: 'bold', color: '#f59e0b' }}>{row.tier}</td>
-                      <td className="tabular-nums">{row.customerCount}</td>
-                      <td className="tabular-nums">{formatRupees(row.avgSpendPaise)}</td>
-                      <td className="tabular-nums">{formatRupees(row.totalRevenuePaise)}</td>
-                      <td className="tabular-nums" style={{ fontWeight: 'bold' }}>{row.revenueSharePct}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
       )}
 
       {/* ── 4. BRANCH PERFORMANCE & RANKING ── */}
       {activeTab === 'branches' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div className="card" style={{ padding: 0 }}>
-            <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color)', fontWeight: 'bold', fontSize: '14px' }}>
-              Multi-Branch Operational & Financial Ranking
-            </div>
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Rank</th><th>Branch Name</th><th>City</th><th>Revenue</th><th>Gross Profit</th><th>Net Profit</th>
-                    <th>Growth</th><th>Transactions</th><th>Avg Bill</th><th>Staff</th><th>Score</th>
+        <div className="card" style={{ padding: 0 }}>
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color)', fontWeight: 'bold', fontSize: '14px' }}>
+            Multi-Branch Operational & Financial Ranking
+          </div>
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr><th>Rank</th><th>Branch Name</th><th>City</th><th>Revenue</th><th>Gross Profit</th><th>Net Profit</th><th>Growth</th><th>Score</th></tr>
+              </thead>
+              <tbody>
+                {branchPerf.map((b) => (
+                  <tr key={b.id}>
+                    <td style={{ fontWeight: 'bold', color: '#06b6d4' }}>#{b.rank}</td>
+                    <td style={{ fontWeight: 'bold' }}>{b.name}</td>
+                    <td>{b.city}</td>
+                    <td className="tabular-nums" style={{ fontWeight: 'bold', color: '#10b981' }}>{formatRupees(b.revenuePaise)}</td>
+                    <td className="tabular-nums">{formatRupees(b.grossProfitPaise)}</td>
+                    <td className="tabular-nums">{formatRupees(b.netProfitPaise)}</td>
+                    <td className="tabular-nums" style={{ color: '#10b981' }}>+{b.salesGrowthPct}%</td>
+                    <td>
+                      <span style={{ padding: '2px 8px', fontSize: '11px', fontWeight: 'bold', backgroundColor: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
+                        {b.performanceScore} / 100
+                      </span>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {branchPerf.map((b) => (
-                    <tr key={b.id}>
-                      <td style={{ fontWeight: 'bold', color: '#06b6d4' }}>#{b.rank}</td>
-                      <td style={{ fontWeight: 'bold' }}>{b.name} <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>({b.code})</span></td>
-                      <td>{b.city}</td>
-                      <td className="tabular-nums" style={{ fontWeight: 'bold', color: '#10b981' }}>{formatRupees(b.revenuePaise)}</td>
-                      <td className="tabular-nums">{formatRupees(b.grossProfitPaise)}</td>
-                      <td className="tabular-nums">{formatRupees(b.netProfitPaise)}</td>
-                      <td className="tabular-nums" style={{ color: '#10b981' }}>+{b.salesGrowthPct}%</td>
-                      <td className="tabular-nums">{b.transactionCount}</td>
-                      <td className="tabular-nums">{formatRupees(b.avgBillValuePaise)}</td>
-                      <td className="tabular-nums">{b.employeeCount}</td>
-                      <td>
-                        <span style={{ padding: '2px 8px', fontSize: '11px', fontWeight: 'bold', backgroundColor: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
-                          {b.performanceScore} / 100
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {/* ── 5. PRODUCT & CUSTOMER INTELLIGENCE ── */}
+      {/* ── 5. PRODUCTS & CUSTOMERS ── */}
       {activeTab === 'products-customers' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Best Sellers */}
           {productData && (
             <div className="card">
-              <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '10px', color: '#10b981' }}>
-                Top Performing Products (Revenue & Volume)
-              </div>
+              <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '10px', color: '#10b981' }}>Top Performing Products</div>
               <div className="table-container">
                 <table>
-                  <thead>
-                    <tr><th>SKU</th><th>Product Name</th><th>Category</th><th>Qty Sold</th><th>Total Revenue</th><th>Margin %</th></tr>
-                  </thead>
+                  <thead><tr><th>SKU</th><th>Product Name</th><th>Category</th><th>Qty Sold</th><th>Total Revenue</th><th>Margin %</th></tr></thead>
                   <tbody>
                     {productData.bestSellers?.map((p: any) => (
                       <tr key={p.sku}>
@@ -511,130 +511,375 @@ export const BusinessIntelligenceScreen: React.FC = () => {
               </div>
             </div>
           )}
+        </div>
+      )}
 
-          {/* Top Customers */}
-          {customerData && (
-            <div className="card">
-              <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '10px', color: '#f59e0b' }}>
-                Top Customers by Lifetime Value (LTV)
+      {/* ── 6. EXECUTIVE SCORECARDS (Part 2) ── */}
+      {activeTab === 'scorecards' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div className="card" style={{ padding: 0 }}>
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color)', fontWeight: 'bold', fontSize: '14px' }}>
+              Target vs Actual Performance Scorecards (Green / Yellow / Red)
+            </div>
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr><th>Entity Scope</th><th>Entity Name</th><th>KPI Metric</th><th>Target</th><th>Actual</th><th>Variance</th><th>Status</th><th>Owner</th></tr>
+                </thead>
+                <tbody>
+                  {scorecards.map((sc, i) => (
+                    <tr key={i}>
+                      <td><span style={{ fontSize: '10px', padding: '2px 6px', border: '1px solid var(--border-color)' }}>{sc.entityType}</span></td>
+                      <td style={{ fontWeight: 'bold' }}>{sc.name}</td>
+                      <td>{sc.kpi}</td>
+                      <td className="tabular-nums">{typeof sc.targetPaise === 'number' && sc.targetPaise > 1000 ? formatRupees(sc.targetPaise) : `${sc.targetPaise}%`}</td>
+                      <td className="tabular-nums" style={{ fontWeight: 'bold' }}>{typeof sc.actualPaise === 'number' && sc.actualPaise > 1000 ? formatRupees(sc.actualPaise) : `${sc.actualPaise}%`}</td>
+                      <td className="tabular-nums" style={{ fontWeight: 'bold', color: sc.variancePct >= 0 ? '#10b981' : '#ef4444' }}>
+                        {sc.variancePct >= 0 ? `+${sc.variancePct}%` : `${sc.variancePct}%`}
+                      </td>
+                      <td>
+                        <span style={{
+                          fontSize: '10px', padding: '3px 8px', fontWeight: 'bold',
+                          backgroundColor: sc.status === 'GREEN' ? 'rgba(16,185,129,0.1)' : sc.status === 'YELLOW' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
+                          color: sc.status === 'GREEN' ? '#10b981' : sc.status === 'YELLOW' ? '#f59e0b' : '#ef4444',
+                          border: `1px solid ${sc.status === 'GREEN' ? '#10b981' : sc.status === 'YELLOW' ? '#f59e0b' : '#ef4444'}`
+                        }}>
+                          ● {sc.status}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{sc.owner}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 7. FORECASTING ENGINE (Part 2) ── */}
+      {activeTab === 'forecasting' && forecasts && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="card">
+            <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '10px', color: '#06b6d4' }}>
+              Monthly Sales Revenue Projections & Confidence Intervals
+            </div>
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr><th>Month</th><th>Historical Actual</th><th>Predicted Forecast</th><th>Confidence Interval</th><th>Type</th></tr>
+                </thead>
+                <tbody>
+                  {forecasts.salesForecastMonthly?.map((f: any) => (
+                    <tr key={f.month}>
+                      <td style={{ fontWeight: 'bold' }}>{f.month}</td>
+                      <td className="tabular-nums">{f.actualPaise ? formatRupees(f.actualPaise) : '—'}</td>
+                      <td className="tabular-nums" style={{ fontWeight: 'bold', color: '#06b6d4' }}>{formatRupees(f.forecastPaise)}</td>
+                      <td className="tabular-nums" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{f.confidenceInterval}</td>
+                      <td>
+                        <span style={{ fontSize: '10px', padding: '2px 6px', border: '1px solid var(--border-color)', color: f.actualPaise ? 'var(--text-muted)' : '#06b6d4' }}>
+                          {f.actualPaise ? 'ACTUAL' : 'PREDICTIVE ESTIMATE'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card">
+            <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '10px', color: '#10b981' }}>
+              4-Week Cash Flow Inflow vs Outflow Projection
+            </div>
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr><th>Period</th><th>Expected Cash Inflow</th><th>Expected Cash Outflow</th><th>Net Cash Balance Impact</th></tr>
+                </thead>
+                <tbody>
+                  {forecasts.cashFlowProjection?.map((c: any) => (
+                    <tr key={c.week}>
+                      <td style={{ fontWeight: 'bold' }}>{c.week}</td>
+                      <td className="tabular-nums" style={{ color: '#10b981' }}>{formatRupees(c.expectedInflowPaise)}</td>
+                      <td className="tabular-nums" style={{ color: '#ef4444' }}>{formatRupees(c.expectedOutflowPaise)}</td>
+                      <td className="tabular-nums" style={{ fontWeight: 'bold', color: c.netCashPaise >= 0 ? '#10b981' : '#ef4444' }}>
+                        {formatRupees(c.netCashPaise)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 8. WHAT-IF SCENARIO SANDBOX (Part 2) ── */}
+      {activeTab === 'what-if' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="card">
+            <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '12px' }}>
+              Interactive What-If Scenario Simulator (No Impact on Live Data)
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '14px' }}>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Price Adjustment (+/- %)</label>
+                <input type="number" className="input-field" value={whatIfParams.priceChangePct} onChange={(e) => setWhatIfParams({ ...whatIfParams, priceChangePct: parseFloat(e.target.value) || 0 })} />
               </div>
-              <div className="table-container">
-                <table>
-                  <thead>
-                    <tr><th>Customer ID</th><th>Customer Name</th><th>City</th><th>Total Lifetime Spend</th><th>Total Orders</th><th>Loyalty Tier</th><th>Churn Risk</th></tr>
-                  </thead>
-                  <tbody>
-                    {customerData.topCustomers?.map((c: any) => (
-                      <tr key={c.id}>
-                        <td style={{ fontFamily: 'monospace' }}>{c.id}</td>
-                        <td style={{ fontWeight: 'bold' }}>{c.name}</td>
-                        <td>{c.city}</td>
-                        <td className="tabular-nums" style={{ fontWeight: 'bold', color: '#10b981' }}>{formatRupees(c.totalSpentPaise)}</td>
-                        <td className="tabular-nums">{c.totalOrders}</td>
-                        <td>
-                          <span style={{ fontSize: '10px', padding: '2px 6px', fontWeight: 'bold', border: '1px solid #f59e0b', color: '#f59e0b' }}>
-                            {c.tier}
-                          </span>
-                        </td>
-                        <td>
-                          <span style={{ fontSize: '10px', color: c.churnRisk === 'LOW' ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>
-                            {c.churnRisk}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Discount Adjustment (+/- %)</label>
+                <input type="number" className="input-field" value={whatIfParams.discountChangePct} onChange={(e) => setWhatIfParams({ ...whatIfParams, discountChangePct: parseFloat(e.target.value) || 0 })} />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Footfall / Volume Change (+/- %)</label>
+                <input type="number" className="input-field" value={whatIfParams.footfallChangePct} onChange={(e) => setWhatIfParams({ ...whatIfParams, footfallChangePct: parseFloat(e.target.value) || 0 })} />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Supplier COGS Change (+/- %)</label>
+                <input type="number" className="input-field" value={whatIfParams.supplierCostChangePct} onChange={(e) => setWhatIfParams({ ...whatIfParams, supplierCostChangePct: parseFloat(e.target.value) || 0 })} />
+              </div>
+            </div>
+            <button className="btn btn-primary" onClick={runWhatIfSimulation} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <Play size={14} /> Simulate Financial Impact
+            </button>
+          </div>
+
+          {whatIfResult && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+              <div className="card" style={{ borderLeft: '3px solid #6b7280' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>BASELINE REVENUE</div>
+                <div className="tabular-nums" style={{ fontSize: '20px', fontWeight: 'bold' }}>{formatRupees(whatIfResult.baseline.revenuePaise)}</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Net Profit: {formatRupees(whatIfResult.baseline.netProfitPaise)} (32.0% Margin)</div>
+              </div>
+
+              <div className="card" style={{ borderLeft: '3px solid #06b6d4' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>SIMULATED REVENUE</div>
+                <div className="tabular-nums" style={{ fontSize: '20px', fontWeight: 'bold', color: '#06b6d4' }}>{formatRupees(whatIfResult.simulated.revenuePaise)}</div>
+                <div style={{ fontSize: '11px', color: '#06b6d4', marginTop: '4px' }}>Simulated Profit: {formatRupees(whatIfResult.simulated.netProfitPaise)} ({whatIfResult.simulated.grossMarginPct}% Margin)</div>
+              </div>
+
+              <div className="card" style={{ borderLeft: `3px solid ${whatIfResult.impact.netProfitChangePaise >= 0 ? '#10b981' : '#ef4444'}` }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>ESTIMATED PROFIT IMPACT</div>
+                <div className="tabular-nums" style={{ fontSize: '20px', fontWeight: 'bold', color: whatIfResult.impact.netProfitChangePaise >= 0 ? '#10b981' : '#ef4444' }}>
+                  {formatRupees(whatIfResult.impact.netProfitChangePaise)}
+                </div>
+                <div style={{ fontSize: '11px', color: whatIfResult.impact.netProfitChangePaise >= 0 ? '#10b981' : '#ef4444', marginTop: '4px' }}>
+                  Variance: {whatIfResult.impact.netProfitChangePct >= 0 ? `+${whatIfResult.impact.netProfitChangePct}%` : `${whatIfResult.impact.netProfitChangePct}%`}
+                </div>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* ── 6. ALERTS DASHBOARD ── */}
-      {activeTab === 'alerts' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {alertsData.map((alt) => (
-            <div
-              key={alt.id}
-              className="card"
-              style={{
-                padding: '14px 16px',
-                borderLeft: `4px solid ${alt.severity === 'CRITICAL' ? '#ef4444' : alt.severity === 'HIGH' ? '#f59e0b' : '#06b6d4'}`,
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              }}
-            >
+      {/* ── 9. PROFITABILITY MATRIX (Part 2) ── */}
+      {activeTab === 'profitability' && profitability && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="card">
+            <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '10px', color: '#10b981' }}>
+              Category & Brand Gross Margin Breakdown
+            </div>
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr><th>Category</th><th>Revenue</th><th>Cost of Goods Sold (COGS)</th><th>Gross Profit</th><th>Gross Margin %</th></tr>
+                </thead>
+                <tbody>
+                  {profitability.byCategory?.map((c: any) => (
+                    <tr key={c.category}>
+                      <td style={{ fontWeight: 'bold' }}>{c.category}</td>
+                      <td className="tabular-nums">{formatRupees(c.revenuePaise)}</td>
+                      <td className="tabular-nums">{formatRupees(c.cogsPaise)}</td>
+                      <td className="tabular-nums" style={{ fontWeight: 'bold', color: '#10b981' }}>{formatRupees(c.grossProfitPaise)}</td>
+                      <td className="tabular-nums" style={{ fontWeight: 'bold' }}>{c.marginPct}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 10. DATA QUALITY MONITOR (Part 2) ── */}
+      {activeTab === 'data-quality' && dataQuality && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="card" style={{ borderLeft: '4px solid #10b981' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '10px', padding: '2px 6px', fontWeight: 'bold', backgroundColor: alt.severity === 'CRITICAL' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)', color: alt.severity === 'CRITICAL' ? '#ef4444' : '#f59e0b', border: `1px solid ${alt.severity === 'CRITICAL' ? '#ef4444' : '#f59e0b'}` }}>
-                    {alt.severity}
-                  </span>
-                  <strong style={{ fontSize: '13px' }}>{alt.title}</strong>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>({alt.category})</span>
-                </div>
-                <div style={{ fontSize: '12px', marginTop: '4px', color: 'var(--text-color)' }}>{alt.message}</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  Action Needed: <span style={{ color: '#06b6d4', fontWeight: 'bold' }}>{alt.actionNeeded}</span>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Enterprise Data Quality Score</div>
+                <div className="tabular-nums" style={{ fontSize: '28px', fontWeight: 'bold', color: '#10b981' }}>
+                  {dataQuality.overallHealthScore} / 100
                 </div>
               </div>
-              <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '11px' }}>
-                Take Action
-              </button>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                Last Audit Check: {new Date(dataQuality.lastAuditTimestamp).toLocaleString('en-IN')}
+              </div>
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: 0 }}>
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color)', fontWeight: 'bold', fontSize: '14px' }}>
+              System Data Quality Checks
+            </div>
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr><th>Check Name</th><th>Severity</th><th>Issues Count</th><th>Status</th><th>Details</th></tr>
+                </thead>
+                <tbody>
+                  {dataQuality.checks?.map((chk: any, i: number) => (
+                    <tr key={i}>
+                      <td style={{ fontWeight: 'bold' }}>{chk.checkName}</td>
+                      <td><span style={{ fontSize: '10px', padding: '2px 6px', border: '1px solid var(--border-color)' }}>{chk.severity}</span></td>
+                      <td className="tabular-nums">{chk.issuesCount}</td>
+                      <td>
+                        <span style={{ fontSize: '10px', padding: '2px 6px', fontWeight: 'bold', color: chk.status === 'PASS' ? '#10b981' : '#f59e0b' }}>
+                          ● {chk.status}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{chk.detail || 'Clean - No anomalies detected'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 11. AI INSIGHTS & ANOMALY DETECTION (Part 2) ── */}
+      {activeTab === 'ai-insights' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {aiInsights.map((ins) => (
+            <div key={ins.id} className="card" style={{ borderLeft: '4px solid #8b5cf6', padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Sparkles size={16} style={{ color: '#8b5cf6' }} />
+                  <strong style={{ fontSize: '14px' }}>{ins.title}</strong>
+                </div>
+                <span style={{ fontSize: '10px', padding: '2px 8px', backgroundColor: 'rgba(139,92,246,0.1)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.3)', fontWeight: 'bold' }}>
+                  AI System Generated ({ins.confidencePct}% Confidence)
+                </span>
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-color)', marginBottom: '8px' }}>{ins.summary}</div>
+              <div style={{ fontSize: '12px', backgroundColor: 'var(--bg-color)', padding: '8px 12px', border: '1px solid var(--border-color)', color: '#8b5cf6' }}>
+                <strong>Recommendation:</strong> {ins.recommendation}
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* ── 7. REPORT SCHEDULER & AUTOMATED DELIVERY ── */}
+      {/* ── 12. CUSTOM REPORT BUILDER & LIBRARY (Part 2) ── */}
+      {activeTab === 'report-builder' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+              Self-Service Report Library & Ad-Hoc Report Generator
+            </div>
+            <button className="btn btn-primary" onClick={() => setShowCreateReportModal(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <Plus size={14} /> Create Custom Report
+            </button>
+          </div>
+
+          <div className="card" style={{ padding: 0 }}>
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color)', fontWeight: 'bold', fontSize: '14px' }}>
+              Saved Custom Reports
+            </div>
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr><th>Report ID</th><th>Report Name</th><th>Category</th><th>Created By</th><th>Created Date</th><th>Schedule</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                  {customReports.map((r) => (
+                    <tr key={r.id}>
+                      <td style={{ fontFamily: 'monospace', color: '#06b6d4' }}>{r.id}</td>
+                      <td style={{ fontWeight: 'bold' }}>{r.name}</td>
+                      <td><span style={{ fontSize: '10px', padding: '2px 6px', border: '1px solid var(--border-color)' }}>{r.category}</span></td>
+                      <td style={{ fontSize: '12px' }}>{r.createdBy}</td>
+                      <td style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{r.createdAt}</td>
+                      <td style={{ fontSize: '11px' }}>{r.schedule}</td>
+                      <td>
+                        <button className="btn" style={{ padding: '2px 8px', fontSize: '10px' }} onClick={() => handleExport('EXCEL')}>
+                          Run Report
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 13. ALERTS ── */}
+      {activeTab === 'alerts' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {alertsData.map((alt) => (
+            <div key={alt.id} className="card" style={{ padding: '14px 16px', borderLeft: `4px solid ${alt.severity === 'CRITICAL' ? '#ef4444' : '#f59e0b'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <strong style={{ fontSize: '13px' }}>{alt.title}</strong>
+                <div style={{ fontSize: '12px', marginTop: '4px' }}>{alt.message}</div>
+              </div>
+              <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '11px' }}>Take Action</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── 14. SCHEDULER ── */}
       {activeTab === 'scheduler' && (
         <div className="card">
-          <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '12px' }}>
-            Automated Report Delivery & Scheduled Subscriptions
-          </div>
+          <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '12px' }}>Automated Report Subscriptions</div>
           <div className="table-container">
             <table>
-              <thead>
-                <tr><th>Report Title</th><th>Frequency</th><th>Recipients</th><th>Format</th><th>Status</th><th>Last Sent</th><th>Action</th></tr>
-              </thead>
+              <thead><tr><th>Report Title</th><th>Frequency</th><th>Recipients</th><th>Status</th></tr></thead>
               <tbody>
-                {[
-                  { title: 'Daily Executive Sales & Revenue Pack', frequency: 'Daily at 21:30', recipients: 'owner@afreenmall.com, cfo@afreenmall.com', format: 'PDF + Excel', status: 'ACTIVE', lastSent: 'Yesterday 21:30' },
-                  { title: 'Weekly Store Performance Summary', frequency: 'Every Monday 08:00', recipients: 'storemanagers@afreenmall.com', format: 'PDF', status: 'ACTIVE', lastSent: '04 Aug 2026' },
-                  { title: 'Monthly GST Tax Reconciliation Statement', frequency: '1st of every Month', recipients: 'accounting@afreenmall.com', format: 'Excel (CSV)', status: 'ACTIVE', lastSent: '01 Aug 2026' },
-                ].map((rep, i) => (
-                  <tr key={i}>
-                    <td style={{ fontWeight: 'bold' }}>{rep.title}</td>
-                    <td style={{ fontSize: '12px' }}>{rep.frequency}</td>
-                    <td style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{rep.recipients}</td>
-                    <td><span style={{ fontSize: '10px', padding: '2px 6px', border: '1px solid var(--border-color)' }}>{rep.format}</span></td>
-                    <td><span style={{ fontSize: '10px', color: '#10b981', fontWeight: 'bold' }}>{rep.status}</span></td>
-                    <td style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{rep.lastSent}</td>
-                    <td>
-                      <button className="btn" style={{ padding: '2px 8px', fontSize: '10px' }}>
-                        Send Now
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                <tr><td style={{ fontWeight: 'bold' }}>Daily Executive Sales & Revenue Pack</td><td>Daily at 21:30</td><td>owner@afreenmall.com</td><td style={{ color: '#10b981', fontWeight: 'bold' }}>ACTIVE</td></tr>
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {/* ── DRILLDOWN MODAL ── */}
-      {drilldownWidget && (
+      {/* ── CREATE CUSTOM REPORT MODAL ── */}
+      {showCreateReportModal && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '600px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px' }}>{drilldownWidget.title}</h3>
-            <div style={{ backgroundColor: 'var(--bg-color)', padding: '14px', border: '1px solid var(--border-color)', marginBottom: '14px', fontSize: '12px' }}>
-              <pre style={{ margin: 0, fontFamily: 'monospace', fontSize: '11px', whiteSpace: 'pre-wrap' }}>
-                {JSON.stringify(drilldownWidget.data, null, 2)}
-              </pre>
-            </div>
-            <button className="btn btn-primary" onClick={() => setDrilldownWidget(null)} style={{ width: '100%' }}>
-              Close Drill-Down View
-            </button>
+          <div className="modal-content" style={{ maxWidth: '480px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '14px' }}>Create Custom Report</h3>
+            <form onSubmit={handleCreateReport} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Report Name *</label>
+                <input type="text" className="input-field" value={newReportForm.name} onChange={(e) => setNewReportForm({ ...newReportForm, name: e.target.value })} required />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Category</label>
+                <select className="input-field" value={newReportForm.category} onChange={(e) => setNewReportForm({ ...newReportForm, category: e.target.value })}>
+                  <option value="Finance">Finance</option>
+                  <option value="Sales">Sales</option>
+                  <option value="Inventory">Inventory</option>
+                  <option value="HR">HR</option>
+                  <option value="CRM">CRM</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Automated Delivery Schedule</label>
+                <select className="input-field" value={newReportForm.schedule} onChange={(e) => setNewReportForm({ ...newReportForm, schedule: e.target.value })}>
+                  <option value="DAILY">Daily</option>
+                  <option value="WEEKLY">Weekly</option>
+                  <option value="MONTHLY">Monthly</option>
+                  <option value="MANUAL">Manual / On Demand</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save Report</button>
+                <button type="button" className="btn" onClick={() => setShowCreateReportModal(false)}>Cancel</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
