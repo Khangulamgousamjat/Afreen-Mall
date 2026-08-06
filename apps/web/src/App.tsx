@@ -51,37 +51,39 @@ export const AppContent: React.FC = () => {
 
   return (
     <SecurityGuard>
-      <div className="app-container">
-      <Sidebar currentScreen={currentScreen} onNavigate={setCurrentScreen} />
+      <ErrorBoundary fallbackTitle="Application Layout Error">
+        <div className="app-container">
+          <Sidebar currentScreen={currentScreen} onNavigate={setCurrentScreen} />
 
-      <div className="main-content">
-        <Topbar />
-        <main className="page-content">
-          <ErrorBoundary>
-            {currentScreen === 'dashboard' && <DashboardScreen onNavigate={setCurrentScreen} />}
-            {currentScreen === 'pos' && <POSScreen initialReturnMode={false} />}
-            {currentScreen === 'pos-return' && <POSScreen initialReturnMode={true} />}
-            {currentScreen === 'dayclose' && <DayCloseScreen />}
-            {currentScreen === 'cash' && <CashReconciliationScreen />}
-            {currentScreen === 'inventory' && <InventoryScreen />}
-            {currentScreen === 'purchasing' && <PurchasingScreen />}
-            {currentScreen === 'suppliers' && <SupplierScreen />}
-            {currentScreen === 'accounting' && <AccountingScreen />}
-            {currentScreen === 'hrms' && <HRMSScreen />}
-            {currentScreen === 'sales' && <SalesScreen />}
-            {currentScreen === 'warehouse' && <WarehouseScreen />}
-            {currentScreen === 'customers' && <CustomersScreen />}
-            {currentScreen === 'reports' && <ReportsScreen />}
-            {currentScreen === 'bi' && <BusinessIntelligenceScreen />}
-            {currentScreen === 'settings' && <SystemAdminScreen />}
-            {currentScreen === 'admin' && <SystemAdminScreen />}
-          </ErrorBoundary>
-        </main>
-      </div>
+          <div className="main-content">
+            <Topbar />
+            <main className="page-content">
+              <ErrorBoundary fallbackTitle="Screen Component Error">
+                {currentScreen === 'dashboard' && <DashboardScreen onNavigate={setCurrentScreen} />}
+                {currentScreen === 'pos' && <POSScreen initialReturnMode={false} />}
+                {currentScreen === 'pos-return' && <POSScreen initialReturnMode={true} />}
+                {currentScreen === 'dayclose' && <DayCloseScreen />}
+                {currentScreen === 'cash' && <CashReconciliationScreen />}
+                {currentScreen === 'inventory' && <InventoryScreen />}
+                {currentScreen === 'purchasing' && <PurchasingScreen />}
+                {currentScreen === 'suppliers' && <SupplierScreen />}
+                {currentScreen === 'accounting' && <AccountingScreen />}
+                {currentScreen === 'hrms' && <HRMSScreen />}
+                {currentScreen === 'sales' && <SalesScreen />}
+                {currentScreen === 'warehouse' && <WarehouseScreen />}
+                {currentScreen === 'customers' && <CustomersScreen />}
+                {currentScreen === 'reports' && <ReportsScreen />}
+                {currentScreen === 'bi' && <BusinessIntelligenceScreen />}
+                {currentScreen === 'settings' && <SystemAdminScreen />}
+                {currentScreen === 'admin' && <SystemAdminScreen />}
+              </ErrorBoundary>
+            </main>
+          </div>
 
-      {/* Force Password Change Modal on first login */}
-      <PasswordChangeModal />
-    </div>
+          {/* Force Password Change Modal on first login */}
+          <PasswordChangeModal />
+        </div>
+      </ErrorBoundary>
     </SecurityGuard>
   );
 };

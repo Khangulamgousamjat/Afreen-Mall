@@ -14,6 +14,7 @@ import {
   TrendingUp,
   ShieldCheck,
   Activity,
+  Truck,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { RoleName } from '@afreen-mall/shared-types';
