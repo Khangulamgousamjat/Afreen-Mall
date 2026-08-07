@@ -16,6 +16,7 @@ export interface KeyboardShortcut {
 
 export const GLOBAL_SHORTCUT_MAP: KeyboardShortcut[] = [
   { key: 'F1', actionId: 'TOGGLE_HELP_LEGEND', label: 'F1', description: 'Show Keyboard Shortcuts Legend Overlay', screen: 'GLOBAL' },
+  { key: 'S', ctrlKey: true, actionId: 'OPEN_SETTINGS', label: 'Ctrl + S', description: 'Open System Settings & User Preferences', screen: 'GLOBAL' },
   { key: 'F2', shiftKey: true, actionId: 'TOGGLE_SALE_TYPE', label: 'Shift + F2', description: 'Toggle Retail / Wholesale Sale Mode', screen: 'POS' },
   { key: 'F3', actionId: 'REPEAT_LAST_ITEM', label: 'F3', description: 'Repeat Last Scanned Item (+1 Quantity)', screen: 'POS' },
   { key: 'F7', actionId: 'TRIGGER_UPI_QR', label: 'F7', description: 'Trigger Instant UPI Payment QR Code', screen: 'POS' },

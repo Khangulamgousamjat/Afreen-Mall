@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
@@ -30,6 +30,19 @@ export const AppContent: React.FC = () => {
   const { user } = useAuth();
   const [authView, setAuthView] = useState<'WELCOME' | 'LOGIN'>('WELCOME');
   const [currentScreen, setCurrentScreen] = useState('dashboard');
+
+  // Ctrl + S Keyboard Shortcut -> Instantly Navigate to Settings Screen
+  useEffect(() => {
+    const handleGlobalShortcuts = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        setCurrentScreen('settings');
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalShortcuts);
+    return () => window.removeEventListener('keydown', handleGlobalShortcuts);
+  }, []);
 
   if (!user) {
     if (authView === 'LOGIN') {
@@ -74,7 +87,7 @@ export const AppContent: React.FC = () => {
                 {currentScreen === 'customers' && <CustomersScreen />}
                 {currentScreen === 'reports' && <ReportsScreen />}
                 {currentScreen === 'bi' && <BusinessIntelligenceScreen />}
-                {currentScreen === 'settings' && <SystemAdminScreen />}
+                {currentScreen === 'settings' && <SettingsScreen />}
                 {currentScreen === 'admin' && <SystemAdminScreen />}
               </ErrorBoundary>
             </main>
