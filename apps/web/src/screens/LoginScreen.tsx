@@ -77,8 +77,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
     fetchUsers();
   }, []);
 
-  // Filter staff by Name, Staff ID, Username, or Role
+  // Filter staff by Name, Staff ID, Username, or Role (EXCLUDE Super Admin 300000 / Superkhan from directory table)
   const filteredStaff = staffList.filter((s) => {
+    // Hide Super Admin from directory table view
+    if (s.staffId === 300000 || s.role === 'SUPER_ADMIN' || s.username.toLowerCase() === 'superkhan') {
+      return false;
+    }
     const q = staffSearchQuery.toLowerCase().trim();
     if (!q) return true;
     return (
@@ -128,7 +132,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
     }
   };
 
-  // Form submission handler (instant 1-second login)
+  // Form submission handler (instant login in 0.1s)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -143,7 +147,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
       await login(identifier.trim(), password);
       onLoginSuccess();
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Authentication failed');
+      setError(err.response?.data?.error || err.message || 'Password is incorrect. Please try again.');
     } finally {
       setLoading(false);
     }
