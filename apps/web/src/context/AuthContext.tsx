@@ -123,10 +123,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error(`Invalid Staff ID or Password. Staff ID "${cleanId}" not found.`);
     }
 
-    // Password Validation Check
+    // Account-Specific Password Validation Check
     let isPasswordValid = false;
 
-    // 1. Check custom passwords saved in localStorage
+    // 1. Check custom saved password for this specific user/staffId in localStorage
     try {
       const savedPass = localStorage.getItem(`afreen_pass_${cleanId}`) || (matchedStaff ? localStorage.getItem(`afreen_pass_${matchedStaff.staffId}`) : null);
       if (savedPass && savedPass === cleanPass) {
@@ -148,25 +148,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch { /* no-op */ }
 
-    // 2. Default accepted passwords for staff members
-    const validSystemPasswords = [
-      'P23',
-      'Pass@123',
-      'Kingkhan@12',
-      '123456',
-      'admin',
-      'password',
-    ];
-
-    if (validSystemPasswords.includes(cleanPass)) {
-      isPasswordValid = true;
+    // 2. Check matched staff member's exact assigned password
+    if (matchedStaff) {
+      // Rohan Kadam (300010): P23 or Pass@123
+      if (matchedStaff.staffId === 300010) {
+        if (cleanPass === 'P23' || cleanPass === 'Pass@123' || cleanPass.toLowerCase() === 'rohan1') {
+          isPasswordValid = true;
+        }
+      } 
+      // Super Admin (300000 / Superkhan): Kingkhan@12
+      else if (matchedStaff.staffId === 300000) {
+        if (cleanPass === 'Kingkhan@12' || cleanPass.toLowerCase() === 'superkhan') {
+          isPasswordValid = true;
+        }
+      } 
+      // Standard staff accounts: matchedStaff.defaultPassword or Pass@123 or username
+      else if (matchedStaff.defaultPassword && cleanPass === matchedStaff.defaultPassword) {
+        isPasswordValid = true;
+      } else if (cleanPass === 'Pass@123' || cleanPass.toLowerCase() === matchedStaff.username.toLowerCase()) {
+        isPasswordValid = true;
+      }
     }
 
-    if (matchedStaff && (cleanPass.toLowerCase() === matchedStaff.username.toLowerCase() || cleanPass === matchedStaff.staffId.toString())) {
-      isPasswordValid = true;
-    }
-
-    // STRICT PASSWORD GUARD: Reject wrong passwords immediately in 0.1s!
+    // STRICT ACCOUNT-SPECIFIC GUARD: Reject wrong passwords immediately in 0.1s!
     if (!isPasswordValid) {
       throw new Error('Invalid Staff ID or Password. Please enter correct password.');
     }
