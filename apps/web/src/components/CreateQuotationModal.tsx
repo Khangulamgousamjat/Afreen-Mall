@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileText, X, Plus, Trash2 } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface CreateQuotationModalProps {
   isOpen: boolean;
@@ -58,9 +59,8 @@ export const CreateQuotationModal: React.FC<CreateQuotationModalProps> = ({ isOp
       await api.post('/sales/quotations', payload);
       onSuccess();
       onClose();
-    } catch {
-      onSuccess();
-      onClose();
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Failed to create quotation'));
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { RotateCcw, X, AlertTriangle } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface SalesReturnModalProps {
   isOpen: boolean;
@@ -48,15 +49,8 @@ export const SalesReturnModal: React.FC<SalesReturnModalProps> = ({ isOpen, onCl
         onSuccess();
         onClose();
       }, 2000);
-    } catch {
-      setResult({
-        returnNo: `SRN-2026-${Date.now().toString().slice(-6)}`,
-        creditNoteNo: `CN-2026-${Date.now().toString().slice(-6)}`,
-      });
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 2000);
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Failed to process sales return'));
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DollarSign, X, Check, CreditCard, Landmark } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface CustomerCollectionsModalProps {
   isOpen: boolean;
@@ -12,7 +13,7 @@ export const CustomerCollectionsModal: React.FC<CustomerCollectionsModalProps> =
   const [customerName, setCustomerName] = useState('Standard Wholesale Mart');
   const [amountRupees, setAmountRupees] = useState('125000.00');
   const [paymentMode, setPaymentMode] = useState<'CASH' | 'UPI' | 'CARD' | 'BANK_TRANSFER' | 'CHEQUE'>('UPI');
-  const [referenceNo, setReferenceNo] = useState(`UPI-${Date.now().toString().slice(-6)}`);
+  const [referenceNo, setReferenceNo] = useState('');
   const [notes, setNotes] = useState('Payment against invoice SO-2026-000044');
   const [loading, setLoading] = useState(false);
   const [receipt, setReceipt] = useState<any | null>(null);
@@ -47,14 +48,8 @@ export const CustomerCollectionsModal: React.FC<CustomerCollectionsModalProps> =
         onSuccess();
         onClose();
       }, 2000);
-    } catch {
-      setReceipt({
-        receiptNo: `REC-2026-${Date.now().toString().slice(-6)}`,
-      });
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 2000);
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Failed to record customer collection'));
     } finally {
       setLoading(false);
     }

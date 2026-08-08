@@ -10,6 +10,9 @@
     "dev": "concurrently \"npm run dev --workspace=apps/api\" \"npm run dev --workspace=apps/web\"",
     "typecheck": "npm run build --workspace=packages/shared-types && tsc -p apps/api/tsconfig.json --noEmit && npm run typecheck --workspace=apps/web",
     "build": "npm run build --workspace=packages/shared-types && npm run build --workspace=apps/api && npm run build --workspace=apps/web",
+    "test": "npm run test --workspace=apps/api",
+    "audit:fake-success": "node scripts/audit-fake-success.js",
+    "audit:auth-security": "node scripts/audit-auth-security.js",
     "db:migrate": "npm run db:migrate --workspace=apps/api",
     "db:seed": "npm run db:seed --workspace=apps/api"
   },

@@ -3,6 +3,7 @@ import { Copy, AlertTriangle, ShieldAlert, X, Printer, Search, FileText } from '
 import { useAuth } from '../context/AuthContext';
 import { RoleName } from '@afreen-mall/shared-types';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface DuplicateBillReprintModalProps {
@@ -101,43 +102,7 @@ export const DuplicateBillReprintModal: React.FC<DuplicateBillReprintModalProps>
         throw new Error('Failed to prepare duplicate receipt');
       }
     } catch (err: any) {
-      const apiErr = err.response?.data?.error;
-      if (apiErr) {
-        setError(apiErr);
-      } else {
-        // Offline / Dev fallback
-        const mockDuplicateReceipt = `
-========================================
-         *** DUPLICATE COPY ***
-        (NOT AN ORIGINAL RECEIPT)
-========================================
-             AFREEN MALL
-     City Center, Sector 4, Main Hub
-         GSTIN: 27AAAAA0000A1Z5
-========================================
-Invoice No : ${cleanInvoiceNo}
-Reprint #  : 1 [OFFLINE DEMO]
-Date       : ${new Date().toLocaleString()}
-Cashier    : ${user?.fullName || 'Cash Officer'} (ID: ${user?.staffId || 300003})
-Type       : Retail Sale
-----------------------------------------
-Duplicate Bill Reprint    x1  ₹1,500.00
-----------------------------------------
-TOTAL BILL : ₹1,500.00
-----------------------------------------
-Reason     : ${finalReason}
-Reprinted  : ${user?.fullName || 'Cash Officer'} (Staff ID: ${user?.staffId || 300003})
-Timestamp  : ${new Date().toLocaleString()}
-========================================
-[ BARCODE: *${cleanInvoiceNo}* ]
-         *** DUPLICATE COPY ***
-Software by Gous Khan · Mobile: 8625076618
-========================================
-        `;
-
-        onSuccess({ invoiceNo: cleanInvoiceNo, amount: 150000 }, mockDuplicateReceipt);
-        onClose();
-      }
+      setError(getApiErrorMessage(err, 'Failed to reprint duplicate bill'));
     } finally {
       setLoading(false);
     }

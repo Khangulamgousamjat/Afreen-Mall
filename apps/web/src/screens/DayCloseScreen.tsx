@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { DollarSign, CheckCircle2, AlertTriangle, Send, Cpu, Printer, Calculator, FileText, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 import { DenominationBreakdown, RoleName } from '@afreen-mall/shared-types';
 
 export const DayCloseScreen: React.FC = () => {
@@ -82,8 +83,8 @@ export const DayCloseScreen: React.FC = () => {
         isCloseReturn,
       });
       setSubmitted(true);
-    } catch {
-      setSubmitted(true);
+    } catch (err: any) {
+      alert(getApiErrorMessage(err, 'Failed to submit Day Close report'));
     }
   };
 

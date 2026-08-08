@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BookOpen, X, Plus } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface CreateGLAccountModalProps {
   isOpen: boolean;
@@ -42,9 +43,8 @@ export const CreateGLAccountModal: React.FC<CreateGLAccountModalProps> = ({ isOp
       await api.post('/accounting/coa', payload);
       onSuccess();
       onClose();
-    } catch {
-      onSuccess();
-      onClose();
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Failed to add GL account'));
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Shield, CheckSquare, Square, Info } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface RolePermissionsModalProps {
   role: any;
@@ -36,6 +37,22 @@ export const RolePermissionsModal: React.FC<RolePermissionsModalProps> = ({ role
   const [activeModule, setActiveModule] = useState(permissionMatrix?.modules?.[0]?.id || '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+
+  React.useEffect(() => {
+    if (role?.name) {
+      api
+        .get(`/admin/roles/${role.name}/permissions`)
+        .then((res) => {
+          if (res.data?.permissions && typeof res.data.permissions === 'object') {
+            setPermissions(res.data.permissions);
+          }
+        })
+        .catch(() => {
+          // ignore fallback
+        });
+    }
+  }, [role?.name]);
 
   const togglePermission = (screenKey: string, action: string) => {
     if (role.name === 'SUPER_ADMIN') return; // Super Admin is immutable
@@ -54,14 +71,13 @@ export const RolePermissionsModal: React.FC<RolePermissionsModalProps> = ({ role
 
   const handleSave = async () => {
     setSaving(true);
+    setError('');
     try {
       await api.patch(`/admin/roles/${role.name}/permissions`, { permissions });
       setSaved(true);
       setTimeout(() => { setSaved(false); onClose(); }, 1200);
-    } catch {
-      // Apply locally regardless
-      setSaved(true);
-      setTimeout(() => { setSaved(false); onClose(); }, 1200);
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Failed to update role permissions'));
     } finally {
       setSaving(false);
     }
@@ -84,6 +100,12 @@ export const RolePermissionsModal: React.FC<RolePermissionsModalProps> = ({ role
             </div>
           )}
         </div>
+
+        {error && (
+          <div style={{ padding: '10px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--status-red)', border: '1px solid var(--status-red)', fontSize: '12px', marginBottom: '14px' }}>
+            {error}
+          </div>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '16px', minHeight: '400px' }}>
           {/* Module List */}

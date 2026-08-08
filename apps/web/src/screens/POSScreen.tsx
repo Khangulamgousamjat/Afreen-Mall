@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 import { F1ShortcutOverlay } from '../components/F1ShortcutOverlay';
 import { ManualBillRecoveryModal } from '../components/ManualBillRecoveryModal';
 import { DuplicateBillReprintModal } from '../components/DuplicateBillReprintModal';
@@ -229,22 +230,43 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
   ]);
 
   // ── Hold & Recall Bill ─────────────────────────────────────────────────
-  const handleHoldBill = () => {
+  const handleHoldBill = async () => {
     if (!cart || cart.length === 0) {
       setCartError('Cannot hold empty bill. Scan at least one item first.');
       setTimeout(() => setCartError(''), 4000);
       return;
     }
 
-    const newHold = {
-      id: `hold-${Date.now()}`,
-      holdNo: `HOLD-${Math.floor(1000 + Math.random() * 9000)}`,
-      customerPhone, customerName, items: cart, totalAmount,
-      cashierName: user?.fullName || 'Cashier',
-      createdAt: new Date().toISOString(),
-    };
-
     try {
+      await api.post('/pos/held-bills', {
+        items: cart,
+        customerPhone,
+        customerName,
+        totalAmountPaise: totalAmount,
+        registerId: currentRegister?.id,
+        registerName: currentRegister?.name || currentRegister?.posNumber || 'Till-01',
+      });
+      setCart([]);
+      setLastScannedItem(null);
+      setCustomerPhone('');
+      setCustomerName('');
+      setCartError('');
+      setSelectedCartIndex(null);
+      refocusBarcode();
+    } catch {
+      // Local storage fallback for offline till operation
+      const newHold = {
+        id: `hold-${Date.now()}`,
+        holdNo: `HOLD-${Math.floor(1000 + Math.random() * 9000)}`,
+        registerId: currentRegister?.id,
+        registerName: `${currentRegister?.posNumber || 'Till-01'} (Local Offline)`,
+        customerPhone,
+        customerName,
+        items: cart,
+        totalAmountPaise: totalAmount,
+        cashierName: user?.fullName || 'Cashier',
+        createdAt: new Date().toISOString(),
+      };
       const saved = localStorage.getItem('afreen_held_bills');
       const list = saved ? JSON.parse(saved) : [];
       list.unshift(newHold);
@@ -256,8 +278,6 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
       setCartError('');
       setSelectedCartIndex(null);
       refocusBarcode();
-    } catch {
-      setCartError('Failed to save hold bill.');
     }
   };
 
@@ -672,23 +692,24 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
   };
 
   const finalizeInvoice = async (finalMode: PaymentMode) => {
+    setCartError('');
+    const payload = {
+      registerId: currentRegister.id,
+      saleType,
+      paymentMode: finalMode,
+      invoiceNo,
+      items: cart,
+      totalAmount,
+      roundedTotal: finalMode === PaymentMode.CASH ? cashRounded.roundedTotal : totalAmount,
+      roundingDifference: finalMode === PaymentMode.CASH ? cashRounded.roundingDifference : 0,
+      paidCash,
+      paidCard,
+      paidUPI,
+      customerPhone,
+      customerName,
+      isReturn: isReturnMode,
+    };
     try {
-      const payload = {
-        registerId: currentRegister.id,
-        saleType,
-        paymentMode: finalMode,
-        invoiceNo,
-        items: cart,
-        totalAmount,
-        roundedTotal: finalMode === PaymentMode.CASH ? cashRounded.roundedTotal : totalAmount,
-        roundingDifference: finalMode === PaymentMode.CASH ? cashRounded.roundingDifference : 0,
-        paidCash,
-        paidCard,
-        paidUPI,
-        customerPhone,
-        customerName,
-        isReturn: isReturnMode,
-      };
       const res = await api.post('/pos/invoice', payload);
       const savedNo = res.data.invoice?.invoiceNo || invoiceNo;
       setLastSavedInvoice({ invoiceNo: savedNo, amount: finalMode === PaymentMode.CASH ? cashRounded.roundedTotal : totalAmount });
@@ -696,39 +717,7 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
         setReceiptPrintContent(res.data.receiptPrintContent);
         setTimeout(() => window.print(), 400);
       }
-    } catch {
-      // Mock print preview if API offline
-      setLastSavedInvoice({ invoiceNo, amount: finalMode === PaymentMode.CASH ? cashRounded.roundedTotal : totalAmount });
-      const finalPayable = finalMode === PaymentMode.CASH ? cashRounded.roundedTotal : totalAmount;
-      const mockPrintReceipt = `
-========================================
-             AFREEN MALL
-     City Center, Sector 4, Main Hub
-         GSTIN: 27AAAAA0000A1Z5
-========================================
-Invoice No : ${invoiceNo}
-Date       : ${new Date().toLocaleString()}
-Cashier    : ${user?.fullName || 'Cashier'} (ID: ${user?.staffId || 300003})
-Customer   : ${customerName || customerPhone || 'Walk-in Customer'}
-Type       : ${saleType}
-----------------------------------------
-${cart.map((i: any) => `${i.name.slice(0, 20).padEnd(20)} x${i.qty}  ₹${paiseToRupee(i.value)}`).join('\n')}
-----------------------------------------
-BILL TOTAL : ₹${paiseToRupee(totalAmount)}
-${finalMode === PaymentMode.CASH ? `ROUND ADJUST: ₹${paiseToRupee(cashRounded.roundingDifference)}\nNET PAYABLE : ₹${paiseToRupee(cashRounded.roundedTotal)}` : `NET PAYABLE : ₹${paiseToRupee(totalAmount)}`}
-PAYMENT MODE: ${finalMode}
-CHANGE DUE  : ₹${paiseToRupee(changeDue)}
-----------------------------------------
-[ CASH DRAWER UNLOCKED ✓ ]
-Thank you for shopping at Afreen Mall!
-========================================
-[ BARCODE: *${invoiceNo}* ]
-Software by Gous Khan · Mobile: 8625076618
-========================================
-      `;
-      setReceiptPrintContent(mockPrintReceipt);
-      setTimeout(() => window.print(), 400);
-    } finally {
+
       setCart([]);
       setLastScannedItem(null);
       setShowPaymentModal(false);
@@ -739,6 +728,32 @@ Software by Gous Khan · Mobile: 8625076618
       await fetchNextInvoiceNo();
       await fetchLastInvoice();
       refocusBarcode();
+    } catch (err: any) {
+      playErrorBeep();
+      if (!navigator.onLine || err.message === 'Network Error' || !err.response) {
+        try {
+          const saved = localStorage.getItem('afreen_offline_sales_queue');
+          const queue = saved ? JSON.parse(saved) : [];
+          queue.push({
+            ...payload,
+            queuedAt: new Date().toISOString(),
+            registerName: currentRegister?.posNumber || 'Till-01',
+          });
+          localStorage.setItem('afreen_offline_sales_queue', JSON.stringify(queue));
+          setCart([]);
+          setLastScannedItem(null);
+          setShowPaymentModal(false);
+          setCustomerPhone('');
+          setCustomerName('');
+          setSelectedCartIndex(null);
+          setCartError('⚠️ Network Disconnected: Invoice saved locally to this terminal\'s offline sync queue.');
+          refocusBarcode();
+          return;
+        } catch {
+          // ignore storage quota error
+        }
+      }
+      setCartError(getApiErrorMessage(err, 'Failed to process invoice sale. Please try again.'));
     }
   };
 

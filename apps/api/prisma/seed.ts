@@ -22,23 +22,25 @@ async function main() {
   console.log(`Seeded Store: ${store.name}`);
 
   // 2. Seed Super Admin
-  const superAdminPasswordHash = await bcrypt.hash('Kingkhan@12', 12);
+  const superAdminPassword = process.env.INITIAL_SUPER_ADMIN_PASSWORD || 'AfreenMaster@2026';
+  const superAdminPasswordHash = await bcrypt.hash(superAdminPassword, 12);
   const superAdmin = await prisma.user.upsert({
     where: { staffId: 300000 },
     update: { passwordHash: superAdminPasswordHash },
     create: {
       staffId: 300000,
       username: 'Superkhan',
-      fullName: 'Super Admin (Gous Khan)',
-      passwordHash: superAdminPasswordHash,
+      fullName: 'Afreen Mall Super Admin',
       role: RoleName.SUPER_ADMIN,
+      passwordHash: superAdminPasswordHash,
       mustChangePassword: false,
     },
   });
   console.log(`Seeded Super Admin: Staff ID ${superAdmin.staffId} (${superAdmin.username})`);
 
-  // Seed standard staff accounts + 10 Cashier accounts
-  const defaultHash = await bcrypt.hash('Pass@123', 12);
+  // 3. Seed Default Staff Accounts
+  const defaultStaffPassword = process.env.INITIAL_STAFF_PASSWORD || 'AfreenStaff@2026';
+  const defaultHash = await bcrypt.hash(defaultStaffPassword, 12);
   const staffMembers = [
     { staffId: 300001, username: 'manager1', name: 'Rajesh Sharma (Store Manager)', role: RoleName.STORE_MANAGER },
     { staffId: 300002, username: 'accountant1', name: 'Priya Patel (Accountant)', role: RoleName.ACCOUNTANT },
@@ -143,7 +145,7 @@ async function main() {
   // 7. Products & Initial Stock
   const sampleProducts = [
     {
-      barcode: '890103000001',
+      barcode: '8901030000018',
       name: 'Afreen Premium Basmati Rice 5kg',
       description: 'Long grain aromatic basmati rice',
       categoryId: catGrocery.id,
@@ -157,7 +159,7 @@ async function main() {
       stock: 80,
     },
     {
-      barcode: '890103000002',
+      barcode: '8901030000025',
       name: 'Britannia Good Day Biscuits 200g',
       description: 'Cashew cookies pack',
       categoryId: catSnacks.id,
@@ -171,7 +173,7 @@ async function main() {
       stock: 12, // Low stock for shelf-tag gauge red alert testing!
     },
     {
-      barcode: '890103000003',
+      barcode: '8901030000032',
       name: 'Coca Cola Soft Drink 1.25L',
       description: 'Carbonated beverage bottle',
       categoryId: catSnacks.id,
@@ -185,7 +187,7 @@ async function main() {
       stock: 45, // Amber level testing
     },
     {
-      barcode: '890103000004',
+      barcode: '8901030000049',
       name: 'Amul Butter 500g',
       description: 'Pasteurized salted butter',
       categoryId: catGrocery.id,
@@ -253,15 +255,20 @@ async function main() {
     },
   });
 
-  const rackA = await prisma.rack.create({
-    data: {
-      warehouseId: warehouse.id,
-      rackNumber: 'Rack-A1',
-    },
-  });
+  let rackA = await prisma.rack.findFirst({ where: { warehouseId: warehouse.id, rackNumber: 'Rack-A1' } });
+  if (!rackA) {
+    rackA = await prisma.rack.create({
+      data: {
+        warehouseId: warehouse.id,
+        rackNumber: 'Rack-A1',
+      },
+    });
+  }
 
-  await prisma.bin.create({
-    data: {
+  await prisma.bin.upsert({
+    where: { binCode: 'BIN-A1-01' },
+    update: {},
+    create: {
       rackId: rackA.id,
       binCode: 'BIN-A1-01',
       capacity: 500,

@@ -158,7 +158,7 @@ router.post('/users', async (req: AuthenticatedRequest, res: Response) => {
       select: { staffId: true },
     });
     const nextStaffId = highestUser ? Math.max(highestUser.staffId + 1, 300000) : 300000;
-    const temporaryPassword = 'Pass@123';
+    const temporaryPassword = process.env.DEFAULT_TEMP_PASSWORD || ('Afreen#' + Math.floor(100000 + Math.random() * 900000));
     const passwordHash = await bcrypt.hash(temporaryPassword, 12);
 
     const newUser = await prisma.user.create({
@@ -250,11 +250,63 @@ router.patch('/users/:id/role', async (req: AuthenticatedRequest, res: Response)
   }
 });
 
+// GET /api/v1/admin/roles/:name/permissions - Get role permissions
+router.get('/roles/:name/permissions', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { name } = req.params;
+    const rolePermission = await prisma.rolePermission.findUnique({
+      where: { roleName: name },
+    });
+    return res.json({
+      roleName: name,
+      permissions: rolePermission ? rolePermission.permissions : null,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch role permissions' });
+  }
+});
+
+// PATCH /api/v1/admin/roles/:name/permissions - Update role permissions
+router.patch('/roles/:name/permissions', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { name } = req.params;
+    const { permissions } = req.body;
+
+    if (!permissions) {
+      return res.status(400).json({ error: 'Permissions object is required' });
+    }
+
+    const updated = await prisma.rolePermission.upsert({
+      where: { roleName: name },
+      update: { permissions },
+      create: { roleName: name, permissions },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        staffId: req.user!.staffId,
+        userName: req.user!.fullName,
+        userRole: req.user!.role,
+        action: 'UPDATE_ROLE_PERMISSIONS',
+        entityName: 'RolePermission',
+        entityId: updated.id,
+        reason: `Permissions updated for role ${name} by ${req.user!.fullName}.`,
+      },
+    });
+
+    return res.json({ message: `Permissions for role ${name} updated successfully.`, rolePermission: updated });
+  } catch (err: any) {
+    console.error('Failed to update role permissions:', err);
+    return res.status(500).json({ error: 'Failed to update role permissions' });
+  }
+});
+
 // PATCH /api/v1/admin/users/:id/status — Activate / Deactivate / Lock / Unlock / Suspend
 router.patch('/users/:id/status', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { status } = req.body; // 'ACTIVE' | 'INACTIVE' | 'LOCKED' | 'SUSPENDED'
+    const { status, isDeactivated } = req.body;
 
     const targetUser = await prisma.user.findUnique({ where: { id } });
     if (!targetUser) return res.status(404).json({ error: 'User not found' });
@@ -264,12 +316,15 @@ router.patch('/users/:id/status', async (req: AuthenticatedRequest, res: Respons
     }
 
     const updateData: any = {};
+    if (typeof isDeactivated === 'boolean') {
+      updateData.isDeactivated = isDeactivated;
+    }
     if (status === 'ACTIVE') { updateData.isDeactivated = false; updateData.isLocked = false; updateData.failedAttempts = 0; updateData.lockoutUntil = null; }
     if (status === 'INACTIVE') updateData.isDeactivated = true;
     if (status === 'LOCKED') { updateData.isLocked = true; updateData.lockoutUntil = new Date(Date.now() + 24 * 60 * 60 * 1000); }
     if (status === 'SUSPENDED') { updateData.isDeactivated = true; updateData.isLocked = true; }
 
-    await prisma.user.update({ where: { id }, data: updateData });
+    const updatedUser = await prisma.user.update({ where: { id }, data: updateData });
 
     await prisma.auditLog.create({
       data: {
@@ -277,17 +332,101 @@ router.patch('/users/:id/status', async (req: AuthenticatedRequest, res: Respons
         staffId: req.user!.staffId,
         userName: req.user!.fullName,
         userRole: req.user!.role,
-        action: `ADMIN_USER_STATUS_${status}`,
+        action: `ADMIN_USER_STATUS_CHANGE`,
         entityName: 'User',
         entityId: id,
-        afterValue: { status },
-        reason: `User status set to ${status} by ${req.user!.fullName}.`,
+        afterValue: { status, isDeactivated: updatedUser.isDeactivated },
+        reason: `User status updated by ${req.user!.fullName}.`,
       },
     });
 
-    return res.json({ message: `User status updated to ${status}.` });
+    return res.json({ user: updatedUser, message: 'User status updated successfully.' });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to update user status' });
+  }
+});
+
+// PATCH /api/v1/admin/users/:id/permissions — Toggle Sale Return Permission
+router.patch('/users/:id/permissions', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { canProcessSaleReturn } = req.body;
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: { canProcessSaleReturn: Boolean(canProcessSaleReturn) },
+      select: { id: true, staffId: true, username: true, canProcessSaleReturn: true },
+    });
+
+    return res.json({ user: updatedUser, message: 'Sale return permission updated successfully.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update sale return permission' });
+  }
+});
+
+// POST /api/v1/admin/users/:id/unlock — Unlock locked staff account
+router.post('/users/:id/unlock', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: {
+        isLocked: false,
+        failedAttempts: 0,
+        lockoutUntil: null,
+      },
+      select: { id: true, staffId: true, username: true, isLocked: true },
+    });
+
+    return res.json({ user, message: 'Account unlocked successfully.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to unlock user' });
+  }
+});
+
+// GET /api/v1/admin/roles — List role permissions
+router.get('/roles', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const roles = await prisma.rolePermission.findMany();
+    return res.json({ roles });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch roles' });
+  }
+});
+
+// PATCH /api/v1/admin/roles/:name/permissions — Update role permissions in DB
+router.patch('/roles/:name/permissions', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { name } = req.params;
+    const { permissions } = req.body;
+
+    if (!permissions) {
+      return res.status(400).json({ error: 'Permissions object is required' });
+    }
+
+    const updated = await prisma.rolePermission.upsert({
+      where: { roleName: name },
+      update: { permissions },
+      create: { roleName: name, permissions },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        staffId: req.user!.staffId,
+        userName: req.user!.fullName,
+        userRole: req.user!.role,
+        action: 'ROLE_PERMISSIONS_UPDATED',
+        entityName: 'RolePermission',
+        entityId: updated.id,
+        reason: `Updated permissions for role ${name}`,
+      },
+    });
+
+    return res.json({ message: `Permissions for role ${name} updated successfully!`, role: updated });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to update role permissions' });
   }
 });
 
@@ -299,7 +438,7 @@ router.post('/users/:id/reset-password', async (req: AuthenticatedRequest, res: 
     const targetUser = await prisma.user.findUnique({ where: { id } });
     if (!targetUser) return res.status(404).json({ error: 'User not found' });
 
-    const tempPassword = 'Pass@123';
+    const tempPassword = process.env.DEFAULT_TEMP_PASSWORD || ('Afreen#' + Math.floor(100000 + Math.random() * 900000));
     const passwordHash = await bcrypt.hash(tempPassword, 12);
 
     await prisma.user.update({

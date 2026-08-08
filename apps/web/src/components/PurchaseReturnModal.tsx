@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { RotateCcw, X, AlertTriangle, FileText } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface PurchaseReturnModalProps {
   isOpen: boolean;
@@ -49,14 +50,7 @@ export const PurchaseReturnModal: React.FC<PurchaseReturnModalProps> = ({ isOpen
         onClose();
       }, 2000);
     } catch (err: any) {
-      setReturnResult({
-        returnNo: `PRN-2026-${Date.now().toString().slice(-6)}`,
-        debitNoteNo: `DN-2026-${Date.now().toString().slice(-6)}`,
-      });
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 2000);
+      setError(getApiErrorMessage(err, 'Failed to process purchase return'));
     } finally {
       setLoading(false);
     }

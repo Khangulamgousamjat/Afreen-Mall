@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DollarSign, X, Check, FileText, Landmark } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface RunPayrollModalProps {
   isOpen: boolean;
@@ -40,14 +41,8 @@ export const RunPayrollModal: React.FC<RunPayrollModalProps> = ({ isOpen, onClos
         onSuccess();
         onClose();
       }, 2000);
-    } catch {
-      setBatch({
-        batchNo: `PAYROLL-BATCH-2026-${Date.now().toString().slice(-6)}`,
-      });
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 2000);
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Failed to run payroll batch'));
     } finally {
       setLoading(false);
     }

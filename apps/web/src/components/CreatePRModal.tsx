@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FilePlus, X, AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface CreatePRModalProps {
   isOpen: boolean;
@@ -56,9 +57,7 @@ export const CreatePRModal: React.FC<CreatePRModalProps> = ({ isOpen, onClose, o
       onSuccess();
       onClose();
     } catch (err: any) {
-      // Fallback mock success
-      onSuccess();
-      onClose();
+      setError(getApiErrorMessage(err, 'Failed to create Purchase Requisition'));
     } finally {
       setLoading(false);
     }

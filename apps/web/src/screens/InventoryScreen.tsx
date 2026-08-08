@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Search, Plus, AlertCircle, Edit3, Tag, Building2, Warehouse, RefreshCw, Truck, PackageCheck, FileText } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 import { ShelfTagGauge } from '../components/ShelfTagGauge';
 import { AddProductModal } from '../components/AddProductModal';
 import { BarcodeLabelModal } from '../components/BarcodeLabelModal';
@@ -82,11 +83,8 @@ export const InventoryScreen: React.FC = () => {
         prev.map((p) => (p.id === selectedProduct.id ? { ...p, currentStock: parseInt(newStock) } : p))
       );
       alert(`Stock for ${selectedProduct.name} updated to ${newStock}. Audit log recorded.`);
-    } catch {
-      setProducts((prev) =>
-        prev.map((p) => (p.id === selectedProduct.id ? { ...p, currentStock: parseInt(newStock) } : p))
-      );
-      alert(`Stock for ${selectedProduct.name} updated to ${newStock}.`);
+    } catch (err: any) {
+      alert(getApiErrorMessage(err, 'Failed to adjust stock level'));
     } finally {
       setShowAdjustModal(false);
     }

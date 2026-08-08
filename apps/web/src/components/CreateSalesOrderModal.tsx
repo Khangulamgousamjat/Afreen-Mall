@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ShoppingCart, X, Plus, Trash2 } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface CreateSalesOrderModalProps {
   isOpen: boolean;
@@ -58,9 +59,8 @@ export const CreateSalesOrderModal: React.FC<CreateSalesOrderModalProps> = ({ is
       await api.post('/sales/orders', payload);
       onSuccess();
       onClose();
-    } catch {
-      onSuccess();
-      onClose();
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Failed to create sales order'));
     } finally {
       setLoading(false);
     }

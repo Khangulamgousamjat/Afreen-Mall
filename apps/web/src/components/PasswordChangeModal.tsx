@@ -34,8 +34,8 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
       setError('New password must be at least 6 characters long');
       return;
     }
-    if (newPassword === 'Pass@123') {
-      setError('Please choose a unique password different from the default Pass@123');
+    if (newPassword.toLowerCase().includes('default') || newPassword.toLowerCase().includes('password')) {
+      setError('Please choose a strong, unique password');
       return;
     }
     if (newPassword === currentPassword) {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Clock, X, Check, Fingerprint } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface AttendancePunchModalProps {
   isOpen: boolean;
@@ -44,15 +45,8 @@ export const AttendancePunchModal: React.FC<AttendancePunchModalProps> = ({ isOp
         onSuccess();
         onClose();
       }, 2000);
-    } catch {
-      setResult({
-        punchNo: `PUNCH-2026-${Date.now().toString().slice(-6)}`,
-        timeStr: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-      });
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 2000);
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Failed to record biometric attendance punch'));
     } finally {
       setLoading(false);
     }

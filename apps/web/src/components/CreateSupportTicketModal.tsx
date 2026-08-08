@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { LifeBuoy, X, AlertCircle } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface CreateSupportTicketModalProps {
   isOpen: boolean;
@@ -48,14 +49,8 @@ export const CreateSupportTicketModal: React.FC<CreateSupportTicketModalProps> =
         onSuccess();
         onClose();
       }, 2000);
-    } catch {
-      setTicketResult({
-        ticketNo: `TCK-2026-${Date.now().toString().slice(-6)}`,
-      });
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 2000);
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Failed to log customer support ticket'));
     } finally {
       setLoading(false);
     }

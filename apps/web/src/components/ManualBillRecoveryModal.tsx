@@ -3,6 +3,7 @@ import { RefreshCw, AlertTriangle, CheckCircle2, ShieldAlert, X, CreditCard, QrC
 import { useAuth } from '../context/AuthContext';
 import { PaymentMode, RoleName } from '@afreen-mall/shared-types';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface ManualBillRecoveryModalProps {
@@ -126,67 +127,7 @@ export const ManualBillRecoveryModal: React.FC<ManualBillRecoveryModalProps> = (
         throw new Error('Invalid response from server');
       }
     } catch (err: any) {
-      // Local fallback in case server is unavailable
-      const apiErr = err.response?.data?.error;
-      if (apiErr) {
-        setError(apiErr);
-      } else {
-        // Mock fallback invoice generation for offline/dev operation
-        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        const mockInvoiceNo = `INV-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
-        const mockInvoice = {
-          id: `sale-rec-${Date.now()}`,
-          invoiceNo: mockInvoiceNo,
-          date: new Date().toISOString(),
-          saleType: 'Retail Sale',
-          cashierName: user?.fullName || 'Cash Officer',
-          cashierStaffId: user?.staffId || 300003,
-          paymentMode,
-          items: [],
-          totalQty: 1,
-          totalDiscount: 0,
-          totalAmount: amountPaise,
-          paidCash: 0,
-          paidCard: paymentMode === PaymentMode.CARD ? amountPaise : 0,
-          paidUPI: paymentMode === PaymentMode.UPI ? amountPaise : 0,
-          changeDue: 0,
-          transactionId: cleanTxId,
-          isManuallyRecovered: true,
-          recoveredByStaffId: user?.staffId || 300003,
-          recoveredAt: new Date().toISOString(),
-          status: 'COMPLETED',
-          createdAt: new Date().toISOString(),
-        };
-
-        const mockReceipt = `
-========================================
-             AFREEN MALL
-     City Center, Sector 4, Main Hub
-         GSTIN: 27AAAAA0000A1Z5
-========================================
-Invoice No : ${mockInvoiceNo} [RECOVERED]
-Date       : ${new Date().toLocaleString()}
-Cashier    : ${user?.fullName || 'Cash Officer'} (ID: ${user?.staffId || 300003})
-Type       : Retail Sale
-----------------------------------------
-Txn ID     : ${cleanTxId}
-Mode       : ${paymentMode} (MANUAL RECOVERY)
-----------------------------------------
-Manual Bill Recovery     x1  ₹${numAmount.toFixed(2)}
-----------------------------------------
-TOTAL BILL : ₹${numAmount.toFixed(2)}
-Paid ${paymentMode}  : ₹${numAmount.toFixed(2)}
-Status     : Verified & Completed
-========================================
-[ BARCODE: *${mockInvoiceNo}* ]
-Recovered By Cash Officer (ID: ${user?.staffId || 300003})
-Software by Gous Khan · Mobile: 8625076618
-========================================
-        `;
-
-        onSuccess(mockInvoice, mockReceipt);
-        onClose();
-      }
+      setError(getApiErrorMessage(err, 'Manual bill recovery failed'));
     } finally {
       setLoading(false);
     }

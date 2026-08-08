@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileCheck, X, ShieldAlert } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface VendorContractModalProps {
   isOpen: boolean;
@@ -48,14 +49,8 @@ export const VendorContractModal: React.FC<VendorContractModalProps> = ({ isOpen
         onSuccess();
         onClose();
       }, 2000);
-    } catch {
-      setResult({
-        contractNo: `CNT-2026-${Date.now().toString().slice(-6)}`,
-      });
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 2000);
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Failed to register vendor contract'));
     } finally {
       setLoading(false);
     }

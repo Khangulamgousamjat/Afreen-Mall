@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DollarSign, X, Check, Landmark, CreditCard } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface SupplierPayablesModalProps {
   isOpen: boolean;
@@ -12,7 +13,7 @@ export const SupplierPayablesModal: React.FC<SupplierPayablesModalProps> = ({ is
   const [supplierName, setSupplierName] = useState('Metro Wholesale Traders Pvt Ltd');
   const [amountRupees, setAmountRupees] = useState('54000.00');
   const [paymentMode, setPaymentMode] = useState('BANK_TRANSFER');
-  const [referenceNo, setReferenceNo] = useState(`NEFT-${Date.now().toString().slice(-6)}`);
+  const [referenceNo, setReferenceNo] = useState('');
   const [notes, setNotes] = useState('Full settlement of purchase invoice PO-2026-000001');
   const [loading, setLoading] = useState(false);
   const [receipt, setReceipt] = useState<any | null>(null);
@@ -47,14 +48,8 @@ export const SupplierPayablesModal: React.FC<SupplierPayablesModalProps> = ({ is
         onSuccess();
         onClose();
       }, 2000);
-    } catch {
-      setReceipt({
-        receiptNo: `PAY-SUP-2026-${Date.now().toString().slice(-6)}`,
-      });
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 2000);
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Failed to process supplier payment'));
     } finally {
       setLoading(false);
     }

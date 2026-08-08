@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 type BITab =
   | 'executive'
@@ -202,8 +203,23 @@ export const BusinessIntelligenceScreen: React.FC = () => {
     return `₹${val.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
   };
 
-  const handleExport = (format: 'EXCEL' | 'PDF' | 'CSV') => {
-    alert(`Exporting BI ${activeTab.toUpperCase()} report in ${format} format. Filters: DateRange=${dateRange}, Branch=${selectedBranch}.`);
+  const handleExport = async (format: 'EXCEL' | 'PDF' | 'CSV') => {
+    try {
+      const fmt = format.toLowerCase();
+      const res = await api.get(`/bi/export?tab=${activeTab}&format=${fmt}`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      const ext = fmt === 'excel' ? 'xlsx' : fmt;
+      link.setAttribute('download', `bi_${activeTab}_report.${ext}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err: any) {
+      alert(getApiErrorMessage(err, 'Failed to export BI report'));
+    }
   };
 
   return (

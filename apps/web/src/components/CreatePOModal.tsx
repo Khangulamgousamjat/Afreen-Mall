@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ShoppingBag, X, Plus, Trash2 } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface CreatePOModalProps {
   isOpen: boolean;
@@ -58,8 +59,7 @@ export const CreatePOModal: React.FC<CreatePOModalProps> = ({ isOpen, onClose, o
       onSuccess();
       onClose();
     } catch (err: any) {
-      onSuccess();
-      onClose();
+      setError(getApiErrorMessage(err, 'Failed to create Purchase Order'));
     } finally {
       setLoading(false);
     }

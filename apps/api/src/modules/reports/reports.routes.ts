@@ -2,8 +2,146 @@ import { Router, Response } from 'express';
 import { prisma } from '../../prisma.js';
 import { authenticateToken, AuthenticatedRequest } from '../../middleware/auth.js';
 
+import { generateExcel, generateCSV, generatePDF } from '../../services/exportService.js';
+
 const router = Router();
 router.use(authenticateToken);
+
+// GET /api/v1/reports/export - Export Sales, GST, or Audit Reports
+router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const type = String(req.query.type || 'sales').toLowerCase();
+    const format = String(req.query.format || 'xlsx').toLowerCase();
+
+    if (type === 'sales') {
+      const sales = await prisma.sale.findMany({ orderBy: { createdAt: 'desc' }, take: 200 });
+      const rows = sales.map((s) => ({
+        invoiceNo: s.invoiceNo,
+        date: s.createdAt.toISOString().slice(0, 10),
+        cashier: s.cashierName,
+        paymentMode: s.paymentMode,
+        totalQty: s.totalQty,
+        totalAmount: (s.totalAmount / 100).toFixed(2),
+        customerName: s.customerName || 'Walk-in',
+      }));
+
+      const columns = [
+        { header: 'Invoice No', key: 'invoiceNo', width: 20 },
+        { header: 'Date', key: 'date', width: 15 },
+        { header: 'Cashier', key: 'cashier', width: 20 },
+        { header: 'Payment Mode', key: 'paymentMode', width: 15 },
+        { header: 'Qty', key: 'totalQty', width: 10 },
+        { header: 'Total Amount (Rs)', key: 'totalAmount', width: 18 },
+        { header: 'Customer', key: 'customerName', width: 22 },
+      ];
+
+      if (format === 'csv') {
+        const buffer = generateCSV(columns, rows);
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="sales_report.csv"');
+        return res.send(buffer);
+      } else if (format === 'pdf') {
+        const pdfHeaders = columns.map((c) => c.header);
+        const pdfRows = rows.map((r: Record<string, any>) => columns.map((c) => String(r[c.key])));
+        const buffer = await generatePDF('Daily Sales Report', 'Store Summary', pdfHeaders, pdfRows);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename="sales_report.pdf"');
+        return res.send(buffer);
+      } else {
+        const buffer = await generateExcel('Daily Sales Report', columns, rows);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="sales_report.xlsx"');
+        return res.send(buffer);
+      }
+    } else if (type === 'audit') {
+      const logs = await prisma.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: 200 });
+      const rows = logs.map((l) => ({
+        id: l.id,
+        date: l.createdAt.toISOString().slice(0, 19).replace('T', ' '),
+        userName: l.userName,
+        userRole: l.userRole,
+        action: l.action,
+        entityName: l.entityName,
+        reason: l.reason || '',
+      }));
+
+      const columns = [
+        { header: 'Log ID', key: 'id', width: 25 },
+        { header: 'Date & Time', key: 'date', width: 20 },
+        { header: 'User', key: 'userName', width: 20 },
+        { header: 'Role', key: 'userRole', width: 15 },
+        { header: 'Action', key: 'action', width: 25 },
+        { header: 'Module', key: 'entityName', width: 20 },
+        { header: 'Details', key: 'reason', width: 35 },
+      ];
+
+      if (format === 'csv') {
+        const buffer = generateCSV(columns, rows);
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="audit_log.csv"');
+        return res.send(buffer);
+      } else if (format === 'pdf') {
+        const pdfHeaders = columns.map((c) => c.header);
+        const pdfRows = rows.map((r: Record<string, any>) => columns.map((c) => String(r[c.key])));
+        const buffer = await generatePDF('Audit Log Report', 'System Security Audit Trail', pdfHeaders, pdfRows);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename="audit_log.pdf"');
+        return res.send(buffer);
+      } else {
+        const buffer = await generateExcel('Audit Log Report', columns, rows);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="audit_log.xlsx"');
+        return res.send(buffer);
+      }
+    } else {
+      const sales = await prisma.sale.findMany({ where: { status: 'COMPLETED' }, take: 200 });
+      const rows = sales.map((s) => {
+        const total = (s.totalAmount / 100);
+        const taxable = parseFloat((total / 1.18).toFixed(2));
+        const gst = parseFloat((total - taxable).toFixed(2));
+        return {
+          invoiceNo: s.invoiceNo,
+          date: s.createdAt.toISOString().slice(0, 10),
+          taxableValue: taxable.toFixed(2),
+          cgst: (gst / 2).toFixed(2),
+          sgst: (gst / 2).toFixed(2),
+          totalAmount: total.toFixed(2),
+        };
+      });
+
+      const columns = [
+        { header: 'Invoice No', key: 'invoiceNo', width: 20 },
+        { header: 'Date', key: 'date', width: 15 },
+        { header: 'Taxable Value (Rs)', key: 'taxableValue', width: 18 },
+        { header: 'CGST (9%)', key: 'cgst', width: 15 },
+        { header: 'SGST (9%)', key: 'sgst', width: 15 },
+        { header: 'Total Invoice Amount (Rs)', key: 'totalAmount', width: 22 },
+      ];
+
+      if (format === 'csv') {
+        const buffer = generateCSV(columns, rows);
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="gst_summary.csv"');
+        return res.send(buffer);
+      } else if (format === 'pdf') {
+        const pdfHeaders = columns.map((c) => c.header);
+        const pdfRows = rows.map((r: Record<string, any>) => columns.map((c) => String(r[c.key])));
+        const buffer = await generatePDF('Statutory GST Tax Summary', 'GSTR Monthly Tax Report', pdfHeaders, pdfRows);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename="gst_summary.pdf"');
+        return res.send(buffer);
+      } else {
+        const buffer = await generateExcel('GST Tax Summary', columns, rows);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="gst_summary.xlsx"');
+        return res.send(buffer);
+      }
+    }
+  } catch (err: any) {
+    console.error('Report export error:', err);
+    return res.status(500).json({ error: 'Failed to export report' });
+  }
+});
 
 // GET /api/v1/reports/dashboard - Key performance metrics for Department 2 Dashboard
 router.get('/dashboard', async (req: AuthenticatedRequest, res: Response) => {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Target, X, Send, Check } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface CreateCampaignModalProps {
   isOpen: boolean;
@@ -48,15 +49,8 @@ export const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen
         onSuccess();
         onClose();
       }, 2000);
-    } catch {
-      setResult({
-        campaignId: `CMP-2026-${Date.now().toString().slice(-6)}`,
-        dispatchedCount: 128,
-      });
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 2000);
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Failed to launch marketing campaign'));
     } finally {
       setLoading(false);
     }

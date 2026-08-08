@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Edit3, X, Plus, Trash2, ShieldAlert } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface PostJournalModalProps {
   isOpen: boolean;
@@ -60,13 +61,7 @@ export const PostJournalModal: React.FC<PostJournalModalProps> = ({ isOpen, onCl
         onClose();
       }, 2000);
     } catch (err: any) {
-      setResult({
-        journalNo: `JRN-2026-${Date.now().toString().slice(-6)}`,
-      });
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 2000);
+      setError(getApiErrorMessage(err, 'Failed to post manual journal voucher'));
     } finally {
       setLoading(false);
     }

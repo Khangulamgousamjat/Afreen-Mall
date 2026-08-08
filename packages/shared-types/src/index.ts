@@ -1,14 +1,24 @@
 export enum RoleName {
   SUPER_ADMIN = 'SUPER_ADMIN',
+  COMPANY_ADMIN = 'COMPANY_ADMIN',
+  BRANCH_ADMIN = 'BRANCH_ADMIN',
   REGIONAL_MANAGER = 'REGIONAL_MANAGER',
   STORE_MANAGER = 'STORE_MANAGER',
+  PURCHASE_MANAGER = 'PURCHASE_MANAGER',
+  INVENTORY_MANAGER = 'INVENTORY_MANAGER',
+  FINANCE_MANAGER = 'FINANCE_MANAGER',
+  HR_MANAGER = 'HR_MANAGER',
+  SALES_MANAGER = 'SALES_MANAGER',
+  CRM_MANAGER = 'CRM_MANAGER',
   ACCOUNTANT = 'ACCOUNTANT',
   CASHIER = 'CASHIER',
   CASH_OFFICER = 'CASH_OFFICER',
   INVENTORY_STAFF = 'INVENTORY_STAFF',
   WAREHOUSE_STAFF = 'WAREHOUSE_STAFF',
   PURCHASE_TEAM = 'PURCHASE_TEAM',
+  CUSTOMER_SERVICE = 'CUSTOMER_SERVICE',
   AUDITOR = 'AUDITOR',
+  READ_ONLY = 'READ_ONLY',
 }
 
 export enum SaleType {
@@ -39,20 +49,6 @@ export enum PurchaseOrderStatus {
   COMPLETED = 'COMPLETED',
 }
 
-export enum SaleState {
-  DRAFT = 'DRAFT',
-  SCANNING = 'SCANNING',
-  HOLD = 'HOLD',
-  PENDING_PAYMENT = 'PENDING_PAYMENT',
-  PAID = 'PAID',
-  CANCELLED = 'CANCELLED',
-  RETURNED = 'RETURNED',
-  EXCHANGED = 'EXCHANGED',
-  FAILED = 'FAILED',
-  SYNCED = 'SYNCED',
-  OFFLINE_PENDING = 'OFFLINE_PENDING',
-}
-
 export interface UserSession {
   id: string;
   staffId: number;
@@ -60,12 +56,10 @@ export interface UserSession {
   fullName: string;
   role: RoleName;
   mustChangePassword: boolean;
-  lastLoginAt?: string;
-  isDeactivated?: boolean;
   canProcessSaleReturn?: boolean;
 }
 
-export interface DenominationBreakdown {
+export interface CashDenominations {
   d2000: number;
   d500: number;
   d200: number;
@@ -78,120 +72,24 @@ export interface DenominationBreakdown {
   d1: number;
 }
 
+export type DenominationBreakdown = CashDenominations;
+
 export interface POSCartItem {
   id: string;
   barcode: string;
   name: string;
-  description: string;
+  description?: string;
+  unit?: string;
+  hsnCode?: string;
   qty: number;
-  mrp: number; // in paise
-  rate: number; // in paise
+  mrp: number;
+  rate: number;
+  netRate: number;
   discountPercent: number;
-  discountAmount: number; // in paise
+  discountAmount: number;
+  taxRatePercent?: number;
+  taxAmount?: number;
   gstPercent: number;
-  netRate: number; // in paise
-  value: number; // in paise
-  unit: string;
-  hsnCode: string;
-}
-
-export interface POSInvoice {
-  id: string;
-  invoiceNo: string;
-  date: string;
-  saleType: SaleType;
-  cashierName: string;
-  cashierStaffId: number;
-  paymentMode: PaymentMode;
-  items: POSCartItem[];
-  totalQty: number;
-  totalDiscount: number; // in paise
-  totalAmount: number; // in paise
-  paidCash: number; // in paise
-  paidCard: number; // in paise
-  paidUPI: number; // in paise
-  changeDue: number; // in paise
-  customerPhone?: string;
-  customerName?: string;
-  transactionId?: string;
-  isManuallyRecovered?: boolean;
-  recoveredByStaffId?: number;
-  recoveredAt?: string;
-  reprintCount?: number;
-  isDuplicateCopy?: boolean;
-  status: 'COMPLETED' | 'CANCELLED' | 'RETURNED' | 'HELD';
-  createdAt: string;
-}
-
-export interface BillRecoveryPayload {
-  transactionId: string;
-  amount: number; // in paise
-  paymentMode: PaymentMode.CARD | PaymentMode.UPI;
-  registerId?: string;
-}
-
-export interface DayCloseReport {
-  id: string;
-  date: string;
-  registerId: string;
-  posNumber?: string;
-  cashierStaffId: number;
-  cashierName: string;
-  systemCash: number; // paise
-  systemCard: number; // paise
-  systemUPI: number; // paise
-  countedCash: number; // paise
-  denominations: DenominationBreakdown;
-  useBNACount?: boolean;
-  bnaDepositAmount?: number; // paise
-  bnaSlipNumber?: string;
-  totalCashSales?: number; // paise (countedCash + bnaDepositAmount)
-  variance: number; // paise
-  status: CashVarianceStatus;
-  isCloseReturn: boolean;
-  submittedAt: string;
-}
-
-export interface ManagerCashReport {
-  id: string;
-  date: string;
-  registerId: string;
-  posNumber: string;
-  cashOfficerName: string;
-  cashOfficerStaffId: number;
-  managerName: string;
-  denominations: DenominationBreakdown;
-  cashTotal: number; // paise
-  upiTotal: number; // paise
-  cardTotal: number; // paise
-  bnaReportedAmount: number; // paise
-  systemTotalSales: number; // paise
-  finalVariance: number; // paise
-  varianceStatus: CashVarianceStatus;
-  accountantApproved: boolean;
-  accountantApprovedBy?: string;
-  accountantApprovedAt?: string;
-  createdAt: string;
-}
-
-export interface AuditLogEntry {
-  id: string;
-  action: string;
-  entityName: string;
-  entityId: string;
-  userStaffId: number;
-  userName: string;
-  userRole: string;
-  beforeValue?: any;
-  afterValue?: any;
-  reason?: string;
-  timestamp: string;
-}
-
-export interface HardwareStatus {
-  barcodeScannerConnected: boolean;
-  edcTerminalConnected: boolean;
-  edcStatus: 'IDLE' | 'WAITING_FOR_CARD' | 'PROCESSING' | 'SUCCESS' | 'ERROR';
-  thermalPrinterConnected: boolean;
-  upiProviderReady: boolean;
+  value: number;
+  finalTotal?: number;
 }

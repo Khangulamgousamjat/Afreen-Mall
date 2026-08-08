@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, X, Check, FileText } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface ApplyLeaveModalProps {
   isOpen: boolean;
@@ -46,14 +47,8 @@ export const ApplyLeaveModal: React.FC<ApplyLeaveModalProps> = ({ isOpen, onClos
         onSuccess();
         onClose();
       }, 2000);
-    } catch {
-      setResult({
-        leaveNo: `LV-2026-${Date.now().toString().slice(-6)}`,
-      });
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 2000);
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Failed to submit leave application'));
     } finally {
       setLoading(false);
     }

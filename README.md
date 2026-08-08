@@ -174,11 +174,11 @@ graph TD
 | Role | Staff ID | Username | Full Name | Default Password |
 |---|---|---|---|---|
 | **Super Admin** | `300000` | `Superkhan` | Gous Khan | *(Initial Set)* |
-| **Store Manager** | `300001` | `manager1` | Sanjay Gupta | `Pass@123` |
-| **Head Cashier** | `300002` | `pooja1` | Pooja Sharma | `Pass@123` |
-| **Cashier (Sales Only)** | `300003` | `vinayak1` | Vinayak Shinde | `Pass@123` |
-| **Cash Officer** | `300004` | `babuji1` | Babuji Namole | `Pass@123` |
-| **Senior Accountant** | `300005` | `amit1` | Amit Verma | `Pass@123` |
+| **Store Manager** | `300001` | `manager1` | Rajesh Sharma | `AfreenStaff@2026` |
+| **Head Cashier** | `300002` | `accountant1` | Priya Patel | `AfreenStaff@2026` |
+| **Cashier (Sales Only)** | `300003` | `cashier1` | Vinayak Shinde | `AfreenStaff@2026` |
+| **Cash Officer** | `300004` | `cashofficer1` | Babuji Namole | `AfreenStaff@2026` |
+| **Senior Accountant** | `300005` | `auditor1` | Amit Verma | `AfreenStaff@2026` |
 
 
 

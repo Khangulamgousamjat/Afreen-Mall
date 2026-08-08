@@ -1,15 +1,15 @@
 import { Router, Response } from 'express';
-import bcrypt from 'bcrypt';
 import { prisma } from '../../prisma.js';
 import { authenticateToken, requireManagerOrAdmin, AuthenticatedRequest } from '../../middleware/auth.js';
 import { RoleName } from '@afreen-mall/shared-types';
+import bcrypt from 'bcrypt';
 
 const router = Router();
 
 // Apply Manager or Super Admin requirement to ALL routes in this file
 router.use(authenticateToken, requireManagerOrAdmin);
 
-// GET /api/v1/users - List all staff
+// GET /api/v1/users - List all staff (delegates to same Prisma query as /admin/users)
 router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const users = await prisma.user.findMany({
@@ -36,7 +36,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-// POST /api/v1/users - Create new staff account (Auto-increments Staff ID starting 300000)
+// POST /api/v1/users - Create new staff account
 router.post('/', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { username, fullName, role, canProcessSaleReturn } = req.body;
@@ -49,7 +49,6 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ error: `Invalid role name: ${role}` });
     }
 
-    // Check duplicate username
     const existingUser = await prisma.user.findUnique({ where: { username } });
     if (existingUser) {
       return res.status(400).json({ error: `Username '${username}' is already taken.` });
@@ -61,7 +60,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
     });
 
     const nextStaffId = highestUser ? Math.max(highestUser.staffId + 1, 300000) : 300000;
-    const temporaryPassword = 'Pass@123';
+    const temporaryPassword = process.env.DEFAULT_TEMP_PASSWORD || ('Afreen#' + Math.floor(100000 + Math.random() * 900000));
     const passwordHash = await bcrypt.hash(temporaryPassword, 12);
 
     const newUser = await prisma.user.create({
@@ -113,7 +112,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-// PATCH /api/v1/users/:id/role - Update staff role
+// PATCH /api/v1/users/:id/role
 router.patch('/:id/role', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -144,7 +143,7 @@ router.patch('/:id/role', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-// PATCH /api/v1/users/:id/status - Toggle deactivation / Reactivate account (Turn ON)
+// PATCH /api/v1/users/:id/status
 router.patch('/:id/status', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -162,7 +161,7 @@ router.patch('/:id/status', async (req: AuthenticatedRequest, res: Response) => 
   }
 });
 
-// PATCH /api/v1/users/:id/permissions - Toggle Sale Return Permission
+// PATCH /api/v1/users/:id/permissions
 router.patch('/:id/permissions', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -180,7 +179,7 @@ router.patch('/:id/permissions', async (req: AuthenticatedRequest, res: Response
   }
 });
 
-// POST /api/v1/users/:id/unlock - Unlock locked staff account
+// POST /api/v1/users/:id/unlock
 router.post('/:id/unlock', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;

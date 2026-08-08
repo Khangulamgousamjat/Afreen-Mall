@@ -87,7 +87,7 @@ export const VoidBillModal: React.FC<VoidBillModalProps> = ({ isOpen, onClose, o
               className="input-field"
               value={managerPin}
               onChange={(e) => setManagerPin(e.target.value)}
-              placeholder="Enter Store Manager PIN (Pass@123)..."
+              placeholder="Enter Store Manager Password or PIN..."
               required
             />
           </div>

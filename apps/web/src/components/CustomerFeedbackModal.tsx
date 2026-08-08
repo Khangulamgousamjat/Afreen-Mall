@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Star, X, MessageSquare, ThumbsUp } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface CustomerFeedbackModalProps {
   isOpen: boolean;
@@ -39,12 +40,8 @@ export const CustomerFeedbackModal: React.FC<CustomerFeedbackModalProps> = ({ is
         onSuccess();
         onClose();
       }, 2000);
-    } catch {
-      setSubmitted(true);
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 2000);
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Failed to submit customer feedback'));
     } finally {
       setLoading(false);
     }

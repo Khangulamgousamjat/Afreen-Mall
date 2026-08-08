@@ -93,8 +93,8 @@ export const OfflineSyncStatusBanner: React.FC = () => {
         {!isOnline ? <WifiOff size={16} /> : <Wifi size={16} />}
         <span>
           {!isOnline
-            ? '⚠️ NETWORK DISCONNECTED — POS Running in Standalone Offline Mode'
-            : `⚡ NETWORK RESTORED — ${offlineCount} Offline Sales Pending Synchronization`}
+            ? '⚠️ NETWORK DISCONNECTED — Standalone Till Mode (Unsynced sales saved locally to this terminal\'s browser queue)'
+            : `⚡ NETWORK RESTORED — ${offlineCount} Unsent Sales Queued Locally on This Terminal (Sync must be triggered from this till)`}
         </span>
       </div>
 

@@ -1,17 +1,75 @@
 import React, { useState } from 'react';
-import { BarChart3, FileSpreadsheet, ShieldCheck, DollarSign, Calendar } from 'lucide-react';
+import { BarChart3, FileSpreadsheet, ShieldCheck, Download, FileText } from 'lucide-react';
+import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 export const ReportsScreen: React.FC = () => {
   const [reportTab, setReportTab] = useState<'SALES' | 'GST' | 'AUDIT'>('SALES');
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async (format: 'xlsx' | 'pdf' | 'csv') => {
+    try {
+      setExporting(true);
+      const type = reportTab.toLowerCase();
+      const res = await api.get(`/reports/export?type=${type}&format=${format}`, {
+        responseType: 'blob',
+      });
+      const mime = format === 'pdf' ? 'application/pdf' : format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: mime }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${type}_report.${format}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err: any) {
+      alert(getApiErrorMessage(err, 'Failed to export report'));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div>
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold', textTransform: 'uppercase' }}>
-          Operational Reports & Audit Intelligence
-        </h1>
-        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-          GST tax filings, daily sales trends, cash reconciliation history, and audit trail logs
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+            Operational Reports & Audit Intelligence
+          </h1>
+          <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+            GST tax filings, daily sales trends, cash reconciliation history, and audit trail logs
+          </div>
+        </div>
+
+        {/* Export Action Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            className="btn btn-primary"
+            disabled={exporting}
+            onClick={() => handleExport('xlsx')}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}
+          >
+            <FileSpreadsheet size={14} />
+            <span>Excel (.xlsx)</span>
+          </button>
+          <button
+            className="btn"
+            disabled={exporting}
+            onClick={() => handleExport('pdf')}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}
+          >
+            <FileText size={14} />
+            <span>PDF (.pdf)</span>
+          </button>
+          <button
+            className="btn"
+            disabled={exporting}
+            onClick={() => handleExport('csv')}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}
+          >
+            <Download size={14} />
+            <span>CSV (.csv)</span>
+          </button>
         </div>
       </div>
 
@@ -100,12 +158,12 @@ export const ReportsScreen: React.FC = () => {
               <div style={{ fontSize: '22px', fontWeight: 'bold', marginTop: '4px' }} className="monetary">₹1,86,607.14</div>
             </div>
             <div className="card" style={{ padding: '16px' }}>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Central GST (CGST)</div>
-              <div style={{ fontSize: '22px', fontWeight: 'bold', marginTop: '4px', color: 'var(--accent-lime)' }} className="monetary">₹11,196.43</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Output CGST (9%) + SGST (9%)</div>
+              <div style={{ fontSize: '22px', fontWeight: 'bold', marginTop: '4px', color: 'var(--status-amber)' }} className="monetary">₹33,589.28</div>
             </div>
             <div className="card" style={{ padding: '16px' }}>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>State GST (SGST)</div>
-              <div style={{ fontSize: '22px', fontWeight: 'bold', marginTop: '4px', color: 'var(--accent-lime)' }} className="monetary">₹11,196.43</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Total Gross Invoice Value</div>
+              <div style={{ fontSize: '22px', fontWeight: 'bold', marginTop: '4px', color: 'var(--accent-lime)' }} className="monetary">₹2,20,196.42</div>
             </div>
           </div>
         </div>
@@ -116,35 +174,8 @@ export const ReportsScreen: React.FC = () => {
           <h3 style={{ fontSize: '16px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '16px' }}>
             System Audit Trail Logs
           </h3>
-
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Timestamp</th>
-                  <th>Action</th>
-                  <th>Performed By</th>
-                  <th>Staff ID</th>
-                  <th>Reason / Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="tabular-nums">2026-07-28 20:25:10</td>
-                  <td style={{ fontWeight: 'bold', color: 'var(--accent-lime)' }}>ACCOUNTANT_APPROVE_DAY_CLOSE</td>
-                  <td>Priya Patel</td>
-                  <td className="tabular-nums">300002</td>
-                  <td>Daily consolidated cash report officially approved by Accountant.</td>
-                </tr>
-                <tr>
-                  <td className="tabular-nums">2026-07-28 19:40:02</td>
-                  <td style={{ fontWeight: 'bold', color: 'var(--status-amber)' }}>OVERRIDE_CASH_REPORT</td>
-                  <td>Rajesh Sharma</td>
-                  <td className="tabular-nums">300001</td>
-                  <td>Corrected BNA deposit count after physical recount with cashier.</td>
-                </tr>
-              </tbody>
-            </table>
+          <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+            All critical store transactions, password updates, and manual journal postings are recorded in the PostgreSQL database audit table. Use the Export controls above to download full audit trail logs.
           </div>
         </div>
       )}

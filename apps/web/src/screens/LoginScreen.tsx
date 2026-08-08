@@ -29,30 +29,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
   const searchInputRef = useRef<HTMLInputElement>(null);
   const passwordInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch live staff members from API & merge with local custom accounts
+  // Fetch live staff members from API directory
   useEffect(() => {
     const fetchUsers = async () => {
       let combined: StaffMember[] = [...INITIAL_STAFF_LIST];
-
-      // Read locally created custom staff accounts
-      try {
-        const savedCustom = localStorage.getItem('afreen_custom_staff');
-        if (savedCustom) {
-          const parsedCustom = JSON.parse(savedCustom);
-          if (Array.isArray(parsedCustom)) {
-            parsedCustom.forEach((c: any) => {
-              if (!combined.some((s) => s.staffId === c.staffId)) {
-                combined.push({
-                  staffId: c.staffId,
-                  username: c.username,
-                  name: c.fullName || c.name || c.username,
-                  role: c.role,
-                });
-              }
-            });
-          }
-        }
-      } catch { /* no-op */ }
 
       try {
         const res = await api.get('/auth/directory');
@@ -69,7 +49,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           });
         }
       } catch {
-        // Fallback to merged list
+        // Fallback to directory list
       }
 
       setStaffList(combined);

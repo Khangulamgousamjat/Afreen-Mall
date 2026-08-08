@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PackagePlus, X, AlertTriangle, Check } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface AddProductModalProps {
   isOpen: boolean;
@@ -61,25 +62,12 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
       if (res.data?.product) {
         onSuccess(res.data.product);
         onClose();
+      } else {
+        onSuccess(res.data);
+        onClose();
       }
     } catch (err: any) {
-      // Fallback mock addition if offline API
-      const mockNewProduct = {
-        id: `prod-${Date.now()}`,
-        barcode: payload.barcode,
-        name: payload.name,
-        category: payload.category,
-        unit: payload.unit,
-        mrp: payload.mrp,
-        saleRate: payload.saleRate,
-        currentStock: payload.initialStock,
-        minStockLevel: payload.minStockLevel,
-        warehouse: payload.warehouse,
-        rack: payload.rack,
-        bin: payload.bin,
-      };
-      onSuccess(mockNewProduct);
-      onClose();
+      setError(getApiErrorMessage(err, 'Failed to add product to catalog'));
     } finally {
       setLoading(false);
     }

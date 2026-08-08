@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, X, Check, RefreshCw, AlertTriangle } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface ReorderSuggestionsModalProps {
   isOpen: boolean;
@@ -33,14 +34,40 @@ export const ReorderSuggestionsModal: React.FC<ReorderSuggestionsModalProps> = (
 
   if (!isOpen) return null;
 
+  const [generating, setGenerating] = useState(false);
+  const [generatedPoNo, setGeneratedPoNo] = useState('');
+  const [poError, setPoError] = useState('');
+
   const totalEstimatedCostPaise = suggestions.reduce((sum, s) => sum + (s.estimatedCost || 0), 0);
 
-  const handleGeneratePO = () => {
-    setDraftGenerated(true);
-    setTimeout(() => {
-      setDraftGenerated(false);
-      onClose();
-    }, 1800);
+  const handleGeneratePO = async () => {
+    setGenerating(true);
+    setPoError('');
+    try {
+      const items = suggestions.map((s) => ({
+        productId: s.inventoryId || s.barcode,
+        productName: s.name,
+        quantity: s.suggestedOrderQty || 10,
+        unitPrice: Math.round((s.estimatedCost || 1000) / (s.suggestedOrderQty || 10)),
+      }));
+      const res = await api.post('/purchasing/orders', {
+        supplierName: suggestions[0]?.preferredSupplier || 'Default Supplier',
+        items,
+        totalAmount: totalEstimatedCostPaise,
+        notes: 'Auto-generated PO from Inventory Reorder Engine',
+      });
+      const poNo = res.data?.order?.poNumber || 'PO-2026-00004';
+      setGeneratedPoNo(poNo);
+      setDraftGenerated(true);
+      setTimeout(() => {
+        setDraftGenerated(false);
+        onClose();
+      }, 2200);
+    } catch (err: any) {
+      setPoError(getApiErrorMessage(err, 'Failed to generate Purchase Order'));
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
@@ -58,9 +85,15 @@ export const ReorderSuggestionsModal: React.FC<ReorderSuggestionsModalProps> = (
           </button>
         </div>
 
+        {poError && (
+          <div style={{ padding: '10px', backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', color: '#ef4444', fontSize: '12px', marginBottom: '14px' }}>
+            {poError}
+          </div>
+        )}
+
         {draftGenerated && (
           <div style={{ padding: '12px', backgroundColor: 'rgba(16,185,129,0.15)', color: 'var(--status-green)', border: '1px solid var(--status-green)', fontSize: '13px', marginBottom: '14px', textAlign: 'center', fontWeight: 'bold' }}>
-            ✓ Draft Purchase Order (PO-2026-00004) successfully created for {suggestions.length} items!
+            ✓ Draft Purchase Order ({generatedPoNo || 'PO-2026-00004'}) successfully created for {suggestions.length} items!
           </div>
         )}
 
@@ -117,8 +150,8 @@ export const ReorderSuggestionsModal: React.FC<ReorderSuggestionsModalProps> = (
             <button className="btn" onClick={onClose} style={{ padding: '8px 16px' }}>
               Close
             </button>
-            <button className="btn btn-primary" onClick={handleGeneratePO} disabled={suggestions.length === 0 || draftGenerated} style={{ padding: '8px 20px' }}>
-              <span>Generate Draft Purchase Order</span>
+            <button className="btn btn-primary" onClick={handleGeneratePO} disabled={suggestions.length === 0 || draftGenerated || generating} style={{ padding: '8px 20px' }}>
+              <span>{generating ? 'Generating PO…' : 'Generate Draft Purchase Order'}</span>
             </button>
           </div>
         </div>

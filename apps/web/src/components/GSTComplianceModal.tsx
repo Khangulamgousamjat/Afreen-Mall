@@ -85,7 +85,22 @@ export const GSTComplianceModal: React.FC<GSTComplianceModalProps> = ({ isOpen, 
                     <strong>GSTR-1 Outward Supplies Return:</strong>
                     <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>B2B & B2C Invoices JSON Ready</span>
                   </div>
-                  <button className="btn btn-primary" onClick={() => alert('GSTR-1 Return JSON exported!')} style={{ padding: '4px 10px', fontSize: '11px' }}>
+                  <button
+                    className="btn btn-primary"
+                    onClick={async () => {
+                      try {
+                        const res = await api.get('/accounting/gst/gstr1', { responseType: 'blob' });
+                        const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/json' }));
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.setAttribute('download', 'GSTR1_Return_August_2026.json');
+                        document.body.appendChild(link);
+                        link.click();
+                        link.remove();
+                      } catch { alert('Failed to download GSTR-1 JSON'); }
+                    }}
+                    style={{ padding: '4px 10px', fontSize: '11px' }}
+                  >
                     <Download size={12} /> Export GSTR-1 JSON
                   </button>
                 </div>
@@ -95,7 +110,22 @@ export const GSTComplianceModal: React.FC<GSTComplianceModalProps> = ({ isOpen, 
                     <strong>GSTR-3B Monthly Tax Return:</strong>
                     <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>Output Tax - Input Credit Settled</span>
                   </div>
-                  <button className="btn" onClick={() => alert('GSTR-3B Return PDF exported!')} style={{ padding: '4px 10px', fontSize: '11px' }}>
+                  <button
+                    className="btn"
+                    onClick={async () => {
+                      try {
+                        const res = await api.get('/accounting/gst/export?type=gstr3b&format=pdf', { responseType: 'blob' });
+                        const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.setAttribute('download', 'GSTR3B_Monthly_Return.pdf');
+                        document.body.appendChild(link);
+                        link.click();
+                        link.remove();
+                      } catch { alert('Failed to download GSTR-3B PDF'); }
+                    }}
+                    style={{ padding: '4px 10px', fontSize: '11px' }}
+                  >
                     <Download size={12} /> Export GSTR-3B PDF
                   </button>
                 </div>

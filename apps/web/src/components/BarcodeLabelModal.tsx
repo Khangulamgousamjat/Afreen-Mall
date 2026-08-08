@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Tag, Printer, X, Check } from 'lucide-react';
+import { api } from '../services/api';
 
 interface BarcodeLabelModalProps {
   isOpen: boolean;
@@ -144,9 +145,31 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({ isOpen, on
           <button className="btn" onClick={onClose} style={{ padding: '8px 16px' }}>
             Cancel
           </button>
+          <button
+            className="btn"
+            onClick={async () => {
+              try {
+                const res = await api.post(
+                  '/catalog/barcodes/pdf',
+                  { productId: product.id, quantity: labelQuantity, labelFormat },
+                  { responseType: 'blob' }
+                );
+                const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `barcode_labels_${product.barcode || 'sheet'}.pdf`);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+              } catch { alert('Failed to download barcode label PDF sheet'); }
+            }}
+            style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--accent-lime)' }}
+          >
+            <span>Download PDF Sheet (A4)</span>
+          </button>
           <button className="btn btn-primary" onClick={handlePrint} style={{ padding: '8px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Printer size={16} />
-            <span>Print {labelQuantity} Barcode Labels</span>
+            <span>Print {labelQuantity} Labels</span>
           </button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle2, XCircle, X, ShieldAlert } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface PRApprovalModalProps {
   isOpen: boolean;
@@ -12,18 +13,19 @@ interface PRApprovalModalProps {
 export const PRApprovalModal: React.FC<PRApprovalModalProps> = ({ isOpen, onClose, pr, onSuccess }) => {
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   if (!isOpen || !pr) return null;
 
   const handleAction = async (action: 'APPROVE' | 'REJECT') => {
     setLoading(true);
+    setError('');
     try {
       await api.post(`/purchasing/requisitions/${pr.id}/approve`, { action, notes });
       onSuccess();
       onClose();
-    } catch {
-      onSuccess();
-      onClose();
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Failed to process PR approval action'));
     } finally {
       setLoading(false);
     }
@@ -43,6 +45,12 @@ export const PRApprovalModal: React.FC<PRApprovalModalProps> = ({ isOpen, onClos
             <X size={16} />
           </button>
         </div>
+
+        {error && (
+          <div style={{ padding: '10px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--status-red)', border: '1px solid var(--status-red)', fontSize: '12px', marginBottom: '14px' }}>
+            {error}
+          </div>
+        )}
 
         <div style={{ padding: '12px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: '6px', marginBottom: '16px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px', marginBottom: '10px' }}>

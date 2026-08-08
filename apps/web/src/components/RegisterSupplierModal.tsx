@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Truck, X, ShieldCheck } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface RegisterSupplierModalProps {
   isOpen: boolean;
@@ -48,9 +49,8 @@ export const RegisterSupplierModal: React.FC<RegisterSupplierModalProps> = ({ is
       await api.post('/suppliers', payload);
       onSuccess();
       onClose();
-    } catch {
-      onSuccess();
-      onClose();
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Failed to register supplier'));
     } finally {
       setLoading(false);
     }

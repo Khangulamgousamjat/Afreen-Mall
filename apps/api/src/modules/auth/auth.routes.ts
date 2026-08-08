@@ -5,8 +5,17 @@ import { prisma } from '../../prisma.js';
 import { authenticateToken, AuthenticatedRequest } from '../../middleware/auth.js';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'afreen_mall_super_secure_jwt_secret_key_2026';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'afreen_mall_refresh_secret_key_2026';
+const getJwtSecrets = () => {
+  const secret = process.env.JWT_SECRET;
+  const refreshSecret = process.env.JWT_REFRESH_SECRET || secret;
+  if (!secret && process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL SECURITY ERROR: JWT_SECRET environment variable is missing in production!');
+  }
+  return {
+    jwtSecret: secret || 'afreen_mall_dev_jwt_secret_key_2026',
+    jwtRefreshSecret: refreshSecret || 'afreen_mall_dev_refresh_secret_key_2026',
+  };
+};
 
 // ── Public Staff Directory Listing ───────────────────────────────────────────
 router.get('/directory', async (req, res) => {
@@ -177,8 +186,9 @@ router.post('/login', async (req, res) => {
       canProcessSaleReturn: user.canProcessSaleReturn,
     };
 
-    const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '12h' });
-    const refreshToken = jwt.sign({ id: user.id }, JWT_REFRESH_SECRET, { expiresIn: '7d' });
+    const { jwtSecret, jwtRefreshSecret } = getJwtSecrets();
+    const token = jwt.sign(userPayload, jwtSecret, { expiresIn: '12h' });
+    const refreshToken = jwt.sign({ id: user.id }, jwtRefreshSecret, { expiresIn: '7d' });
 
     // Store Session in Database
     await prisma.session.create({

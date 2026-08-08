@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DollarSign, CheckCircle, AlertTriangle, ShieldCheck, Edit3, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 import { RoleName } from '@afreen-mall/shared-types';
 
 export const CashReconciliationScreen: React.FC = () => {
@@ -36,6 +37,33 @@ export const CashReconciliationScreen: React.FC = () => {
     user?.role === RoleName.ACCOUNTANT ||
     user?.role === RoleName.SUPER_ADMIN;
 
+  const [activeReport, setActiveReport] = useState<any>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [actionError, setActionError] = useState('');
+
+  const fetchReports = async () => {
+    try {
+      setReportLoading(true);
+      const res = await api.get('/cash/reports');
+      if (res.data?.reports && Array.isArray(res.data.reports) && res.data.reports.length > 0) {
+        const latest = res.data.reports[0];
+        setActiveReport(latest);
+        setAccountantApproved(latest.accountantApproved || false);
+        if (latest.bnaReportedAmount) setBnaDeposit((latest.bnaReportedAmount / 100).toString());
+        if (latest.cardTotal) setCardTotal((latest.cardTotal / 100).toString());
+        if (latest.upiTotal) setUpiTotal((latest.upiTotal / 100).toString());
+      }
+    } catch {
+      // Fallback
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
   const isAccountantRole =
     user?.role === RoleName.ACCOUNTANT || user?.role === RoleName.SUPER_ADMIN;
 
@@ -45,11 +73,39 @@ export const CashReconciliationScreen: React.FC = () => {
   const finalVariance = calculatedBnaPaise + calculatedUpiPaise + calculatedCardPaise - systemTotalSales;
 
   const handleAccountantApprove = async () => {
+    if (!activeReport?.id) {
+      alert('Please save a Manager Cash Report before approving consolidated close.');
+      return;
+    }
+    setActionError('');
     try {
-      await api.post('/cash/manager-report/mgr-01/approve');
+      await api.post(`/cash/manager-report/${activeReport.id}/approve`);
       setAccountantApproved(true);
+      await fetchReports();
     } catch (err: any) {
-      setAccountantApproved(true);
+      setActionError(getApiErrorMessage(err, 'Failed to approve consolidated day close report'));
+    }
+  };
+
+  const handleSaveReport = async () => {
+    setActionError('');
+    try {
+      const res = await api.post('/cash/manager-report', {
+        posNumber,
+        cashOfficerName,
+        bnaReportedAmount: calculatedBnaPaise,
+        cashTotal: calculatedBnaPaise,
+        upiTotal: calculatedUpiPaise,
+        cardTotal: calculatedCardPaise,
+        systemTotalSales,
+      });
+      if (res.data?.report) {
+        setActiveReport(res.data.report);
+      }
+      alert('Manager Cash Reconciliation Report submitted successfully!');
+      await fetchReports();
+    } catch (err: any) {
+      setActionError(getApiErrorMessage(err, 'Failed to save Manager Cash Report'));
     }
   };
 
@@ -58,8 +114,26 @@ export const CashReconciliationScreen: React.FC = () => {
       alert('A mandatory reason is required for modifying closing report values.');
       return;
     }
-    alert(`Closing report value updated to ₹${newBnaValue}. Event logged in Audit Trail.`);
-    setShowOverrideModal(false);
+    if (!activeReport?.id) {
+      alert('No saved report found to override. Please save a report first.');
+      return;
+    }
+    setActionError('');
+    try {
+      const res = await api.patch(`/cash/report/${activeReport.id}/override`, {
+        bnaReportedAmount: Math.round((parseFloat(newBnaValue) || 0) * 100),
+        reason: overrideReason,
+      });
+      if (res.data?.report) {
+        setActiveReport(res.data.report);
+      }
+      alert(`Closing report updated to ₹${newBnaValue}. Immutably logged to Audit Trail.`);
+      setShowOverrideModal(false);
+      setOverrideReason('');
+      await fetchReports();
+    } catch (err: any) {
+      alert(getApiErrorMessage(err, 'Failed to edit closing report'));
+    }
   };
 
   return (
@@ -260,7 +334,7 @@ export const CashReconciliationScreen: React.FC = () => {
             </div>
 
             <div style={{ marginTop: '20px', textAlign: 'right' }}>
-              <button className="btn btn-primary" onClick={() => alert('Manager Cash Report saved.')}>
+              <button className="btn btn-primary" onClick={handleSaveReport}>
                 Save Authoritative Cash Report
               </button>
             </div>

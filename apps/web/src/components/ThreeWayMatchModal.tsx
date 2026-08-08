@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldCheck, X, Check, AlertTriangle, FileText } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface ThreeWayMatchModalProps {
   isOpen: boolean;
@@ -12,7 +13,7 @@ interface ThreeWayMatchModalProps {
 export const ThreeWayMatchModal: React.FC<ThreeWayMatchModalProps> = ({ isOpen, onClose, orders, onSuccess }) => {
   const [poNumber, setPoNumber] = useState(orders[0]?.poNumber || 'PO-2026-000001');
   const [grnNumber, setGrnNumber] = useState('GRN-2026-000001');
-  const [supplierInvoiceNo, setSupplierInvoiceNo] = useState(`INV-${Date.now().toString().slice(-6)}`);
+  const [supplierInvoiceNo, setSupplierInvoiceNo] = useState('');
   const [invoiceAmountRupees, setInvoiceAmountRupees] = useState('154000.00');
   const [freightChargesRupees, setFreightChargesRupees] = useState('1500.00');
   const [loading, setLoading] = useState(false);
@@ -48,11 +49,7 @@ export const ThreeWayMatchModal: React.FC<ThreeWayMatchModalProps> = ({ isOpen, 
         onClose();
       }, 1800);
     } catch (err: any) {
-      setVerified(true);
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 1800);
+      setError(getApiErrorMessage(err, '3-Way invoice match verification failed'));
     } finally {
       setLoading(false);
     }

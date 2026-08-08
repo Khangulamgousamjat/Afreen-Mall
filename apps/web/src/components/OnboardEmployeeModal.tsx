@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserPlus, X, ShieldCheck, Building } from 'lucide-react';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
 
 interface OnboardEmployeeModalProps {
   isOpen: boolean;
@@ -54,9 +55,8 @@ export const OnboardEmployeeModal: React.FC<OnboardEmployeeModalProps> = ({ isOp
       await api.post('/hrms/employees', payload);
       onSuccess();
       onClose();
-    } catch {
-      onSuccess();
-      onClose();
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Failed to onboard new employee'));
     } finally {
       setLoading(false);
     }

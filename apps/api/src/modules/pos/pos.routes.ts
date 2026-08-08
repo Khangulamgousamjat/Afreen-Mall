@@ -1,12 +1,93 @@
 import { Router, Response } from 'express';
 import { prisma } from '../../prisma.js';
 import { authenticateToken, AuthenticatedRequest } from '../../middleware/auth.js';
-import { PaymentMode, SaleType } from '@afreen-mall/shared-types';
+import bcrypt from 'bcrypt';
+import { PaymentMode, SaleType, RoleName } from '@afreen-mall/shared-types';
 
 const router = Router();
 router.use(authenticateToken);
 
-// GET /api/v1/pos/registers - Get available registers
+// ── Store-Wide Multi-Terminal Held Bills API ─────────────────────────────────
+
+// GET /api/v1/pos/held-bills - List all store-wide held bills
+router.get('/held-bills', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const bills = await prisma.heldBill.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+    const parsedBills = bills.map((b) => ({
+      id: b.id,
+      holdNo: b.holdNo,
+      registerId: b.registerId,
+      registerName: b.registerName,
+      cashierName: b.cashierName,
+      customerPhone: b.customerPhone,
+      customerName: b.customerName,
+      note: b.note,
+      totalAmountPaise: b.totalAmountPaise,
+      createdAt: b.createdAt,
+      items: JSON.parse(b.cartJson),
+    }));
+    return res.json({ heldBills: parsedBills });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch store-wide held bills' });
+  }
+});
+
+// POST /api/v1/pos/held-bills - Hold a bill across store terminals
+router.post('/held-bills', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { items, customerPhone, customerName, note, registerId, registerName, totalAmountPaise } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Cart is empty. Cannot hold empty bill.' });
+    }
+
+    const count = await prisma.heldBill.count();
+    const holdNo = `HOLD-${String(count + 1).padStart(4, '0')}`;
+
+    const heldBill = await prisma.heldBill.create({
+      data: {
+        holdNo,
+        registerId: registerId || null,
+        registerName: registerName || 'Till-01',
+        cashierName: req.user?.fullName || 'Cashier',
+        customerPhone: customerPhone || null,
+        customerName: customerName || null,
+        note: note || null,
+        totalAmountPaise: totalAmountPaise || items.reduce((sum: number, i: any) => sum + (i.finalTotal || 0), 0),
+        cartJson: JSON.stringify(items),
+      },
+    });
+
+    return res.status(201).json({
+      message: `Bill ${holdNo} held successfully on server (synced across all store terminals)!`,
+      heldBill: {
+        ...heldBill,
+        items,
+      },
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to hold bill on server' });
+  }
+});
+
+// DELETE /api/v1/pos/held-bills/:id - Recall & remove a held bill
+router.delete('/held-bills/:id', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const bill = await prisma.heldBill.findUnique({ where: { id } });
+
+    if (!bill) {
+      return res.status(404).json({ error: 'Held bill not found' });
+    }
+
+    await prisma.heldBill.delete({ where: { id } });
+    return res.json({ message: `Held bill ${bill.holdNo} recalled and removed from server.` });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to recall held bill' });
+  }
+});
 router.get('/registers', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const registers = await prisma.register.findMany({
@@ -25,8 +106,8 @@ router.get('/product/:barcode', async (req: AuthenticatedRequest, res: Response)
     let { barcode } = req.params;
     let weighedQty: number | null = null;
 
-    // Check EAN-13 scale-weighed embedded barcode (Prefix 20 or 21, length 13)
-    if ((barcode.startsWith('20') || barcode.startsWith('21')) && barcode.length === 13) {
+    // Check EAN-13 / UPC scale-weighed embedded barcode (Prefix 20 or 21, length 12 or 13)
+    if ((barcode.startsWith('20') || barcode.startsWith('21')) && (barcode.length === 12 || barcode.length === 13)) {
       const itemCode = barcode.substring(2, 7); // 5 digit product code
       const weightVal = parseInt(barcode.substring(7, 12), 10); // weight in grams
       weighedQty = weightVal / 1000; // e.g. 500g -> 0.5 kg
@@ -679,14 +760,31 @@ router.post('/void', async (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ error: 'Invoice Number and Void Reason are required' });
     }
 
-    const isManagerOrAdmin =
-      req.user!.role === 'SUPER_ADMIN' ||
-      req.user!.role === 'STORE_MANAGER' ||
-      req.user!.role === 'REGIONAL_MANAGER' ||
-      req.user!.role === 'CASH_OFFICER';
+    let isAuthorized =
+      req.user!.role === RoleName.SUPER_ADMIN ||
+      req.user!.role === RoleName.STORE_MANAGER ||
+      req.user!.role === RoleName.REGIONAL_MANAGER ||
+      req.user!.role === RoleName.COMPANY_ADMIN;
 
-    if (!isManagerOrAdmin && managerPin !== 'Pass@123' && managerPin !== 'Kingkhan@12') {
-      return res.status(403).json({ error: 'Permission Denied: Invoice Void requires Store Manager PIN / Authorization.' });
+    if (!isAuthorized && managerPin) {
+      const managers = await prisma.user.findMany({
+        where: {
+          role: { in: [RoleName.SUPER_ADMIN, RoleName.STORE_MANAGER, RoleName.REGIONAL_MANAGER, RoleName.COMPANY_ADMIN] },
+          isDeactivated: false,
+          deletedAt: null,
+        },
+      });
+
+      for (const mgr of managers) {
+        if (await bcrypt.compare(String(managerPin), mgr.passwordHash)) {
+          isAuthorized = true;
+          break;
+        }
+      }
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({ error: 'Permission Denied: Invoice Void requires valid Store Manager credentials.' });
     }
 
     const sale = await prisma.sale.findUnique({
