@@ -1,0 +1,449 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum RoleName {
+  SUPER_ADMIN
+  REGIONAL_MANAGER
+  STORE_MANAGER
+  ACCOUNTANT
+  CASHIER
+  CASH_OFFICER
+  INVENTORY_STAFF
+  WAREHOUSE_STAFF
+  PURCHASE_TEAM
+  AUDITOR
+}
+
+enum SaleType {
+  RETAIL
+  WHOLESALE
+  INSTITUTIONAL
+}
+
+enum PaymentMode {
+  CASH
+  CARD
+  UPI
+  SPLIT
+}
+
+enum CashVarianceStatus {
+  MATCHED
+  SHORT
+  EXCESS
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  RECEIVED
+  COMPLETED
+}
+
+// Identity & Access
+model User {
+  id                 String     @id @default(uuid())
+  staffId            Int        @unique // Auto-incrementing sequence starting 300000
+  username           String     @unique
+  fullName           String
+  passwordHash       String
+  role               RoleName
+  mustChangePassword Boolean    @default(true)
+  isLocked           Boolean    @default(false)
+  failedAttempts     Int        @default(0)
+  lockoutUntil       DateTime?
+  sessions           Session[]
+  loginHistory       LoginHistory[]
+  auditLogs          AuditLog[]
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  deletedAt          DateTime?
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  token        String   @unique
+  refreshToken String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+}
+
+model LoginHistory {
+  id        String   @id @default(uuid())
+  userId    String?
+  staffId   Int?
+  username  String
+  success   Boolean
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  staffId     Int
+  userName    String
+  userRole    String
+  action      String
+  entityName  String
+  entityId    String
+  beforeValue Json?
+  afterValue  Json?
+  reason      String?
+  createdAt   DateTime @default(now())
+  user        User?    @relation(fields: [userId], references: [id])
+}
+
+// Store & System
+model Store {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String   @default("Afreen Mall")
+  address   String
+  phone     String
+  email     String
+  gstin     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Catalog
+model Category {
+  id          String        @id @default(uuid())
+  name        String
+  code        String        @unique
+  subCategories SubCategory[]
+  products    Product[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+}
+
+model SubCategory {
+  id         String    @id @default(uuid())
+  categoryId String
+  category   Category  @relation(fields: [categoryId], references: [id])
+  name       String
+  code       String    @unique
+  products   Product[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+}
+
+model Brand {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Unit {
+  id        String    @id @default(uuid())
+  name      String    @unique // Pcs, Kg, Ltr, Pack
+  code      String    @unique
+  products  Product[]
+  createdAt DateTime  @default(now())
+}
+
+model TaxRate {
+  id        String    @id @default(uuid())
+  name      String    // GST 5%, GST 12%, GST 18%
+  rate      Float     // 5, 12, 18
+  products  Product[]
+  createdAt DateTime  @default(now())
+}
+
+model HSNCode {
+  id          String    @id @default(uuid())
+  code        String    @unique
+  description String
+  products    Product[]
+  createdAt   DateTime  @default(now())
+}
+
+model Product {
+  id            String       @id @default(uuid())
+  barcode       String       @unique
+  name          String
+  description   String
+  categoryId    String
+  category      Category     @relation(fields: [categoryId], references: [id])
+  subCategoryId String?
+  subCategory   SubCategory? @relation(fields: [subCategoryId], references: [id])
+  brandId       String?
+  brand         Brand?       @relation(fields: [brandId], references: [id])
+  unitId        String
+  unit          Unit         @relation(fields: [unitId], references: [id])
+  taxRateId     String
+  taxRate       TaxRate      @relation(fields: [taxRateId], references: [id])
+  hsnCodeId     String?
+  hsnCode       HSNCode?     @relation(fields: [hsnCodeId], references: [id])
+  mrp           Int          // Paise
+  saleRate      Int          // Paise
+  discountPct   Float        @default(0)
+  minStockLevel Int          @default(10)
+  inventory     Inventory?
+  saleItems     SaleItem[]
+  poLineItems   POLineItem[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  deletedAt     DateTime?
+}
+
+// Inventory
+model Inventory {
+  id            String          @id @default(uuid())
+  productId     String          @unique
+  product       Product         @relation(fields: [productId], references: [id])
+  currentStock  Int             @default(0)
+  reservedStock Int             @default(0)
+  movements     StockMovement[]
+  adjustments   StockAdjustment[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model StockMovement {
+  id          String   @id @default(uuid())
+  inventoryId String
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+  type        String   // SALE, RETURN, PURCHASE_GRN, ADJUSTMENT, TRANSFER
+  quantity    Int      // positive for addition, negative for deduction
+  referenceId String?
+  notes       String?
+  createdAt   DateTime @default(now())
+}
+
+model StockAdjustment {
+  id          String   @id @default(uuid())
+  inventoryId String
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+  oldStock    Int
+  newStock    Int
+  difference  Int
+  reason      String
+  performedBy String
+  createdAt   DateTime @default(now())
+}
+
+// POS & Sales
+model Register {
+  id            String          @id @default(uuid())
+  posNumber     String          @unique // POS-01, POS-02
+  name          String
+  isActive      Boolean         @default(true)
+  sales         Sale[]
+  closes        RegisterClose[]
+  cashReports   ManagerCashReport[]
+  createdAt     DateTime        @default(now())
+}
+
+model Sale {
+  id              String      @id @default(uuid())
+  invoiceNo       String      @unique
+  registerId      String
+  register        Register    @relation(fields: [registerId], references: [id])
+  saleType        SaleType    @default(RETAIL)
+  cashierStaffId  Int
+  cashierName     String
+  paymentMode     PaymentMode
+  totalQty        Int
+  totalDiscount   Int         // Paise
+  totalAmount     Int         // Paise
+  paidCash        Int         @default(0) // Paise
+  paidCard        Int         @default(0) // Paise
+  paidUPI         Int         @default(0) // Paise
+  changeDue       Int         @default(0) // Paise
+  customerPhone   String?
+  customerName    String?
+  status          String      @default("COMPLETED") // COMPLETED, CANCELLED, RETURNED
+  items           SaleItem[]
+  saleReturns     SaleReturn[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model SaleItem {
+  id          String   @id @default(uuid())
+  saleId      String
+  sale        Sale     @relation(fields: [saleId], references: [id])
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  qty         Int
+  mrp         Int      // Paise
+  rate        Int      // Paise
+  discountPct Float    @default(0)
+  discountAmt Int      @default(0) // Paise
+  gstPct      Float    @default(0)
+  netRate     Int      // Paise
+  totalValue  Int      // Paise
+}
+
+model SaleReturn {
+  id            String   @id @default(uuid())
+  returnNo      String   @unique
+  originalSaleId String
+  originalSale  Sale     @relation(fields: [originalSaleId], references: [id])
+  cashierStaffId Int
+  cashierName   String
+  refundMode    PaymentMode
+  totalAmount   Int      // Paise
+  reason        String
+  createdAt     DateTime @default(now())
+}
+
+// Cash Reconciliation Pipeline
+model RegisterClose {
+  id             String   @id @default(uuid())
+  registerId     String
+  register       Register @relation(fields: [registerId], references: [id])
+  date           String   // YYYY-MM-DD
+  cashierStaffId Int
+  cashierName    String
+  systemCash     Int      // Paise
+  systemCard     Int      // Paise
+  systemUPI      Int      // Paise
+  countedCash    Int      // Paise
+  denominations  Json     // { d2000, d500, d200... }
+  variance       Int      // Paise
+  status         CashVarianceStatus
+  isCloseReturn  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+}
+
+model ManagerCashReport {
+  id                  String   @id @default(uuid())
+  date                String   // YYYY-MM-DD
+  registerId          String
+  register            Register @relation(fields: [registerId], references: [id])
+  posNumber           String
+  cashOfficerStaffId Int
+  cashOfficerName     String
+  managerStaffId      Int
+  managerName         String
+  denominations       Json     // Note count breakdown
+  cashTotal           Int      // Paise
+  upiTotal            Int      // Paise
+  cardTotal           Int      // Paise
+  bnaReportedAmount   Int      // Paise
+  systemTotalSales    Int      // Paise
+  finalVariance       Int      // Paise
+  varianceStatus      CashVarianceStatus
+  accountantApproved  Boolean  @default(false)
+  accountantApprovedBy String?
+  accountantApprovedAt DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// Purchasing
+model Supplier {
+  id            String   @id @default(uuid())
+  code          String   @unique
+  name          String
+  contactPerson String
+  phone         String
+  email         String
+  address       String
+  gstin         String
+  purchaseOrders PurchaseOrder[]
+  createdAt     DateTime @default(now())
+}
+
+model PurchaseOrder {
+  id          String              @id @default(uuid())
+  poNumber    String              @unique
+  supplierId  String
+  supplier    Supplier            @relation(fields: [supplierId], references: [id])
+  status      PurchaseOrderStatus @default(DRAFT)
+  totalAmount Int                 // Paise
+  lineItems   POLineItem[]
+  grns        GRN[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model POLineItem {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  productId       String
+  product         Product       @relation(fields: [productId], references: [id])
+  orderedQty      Int
+  unitCost        Int           // Paise
+  totalCost       Int           // Paise
+}
+
+model GRN {
+  id              String        @id @default(uuid())
+  grnNumber       String        @unique
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  receivedBy      String
+  receivedDate    DateTime      @default(now())
+  notes           String?
+  createdAt       DateTime      @default(now())
+}
+
+// Warehouse
+model Warehouse {
+  id        String   @id @default(uuid())
+  name      String   @default("Main Warehouse")
+  code      String   @unique
+  racks     Rack[]
+  createdAt DateTime @default(now())
+}
+
+model Rack {
+  id          String    @id @default(uuid())
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  rackNumber  String
+  bins        Bin[]
+  createdAt   DateTime  @default(now())
+}
+
+model Bin {
+  id        String   @id @default(uuid())
+  rackId    String
+  rack      Rack     @relation(fields: [rackId], references: [id])
+  binCode   String   @unique
+  capacity  Int
+  createdAt DateTime @default(now())
+}
+
+// Customers (Loyalty Records Only - No Authentication)
+model Customer {
+  id            String   @id @default(uuid())
+  phone         String   @unique
+  fullName      String
+  email         String?
+  tier          String   @default("SILVER") // BRONZE, SILVER, GOLD, PLATINUM
+  loyaltyPoints Int      @default(0)
+  lastVisit     DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
