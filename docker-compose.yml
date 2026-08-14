@@ -30,8 +30,8 @@ services:
     environment:
       PORT: 4000
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/afreen_mall?schema=public
-      JWT_SECRET: afreen_mall_super_secure_jwt_secret_key_2026
-      JWT_REFRESH_SECRET: afreen_mall_refresh_secret_key_2026
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       NODE_ENV: production
     ports:
       - '4000:4000'

@@ -105,7 +105,7 @@ export const RegisterSelectionModal: React.FC<RegisterSelectionModalProps> = ({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  justify: 'space-between',
+                  justifyContent: 'space-between',
                   padding: '12px 16px',
                   borderRadius: '8px',
                   border: isSelected ? '2px solid #3b82f6' : '1px solid var(--border-color)',

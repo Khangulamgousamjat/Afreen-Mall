@@ -1,12 +1,93 @@
 import { Router, Response } from 'express';
 import { prisma } from '../../prisma.js';
 import { authenticateToken, AuthenticatedRequest } from '../../middleware/auth.js';
-import { PaymentMode, SaleType } from '@afreen-mall/shared-types';
+import bcrypt from 'bcrypt';
+import { PaymentMode, SaleType, RoleName } from '@afreen-mall/shared-types';
 
 const router = Router();
 router.use(authenticateToken);
 
-// GET /api/v1/pos/registers - Get available registers
+// ── Store-Wide Multi-Terminal Held Bills API ─────────────────────────────────
+
+// GET /api/v1/pos/held-bills - List all store-wide held bills
+router.get('/held-bills', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const bills = await prisma.heldBill.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+    const parsedBills = bills.map((b) => ({
+      id: b.id,
+      holdNo: b.holdNo,
+      registerId: b.registerId,
+      registerName: b.registerName,
+      cashierName: b.cashierName,
+      customerPhone: b.customerPhone,
+      customerName: b.customerName,
+      note: b.note,
+      totalAmountPaise: b.totalAmountPaise,
+      createdAt: b.createdAt,
+      items: JSON.parse(b.cartJson),
+    }));
+    return res.json({ heldBills: parsedBills });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch store-wide held bills' });
+  }
+});
+
+// POST /api/v1/pos/held-bills - Hold a bill across store terminals
+router.post('/held-bills', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { items, customerPhone, customerName, note, registerId, registerName, totalAmountPaise } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Cart is empty. Cannot hold empty bill.' });
+    }
+
+    const count = await prisma.heldBill.count();
+    const holdNo = `HOLD-${String(count + 1).padStart(4, '0')}`;
+
+    const heldBill = await prisma.heldBill.create({
+      data: {
+        holdNo,
+        registerId: registerId || null,
+        registerName: registerName || 'Till-01',
+        cashierName: req.user?.fullName || 'Cashier',
+        customerPhone: customerPhone || null,
+        customerName: customerName || null,
+        note: note || null,
+        totalAmountPaise: totalAmountPaise || items.reduce((sum: number, i: any) => sum + (i.finalTotal || 0), 0),
+        cartJson: JSON.stringify(items),
+      },
+    });
+
+    return res.status(201).json({
+      message: `Bill ${holdNo} held successfully on server (synced across all store terminals)!`,
+      heldBill: {
+        ...heldBill,
+        items,
+      },
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to hold bill on server' });
+  }
+});
+
+// DELETE /api/v1/pos/held-bills/:id - Recall & remove a held bill
+router.delete('/held-bills/:id', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const bill = await prisma.heldBill.findUnique({ where: { id } });
+
+    if (!bill) {
+      return res.status(404).json({ error: 'Held bill not found' });
+    }
+
+    await prisma.heldBill.delete({ where: { id } });
+    return res.json({ message: `Held bill ${bill.holdNo} recalled and removed from server.` });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to recall held bill' });
+  }
+});
 router.get('/registers', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const registers = await prisma.register.findMany({
@@ -19,13 +100,64 @@ router.get('/registers', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-// GET /api/v1/pos/product/:barcode - Fast barcode scan lookup
+// GET /api/v1/pos/product/:barcode - Fast barcode scan lookup with weighted scale support
 router.get('/product/:barcode', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { barcode } = req.params;
+    let { barcode } = req.params;
+    let weighedQty: number | null = null;
 
-    const product = await prisma.product.findUnique({
-      where: { barcode },
+    // Check EAN-13 / UPC scale-weighed embedded barcode (Prefix 20 or 21, length 12 or 13)
+    if ((barcode.startsWith('20') || barcode.startsWith('21')) && (barcode.length === 12 || barcode.length === 13)) {
+      const itemCode = barcode.substring(2, 7); // 5 digit product code
+      const weightVal = parseInt(barcode.substring(7, 12), 10); // weight in grams
+      weighedQty = weightVal / 1000; // e.g. 500g -> 0.5 kg
+
+      const weightedMatch = await prisma.product.findFirst({
+        where: {
+          OR: [
+            { barcode: { contains: itemCode } },
+            { barcode },
+          ],
+        },
+        include: { category: true, unit: true, taxRate: true, hsnCode: true, inventory: true },
+      });
+
+      if (weightedMatch) {
+        const mrp = weightedMatch.mrp;
+        const rate = weightedMatch.saleRate;
+        const discountAmt = Math.round(mrp * (weightedMatch.discountPct / 100));
+        const gstPct = weightedMatch.taxRate.rate;
+        const netRate = Math.round(rate * (1 + gstPct / 100));
+
+        return res.json({
+          product: {
+            id: weightedMatch.id,
+            barcode: weightedMatch.barcode,
+            name: weightedMatch.name,
+            description: weightedMatch.description,
+            mrp,
+            rate,
+            discountPercent: weightedMatch.discountPct,
+            discountAmount: discountAmt,
+            gstPercent: gstPct,
+            netRate,
+            value: netRate,
+            unit: weightedMatch.unit.name,
+            hsnCode: weightedMatch.hsnCode?.code || '1905',
+            stock: weightedMatch.inventory?.currentStock || 0,
+            weighedQty,
+          },
+        });
+      }
+    }
+
+    const product: any = await prisma.product.findFirst({
+      where: {
+        OR: [
+          { barcode: { equals: barcode, mode: 'insensitive' } },
+          { name: { contains: barcode, mode: 'insensitive' } },
+        ],
+      },
       include: {
         category: true,
         unit: true,
@@ -36,14 +168,19 @@ router.get('/product/:barcode', async (req: AuthenticatedRequest, res: Response)
     });
 
     if (!product) {
-      return res.status(404).json({ error: `No product found with barcode '${barcode}'` });
+      return res.status(404).json({
+        success: false,
+        notFound: true,
+        error: `No product found with barcode or name matching '${barcode}'`,
+      });
     }
 
     // Convert values to paise representation & calculate net rate
-    const mrp = product.mrp; // paise
-    const rate = product.saleRate; // paise
-    const discountAmt = Math.round(mrp * (product.discountPct / 100));
-    const gstPct = product.taxRate.rate;
+    const mrp = product.mrp || 0; // paise
+    const rate = product.saleRate || 0; // paise
+    const discountPct = product.discountPct || 0;
+    const discountAmt = Math.round(mrp * (discountPct / 100));
+    const gstPct = product.taxRate?.rate || 0;
     const netRate = Math.round(rate * (1 + gstPct / 100));
 
     return res.json({
@@ -51,15 +188,15 @@ router.get('/product/:barcode', async (req: AuthenticatedRequest, res: Response)
         id: product.id,
         barcode: product.barcode,
         name: product.name,
-        description: product.description,
+        description: product.description || '',
         mrp,
         rate,
-        discountPercent: product.discountPct,
+        discountPercent: discountPct,
         discountAmount: discountAmt,
         gstPercent: gstPct,
         netRate,
         value: netRate,
-        unit: product.unit.name,
+        unit: product.unit?.name || 'PCS',
         hsnCode: product.hsnCode?.code || '1905',
         stock: product.inventory?.currentStock || 0,
       },
@@ -110,12 +247,12 @@ router.post('/invoice', async (req: AuthenticatedRequest, res: Response) => {
     const totalPaid = paidCash + paidCard + paidUPI;
     const changeDue = totalPaid > totalAmount ? totalPaid - totalAmount : 0;
 
-    // Run inside database transaction for stock atomicity
+    // Run inside database transaction for stock atomicity & accounting ledger creation
     const result = await prisma.$transaction(async (tx: any) => {
-      // Generate sequential invoice number: INV-YYYYMMDD-XXXX
-      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const countToday = await tx.sale.count();
-      const invoiceNo = `INV-${dateStr}-${(countToday + 1).toString().padStart(4, '0')}`;
+      // Generate sequential invoice number: AFM-2026-XXXXXX
+      const year = new Date().getFullYear();
+      const totalCount = await tx.sale.count();
+      const invoiceNo = `AFM-${year}-${(totalCount + 1).toString().padStart(6, '0')}`;
 
       // Create Sale Record
       const sale = await tx.sale.create({
@@ -193,7 +330,11 @@ router.post('/invoice', async (req: AuthenticatedRequest, res: Response) => {
       }
 
       return sale;
-    });
+    }, { timeout: 30000, maxWait: 10000 });
+
+    const luckyDrawTicket = result.totalAmount >= 100000
+      ? `\n----------------------------------------\n🎉 LUCKY DRAW CAMPAIGN ELIGIBLE!\nLucky Draw Ticket: LD-2026-${Math.floor(100000 + Math.random() * 900000)}\nKeep this receipt for Mega Draw!`
+      : '';
 
     // Generate formatted thermal receipt string with embedded barcode string
     const formattedReceipt = `
@@ -220,7 +361,7 @@ TOTAL BILL : ₹${(result.totalAmount / 100).toFixed(2)}
 Paid Cash  : ₹${(result.paidCash / 100).toFixed(2)}
 Paid Card  : ₹${(result.paidCard / 100).toFixed(2)}
 Paid UPI   : ₹${(result.paidUPI / 100).toFixed(2)}
-Change Due : ₹${(result.changeDue / 100).toFixed(2)}
+Change Due : ₹${(result.changeDue / 100).toFixed(2)}${luckyDrawTicket}
 ========================================
 [ BARCODE: *${result.invoiceNo}* ]
 Software by Gous Khan · Mobile: 8625076618
@@ -442,7 +583,7 @@ router.post('/recover-bill', async (req: AuthenticatedRequest, res: Response) =>
       });
 
       return sale;
-    });
+    }, { timeout: 30000, maxWait: 10000 });
 
     const formattedReceipt = `
 ========================================
@@ -607,6 +748,172 @@ Software by Gous Khan · Mobile: 8625076618
   } catch (err: any) {
     console.error('Duplicate reprint error:', err);
     return res.status(500).json({ error: err.message || 'Failed to reprint duplicate bill' });
+  }
+});
+
+// POST /api/v1/pos/void - Manager Authorized Invoice Void
+router.post('/void', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { invoiceNo, managerPin, reason } = req.body;
+
+    if (!invoiceNo || !reason) {
+      return res.status(400).json({ error: 'Invoice Number and Void Reason are required' });
+    }
+
+    let isAuthorized =
+      req.user!.role === RoleName.SUPER_ADMIN ||
+      req.user!.role === RoleName.STORE_MANAGER ||
+      req.user!.role === RoleName.REGIONAL_MANAGER ||
+      req.user!.role === RoleName.COMPANY_ADMIN;
+
+    if (!isAuthorized && managerPin) {
+      const managers = await prisma.user.findMany({
+        where: {
+          role: { in: [RoleName.SUPER_ADMIN, RoleName.STORE_MANAGER, RoleName.REGIONAL_MANAGER, RoleName.COMPANY_ADMIN] },
+          isDeactivated: false,
+          deletedAt: null,
+        },
+      });
+
+      for (const mgr of managers) {
+        if (await bcrypt.compare(String(managerPin), mgr.passwordHash)) {
+          isAuthorized = true;
+          break;
+        }
+      }
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({ error: 'Permission Denied: Invoice Void requires valid Store Manager credentials.' });
+    }
+
+    const sale = await prisma.sale.findUnique({
+      where: { invoiceNo },
+      include: { items: true },
+    });
+
+    if (!sale) {
+      return res.status(404).json({ error: `Invoice '${invoiceNo}' not found` });
+    }
+
+    if (sale.status === 'CANCELLED') {
+      return res.status(400).json({ error: 'Invoice is already voided / cancelled' });
+    }
+
+    const voidedSale = await prisma.$transaction(async (tx) => {
+      const updated = await tx.sale.update({
+        where: { id: sale.id },
+        data: { status: 'CANCELLED' },
+      });
+
+      for (const item of sale.items) {
+        const inventory = await tx.inventory.findUnique({ where: { productId: item.productId } });
+        if (inventory) {
+          await tx.inventory.update({
+            where: { id: inventory.id },
+            data: { currentStock: { increment: item.qty } },
+          });
+
+          await tx.stockMovement.create({
+            data: {
+              inventoryId: inventory.id,
+              type: 'STOCK_IN',
+              quantity: item.qty,
+              referenceId: sale.id,
+              notes: `Voided Invoice ${invoiceNo} - Reason: ${reason}`,
+            },
+          });
+        }
+      }
+
+      await tx.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          staffId: req.user!.staffId,
+          userName: req.user!.fullName,
+          userRole: req.user!.role,
+          action: 'VOID_INVOICE',
+          entityName: 'Sale',
+          entityId: sale.id,
+          reason: `Invoice ${invoiceNo} voided by Manager ${req.user!.fullName}. Reason: ${reason}`,
+          beforeValue: { status: sale.status, totalAmount: sale.totalAmount },
+          afterValue: { status: 'CANCELLED' },
+        },
+      });
+
+      return updated;
+    });
+
+    return res.json({
+      sale: voidedSale,
+      message: `Invoice ${invoiceNo} voided successfully. Stock restored.`,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to void invoice' });
+  }
+});
+
+// POST /api/v1/pos/sync-offline-queue - Upload queued offline sales idempotently
+router.post('/sync-offline-queue', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { offlineSales } = req.body;
+
+    if (!Array.isArray(offlineSales) || offlineSales.length === 0) {
+      return res.status(400).json({ error: 'offlineSales array is required and cannot be empty' });
+    }
+
+    const syncedInvoices: string[] = [];
+
+    for (const draft of offlineSales) {
+      const existing = await prisma.sale.findUnique({ where: { invoiceNo: draft.invoiceNo } });
+      if (existing) {
+        syncedInvoices.push(existing.invoiceNo);
+        continue;
+      }
+
+      await prisma.$transaction(async (tx) => {
+        const sale = await tx.sale.create({
+          data: {
+            invoiceNo: draft.invoiceNo,
+            registerId: draft.registerId || 'reg-01',
+            saleType: (draft.saleType as any) || SaleType.RETAIL,
+            cashierStaffId: req.user!.staffId,
+            cashierName: req.user!.fullName,
+            paymentMode: (draft.paymentMode as any) || PaymentMode.CASH,
+            totalQty: draft.totalQty || 1,
+            totalDiscount: draft.totalDiscount || 0,
+            totalAmount: draft.totalAmount,
+            paidCash: draft.paidCash || 0,
+            paidCard: draft.paidCard || 0,
+            paidUPI: draft.paidUPI || 0,
+            changeDue: draft.changeDue || 0,
+            customerPhone: draft.customerPhone,
+            customerName: draft.customerName,
+            status: 'COMPLETED',
+          },
+        });
+
+        for (const item of (draft.items || [])) {
+          const inventory = await tx.inventory.findUnique({ where: { productId: item.id } });
+          if (inventory) {
+            await tx.inventory.update({
+              where: { id: inventory.id },
+              data: { currentStock: { decrement: item.qty } },
+            });
+          }
+        }
+
+        syncedInvoices.push(sale.invoiceNo);
+      });
+    }
+
+    return res.json({
+      syncedCount: syncedInvoices.length,
+      syncedInvoices,
+      message: `Successfully synchronized ${syncedInvoices.length} offline transactions.`,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to sync offline queue' });
   }
 });
 

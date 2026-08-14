@@ -22,40 +22,42 @@ async function main() {
   console.log(`Seeded Store: ${store.name}`);
 
   // 2. Seed Super Admin
-  const superAdminPasswordHash = await bcrypt.hash('Kingkhan@12', 12);
+  const superAdminPassword = process.env.INITIAL_SUPER_ADMIN_PASSWORD || 'Kingkhan@12';
+  const superAdminPasswordHash = await bcrypt.hash(superAdminPassword, 12);
   const superAdmin = await prisma.user.upsert({
     where: { staffId: 300000 },
     update: { passwordHash: superAdminPasswordHash },
     create: {
       staffId: 300000,
       username: 'Superkhan',
-      fullName: 'Super Admin (Gous Khan)',
-      passwordHash: superAdminPasswordHash,
+      fullName: 'Afreen Mall Super Admin',
       role: RoleName.SUPER_ADMIN,
+      passwordHash: superAdminPasswordHash,
       mustChangePassword: false,
     },
   });
   console.log(`Seeded Super Admin: Staff ID ${superAdmin.staffId} (${superAdmin.username})`);
 
-  // Seed standard staff accounts + 10 Cashier accounts
-  const defaultHash = await bcrypt.hash('Pass@123', 12);
+  // 3. Seed Default Staff Accounts
+  const defaultStaffPassword = process.env.INITIAL_STAFF_PASSWORD || 'AfreenStaff@2026';
+  const defaultHash = await bcrypt.hash(defaultStaffPassword, 12);
   const staffMembers = [
-    { staffId: 300001, username: 'manager1', name: 'Rajesh Sharma (Store Manager)', role: RoleName.STORE_MANAGER },
-    { staffId: 300002, username: 'accountant1', name: 'Priya Patel (Accountant)', role: RoleName.ACCOUNTANT },
-    { staffId: 300003, username: 'cashofficer1', name: 'Sanjay Gupta (Cash Officer)', role: RoleName.CASH_OFFICER },
-    { staffId: 300004, username: 'inventory1', name: 'Sunil Kumar (Inventory Lead)', role: RoleName.INVENTORY_STAFF },
-    { staffId: 300005, username: 'purchase1', name: 'Neha Singh (Purchase Lead)', role: RoleName.PURCHASE_TEAM },
-    // 10 Normal Cashier accounts
-    { staffId: 300010, username: 'cashier1', name: 'Cashier 1', role: RoleName.CASHIER },
-    { staffId: 300011, username: 'cashier2', name: 'Cashier 2', role: RoleName.CASHIER },
-    { staffId: 300012, username: 'cashier3', name: 'Cashier 3', role: RoleName.CASHIER },
-    { staffId: 300013, username: 'cashier4', name: 'Cashier 4', role: RoleName.CASHIER },
-    { staffId: 300014, username: 'cashier5', name: 'Cashier 5', role: RoleName.CASHIER },
-    { staffId: 300015, username: 'cashier6', name: 'Cashier 6', role: RoleName.CASHIER },
-    { staffId: 300016, username: 'cashier7', name: 'Cashier 7', role: RoleName.CASHIER },
-    { staffId: 300017, username: 'cashier8', name: 'Cashier 8', role: RoleName.CASHIER },
-    { staffId: 300018, username: 'cashier9', name: 'Cashier 9', role: RoleName.CASHIER },
-    { staffId: 300019, username: 'cashier10', name: 'Cashier 10', role: RoleName.CASHIER },
+    { staffId: 300001, username: 'manager1',    name: 'Sanjay Gupta (Store Manager)',        role: RoleName.STORE_MANAGER },
+    { staffId: 300002, username: 'cashofficer1',name: 'Babuji Namole (Cash Officer)',         role: RoleName.CASH_OFFICER },
+    { staffId: 300003, username: 'accountant1', name: 'Amit Verma (Accountant)',              role: RoleName.ACCOUNTANT },
+    { staffId: 300004, username: 'inventory1',  name: 'Vikram Singh (Inventory / GRN Exec.)', role: RoleName.INVENTORY_STAFF },
+    { staffId: 300005, username: 'warehouse1',  name: 'Deepak Gaikwad (Warehouse Staff)',     role: RoleName.WAREHOUSE_STAFF },
+    { staffId: 300006, username: 'purchase1',   name: 'Neha Singh (Purchase Team)',           role: RoleName.PURCHASE_TEAM },
+    { staffId: 300007, username: 'auditor1',    name: 'Rajesh Deshmukh (Auditor)',            role: RoleName.AUDITOR },
+    { staffId: 300008, username: 'hr1',         name: 'Priya Kulkarni (HR Manager)',          role: RoleName.HR_MANAGER },
+    { staffId: 300009, username: 'sales1',      name: 'Rohan Kadam (Sales Manager)',          role: RoleName.SALES_MANAGER },
+    { staffId: 300010, username: 'crm1',        name: 'Sneha Joshi (CRM Manager)',            role: RoleName.CRM_MANAGER },
+    // Cashiers
+    { staffId: 300011, username: 'cashier1',    name: 'Pooja Sharma (Cashier)',                role: RoleName.CASHIER },
+    { staffId: 300012, username: 'cashier2',    name: 'Vinayak Shinde (Cashier)',              role: RoleName.CASHIER },
+    { staffId: 300013, username: 'cashier3',    name: 'Mahesh Patil (Cashier)',                role: RoleName.CASHIER },
+    { staffId: 300014, username: 'cashier4',    name: 'Sachin Jadhav (Cashier)',               role: RoleName.CASHIER },
+    { staffId: 300015, username: 'cashier5',    name: 'Rahul Chavan (Cashier)',                role: RoleName.CASHIER },
   ];
 
   for (const s of staffMembers) {
@@ -143,7 +145,7 @@ async function main() {
   // 7. Products & Initial Stock
   const sampleProducts = [
     {
-      barcode: '890103000001',
+      barcode: '8901030000018',
       name: 'Afreen Premium Basmati Rice 5kg',
       description: 'Long grain aromatic basmati rice',
       categoryId: catGrocery.id,
@@ -157,7 +159,7 @@ async function main() {
       stock: 80,
     },
     {
-      barcode: '890103000002',
+      barcode: '8901030000025',
       name: 'Britannia Good Day Biscuits 200g',
       description: 'Cashew cookies pack',
       categoryId: catSnacks.id,
@@ -171,7 +173,7 @@ async function main() {
       stock: 12, // Low stock for shelf-tag gauge red alert testing!
     },
     {
-      barcode: '890103000003',
+      barcode: '8901030000032',
       name: 'Coca Cola Soft Drink 1.25L',
       description: 'Carbonated beverage bottle',
       categoryId: catSnacks.id,
@@ -185,7 +187,7 @@ async function main() {
       stock: 45, // Amber level testing
     },
     {
-      barcode: '890103000004',
+      barcode: '8901030000049',
       name: 'Amul Butter 500g',
       description: 'Pasteurized salted butter',
       categoryId: catGrocery.id,
@@ -253,15 +255,20 @@ async function main() {
     },
   });
 
-  const rackA = await prisma.rack.create({
-    data: {
-      warehouseId: warehouse.id,
-      rackNumber: 'Rack-A1',
-    },
-  });
+  let rackA = await prisma.rack.findFirst({ where: { warehouseId: warehouse.id, rackNumber: 'Rack-A1' } });
+  if (!rackA) {
+    rackA = await prisma.rack.create({
+      data: {
+        warehouseId: warehouse.id,
+        rackNumber: 'Rack-A1',
+      },
+    });
+  }
 
-  await prisma.bin.create({
-    data: {
+  await prisma.bin.upsert({
+    where: { binCode: 'BIN-A1-01' },
+    update: {},
+    create: {
       rackId: rackA.id,
       binCode: 'BIN-A1-01',
       capacity: 500,

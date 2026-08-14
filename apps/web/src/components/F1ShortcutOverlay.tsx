@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X, Keyboard } from 'lucide-react';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface F1ShortcutOverlayProps {
   isOpen: boolean;
@@ -7,32 +8,48 @@ interface F1ShortcutOverlayProps {
 }
 
 export const F1ShortcutOverlay: React.FC<F1ShortcutOverlayProps> = ({ isOpen, onClose }) => {
+  const containerRef = useFocusTrap<HTMLDivElement>(isOpen);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const shortcuts = [
-    { key: 'F1', desc: 'Show this keyboard shortcut overlay' },
-    { key: 'F2', desc: 'Scan 2D / QR code camera scanner' },
-    { key: 'F3', desc: 'Repeat last scanned item in cart' },
-    { key: 'F4', desc: 'Open quick calculator' },
-    { key: 'F5', desc: 'Sale add-on item' },
-    { key: 'F7', desc: 'UPI Pay dynamic QR payment' },
-    { key: 'F8', desc: 'Save & capture card payment' },
-    { key: 'F9', desc: 'Change qty & rate of selected item' },
-    { key: 'F10', desc: 'Save invoice & enter checkout' },
-    { key: 'Alt + F9', desc: 'Cash @ POS drawer popup' },
-    { key: 'Alt + F11', desc: 'Toggle Sale Return mode' },
-    { key: 'Alt + F12', desc: 'Issue Credit Note' },
-    { key: 'Alt + B', desc: 'Get customer loyalty details' },
-    { key: 'Ctrl + F11', desc: 'Restore held invoice' },
-    { key: 'Ctrl + F5', desc: 'Reprint Duplicate Bill (Cash Officer / Manager Authorization)' },
-    { key: 'Shift + F2', desc: 'Change sale type (Retail/Wholesale)' },
-    { key: 'Shift + F8', desc: 'Recover Bill (Card/UPI Paid but Bill Not Generated)' },
-    { key: 'Shift + B', desc: 'Open Item Master Detail side panel' },
+    { key: 'F1', desc: 'Show keyboard shortcut reference overlay' },
+    { key: 'F2', desc: 'New sale / Focus barcode scanner' },
+    { key: 'F3', desc: 'Customer lookup & search' },
+    { key: 'F4', desc: 'Manual discount (authorized users)' },
+    { key: 'F5', desc: 'Hold current active bill' },
+    { key: 'F6', desc: 'Recall held bills modal' },
+    { key: 'F7', desc: 'Product search / Price checker' },
+    { key: 'F8', desc: 'Manual bill recovery (Card/UPI)' },
+    { key: 'F9', desc: 'Change item quantity modal' },
+    { key: 'F10', desc: 'Save invoice & open payment dialog' },
+    { key: 'F11', desc: 'Toggle full screen POS mode' },
+    { key: 'F12', desc: 'Quick POS calculator' },
+    { key: 'Esc', desc: 'Close modal / Toggle grid & barcode focus' },
+    { key: 'Delete', desc: 'Delete selected cart item' },
+    { key: '↑ / ↓', desc: 'Navigate cart items' },
+    { key: 'Enter', desc: 'Confirm action / Scan barcode' },
+    { key: 'Ctrl + P', desc: 'Reprint duplicate bill copy' },
+    { key: 'Ctrl + D', desc: 'Void current invoice (Manager PIN required)' },
   ];
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" style={{ maxWidth: '750px' }} onClick={(e) => e.stopPropagation()}>
+      <div ref={containerRef} className="modal-content" tabIndex={-1} style={{ maxWidth: '750px' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Keyboard size={24} style={{ color: 'var(--accent-lime)' }} />

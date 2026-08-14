@@ -10,4 +10,4 @@ RUN npm run build --workspace=packages/shared-types
 RUN cd apps/api && npx prisma generate && npm run build
 
 EXPOSE 4000
-CMD ["npm", "run", "start", "--workspace=apps/api"]
+CMD ["sh", "-c", "if [ -n \"$DATABASE_URL\" ]; then npx prisma migrate deploy; else echo 'WARNING: DATABASE_URL is not set in environment variables'; fi && npm run start --workspace=apps/api"]

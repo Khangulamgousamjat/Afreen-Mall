@@ -4,20 +4,31 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
 enum RoleName {
   SUPER_ADMIN
+  COMPANY_ADMIN
+  BRANCH_ADMIN
   REGIONAL_MANAGER
   STORE_MANAGER
+  PURCHASE_MANAGER
+  INVENTORY_MANAGER
+  FINANCE_MANAGER
+  HR_MANAGER
+  SALES_MANAGER
+  CRM_MANAGER
   ACCOUNTANT
   CASHIER
   CASH_OFFICER
   INVENTORY_STAFF
   WAREHOUSE_STAFF
   PURCHASE_TEAM
+  CUSTOMER_SERVICE
   AUDITOR
+  READ_ONLY
 }
 
 enum SaleType {
@@ -458,3 +469,274 @@ model Customer {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
+
+// Accounting Models
+model Account {
+  id                   String        @id @default(uuid())
+  accountCode          String        @unique
+  accountName          String
+  category             String        // ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE
+  type                 String        // DEBIT, CREDIT
+  balance              Int           @default(0) // Paise
+  journalLines         JournalLine[]
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+}
+
+model JournalEntry {
+  id          String        @id @default(uuid())
+  journalNo   String        @unique
+  date        DateTime      @default(now())
+  description String
+  postedBy    String
+  lines       JournalLine[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model JournalLine {
+  id             String       @id @default(uuid())
+  journalEntryId String
+  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  accountId      String
+  account        Account      @relation(fields: [accountId], references: [id])
+  debit          Int          @default(0) // Paise
+  credit         Int          @default(0) // Paise
+  createdAt      DateTime     @default(now())
+}
+
+// HRMS Models
+model Employee {
+  id              String   @id @default(uuid())
+  empCode         String   @unique
+  fullName        String
+  department      String
+  branch          String   @default("Main Branch")
+  role            String   @default("CASHIER")
+  employmentType  String   @default("FULL_TIME")
+  pan             String?
+  aadhaar         String?
+  bankName        String?
+  bankAccountNo   String?
+  isDeactivated   Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AttendanceLog {
+  id         String   @id @default(uuid())
+  punchNo    String   @unique
+  empCode    String
+  punchType  String   // CHECK_IN, CHECK_OUT
+  deviceId   String
+  remarks    String?
+  punchTime  DateTime @default(now())
+  createdAt  DateTime @default(now())
+}
+
+model LeaveApplication {
+  id        String   @id @default(uuid())
+  leaveNo   String   @unique
+  empCode   String
+  leaveType String
+  startDate String
+  endDate   String
+  reason    String
+  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt DateTime @default(now())
+}
+
+model PayrollBatch {
+  id          String    @id @default(uuid())
+  batchNo     String    @unique
+  monthYear   String    // YYYY-MM
+  remarks     String?
+  totalAmount Int       @default(0) // Paise
+  status      String    @default("COMPLETED")
+  payslips    Payslip[]
+  createdAt   DateTime  @default(now())
+}
+
+model Payslip {
+  id             String       @id @default(uuid())
+  payrollBatchId String
+  payrollBatch   PayrollBatch @relation(fields: [payrollBatchId], references: [id], onDelete: Cascade)
+  empCode        String
+  employeeName   String
+  netPayable     Int          // Paise
+  createdAt      DateTime     @default(now())
+}
+
+// Sales Quotes & Orders
+model Quotation {
+  id           String   @id @default(uuid())
+  quotationNo  String   @unique
+  customerName String
+  contactPhone String?
+  validUntil   String
+  totalAmount  Int      // Paise
+  status       String   @default("ISSUED") // DRAFT, ISSUED, ACCEPTED, EXPIRED
+  items        Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SalesOrder {
+  id               String   @id @default(uuid())
+  orderNo          String   @unique
+  customerName     String
+  paymentTerms     String
+  expectedDelivery String
+  totalAmount      Int      // Paise
+  status           String   @default("CONFIRMED") // CONFIRMED, DISPATCHED, DELIVERED, CANCELLED
+  items            Json
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// Supplier Contracts & Payments
+model VendorContract {
+  id            String   @id @default(uuid())
+  contractNo    String   @unique
+  supplierName  String
+  contractTitle String
+  startDate     String
+  endDate       String
+  slaDays       Int      @default(2)
+  notes         String?
+  status        String   @default("ACTIVE")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SupplierPayment {
+  id           String   @id @default(uuid())
+  receiptNo    String   @unique
+  supplierName String
+  amount       Int      // Paise
+  paymentMode  String
+  referenceNo  String
+  notes        String?
+  createdAt    DateTime @default(now())
+}
+
+// Admin Platform Settings Models
+model Company {
+  id            String   @id @default(uuid())
+  code          String   @unique
+  name          String
+  taxId         String?
+  financialYear String   @default("2026-27")
+  currency      String   @default("INR")
+  timezone      String   @default("Asia/Kolkata")
+  createdAt     DateTime @default(now())
+}
+
+model Branch {
+  id           String   @id @default(uuid())
+  code         String   @unique
+  name         String
+  city         String?
+  gstin        String?
+  contactPhone String?
+  createdAt    DateTime @default(now())
+}
+
+model NumberSeries {
+  id         String   @id @default(uuid())
+  module     String   @unique
+  prefix     String
+  currentSeq Int      @default(1)
+  padding    Int      @default(6)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model ApprovalRule {
+  id            String   @id @default(uuid())
+  module        String
+  minAmount     Int      // Paise
+  maxAmount     Int      // Paise
+  requiredRoles Json
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+}
+
+model Workflow {
+  id        String   @id @default(uuid())
+  name      String
+  trigger   String
+  steps     Json
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model FeatureFlag {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  name        String
+  description String?
+  enabled     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ApiKey {
+  id        String    @id @default(uuid())
+  name      String
+  key       String    @unique
+  role      String
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Backup {
+  id        String   @id @default(uuid())
+  filename  String
+  sizeBytes Int
+  status    String   @default("COMPLETED")
+  createdAt DateTime @default(now())
+}
+
+model SchedulerJob {
+  id        String    @id @default(uuid())
+  name      String
+  module    String
+  action    String
+  cron      String
+  cronDesc  String?
+  enabled   Boolean   @default(true)
+  lastRunAt DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model MaintenanceState {
+  id        String   @id @default(uuid())
+  enabled   Boolean  @default(false)
+  reason    String?
+  updatedAt DateTime @updatedAt
+}
+
+model RolePermission {
+  id          String   @id @default(uuid())
+  roleName    String   @unique
+  permissions Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model HeldBill {
+  id               String   @id @default(uuid())
+  holdNo           String   @unique
+  registerId       String?
+  registerName     String?
+  cashierName      String
+  customerPhone    String?
+  customerName     String?
+  note             String?
+  totalAmountPaise Int
+  cartJson         String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+

@@ -1,32 +1,28 @@
 import { Request, Response, NextFunction } from 'express';
 
 /**
- * Military & Bank-Grade SQL Injection (SQLi) Defense Middleware
- * Inspects all incoming request bodies, queries, and route parameters for SQL injection vectors.
- * Immediately rejects malicious attack vectors with HTTP 403 Forbidden.
+ * Enterprise Audit & Inspection Middleware
+ * Primary Security Layer: Prisma ORM Query Parameterization ($1, $2, $3).
+ * Note: Real SQL injection protection is handled natively by Prisma's parameterized prepared statements.
+ * This middleware operates purely as an audit logger for suspicious command patterns without blocking non-malicious user input.
  */
 
-// Known SQL Injection attack patterns
-const SQLI_PATTERNS = [
-  /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|TRUNCATE|DECLARE|GRANT|REVOKE)\b)/i,
-  /((\bOR\b|\bAND\b)\s+(['"]?\s*[\d\w]+\s*=\s*['"]?[\d\w]+|['"]?1['"]?\s*=\s*['"]?1['"]?))/i,
-  /(--|\/\*|\*\/|;|@@|char\(|nchar\(|exec\(|concat\()/i,
-  /('|\"|\b)\s*1\s*=\s*1/i,
-  /('|\"|\b)\s*or\s*['"]?1['"]?\s*=\s*['"]?1/i,
-  /('|\"|\b)\s*or\s*true/i,
+const SUSPICIOUS_SQLI_PATTERNS = [
+  /;\s*(DROP|ALTER|TRUNCATE)\b/i,
+  /\bUNION\s+ALL\s+SELECT\b/i,
+  /\bEXEC(\s+|\()sp_/i,
 ];
 
-function isMaliciousValue(val: any): boolean {
+function containsSuspiciousPattern(val: any): boolean {
   if (typeof val === 'string') {
-    const trimmed = val.trim();
-    for (const pattern of SQLI_PATTERNS) {
-      if (pattern.test(trimmed)) {
+    for (const pattern of SUSPICIOUS_SQLI_PATTERNS) {
+      if (pattern.test(val)) {
         return true;
       }
     }
   } else if (typeof val === 'object' && val !== null) {
     for (const key of Object.keys(val)) {
-      if (isMaliciousValue(key) || isMaliciousValue(val[key])) {
+      if (containsSuspiciousPattern(key) || containsSuspiciousPattern(val[key])) {
         return true;
       }
     }
@@ -36,16 +32,11 @@ function isMaliciousValue(val: any): boolean {
 
 export const sqlInjectionGuard = (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isMaliciousBody = req.body && isMaliciousValue(req.body);
-    const isMaliciousQuery = req.query && isMaliciousValue(req.query);
-    const isMaliciousParams = req.params && isMaliciousValue(req.params);
+    const isSuspiciousBody = req.body && containsSuspiciousPattern(req.body);
+    const isSuspiciousQuery = req.query && containsSuspiciousPattern(req.query);
 
-    if (isMaliciousBody || isMaliciousQuery || isMaliciousParams) {
-      console.warn(`[SECURITY FIREWALL BLOCKED] SQL Injection attack attempt intercepted from IP: ${req.ip} path: ${req.originalUrl}`);
-      return res.status(403).json({
-        error: 'Security Threat Intercepted: Malicious SQL Injection payload detected. Attempt logged.',
-        blocked: true,
-      });
+    if (isSuspiciousBody || isSuspiciousQuery) {
+      console.warn(`[SECURITY AUDIT LOG] Suspicious SQL keyword sequence observed from IP: ${req.ip} path: ${req.originalUrl}. Prisma query parameterization active.`);
     }
 
     next();

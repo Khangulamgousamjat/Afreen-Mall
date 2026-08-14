@@ -1,39 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { AlertOctagon, ArrowLeft, Eye, EyeOff, Search, Users, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertOctagon, ArrowLeft, Eye, EyeOff, Search, Users, CheckCircle2, ChevronDown, ChevronUp, RefreshCw, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { StaffMember, INITIAL_STAFF_LIST } from '../constants/staff';
 
 interface LoginScreenProps {
   onBackToWelcome: () => void;
   onLoginSuccess: () => void;
 }
-
-interface StaffMember {
-  staffId: number;
-  username: string;
-  name: string;
-  role: string;
-}
-
-const INITIAL_STAFF_LIST: StaffMember[] = [
-  { staffId: 300000, username: 'Superkhan', name: 'Gous Khan', role: 'SUPER_ADMIN' },
-  { staffId: 300001, username: 'manager1', name: 'Sanjay Gupta', role: 'STORE_MANAGER' },
-  { staffId: 300002, username: 'pooja1', name: 'Pooja Sharma', role: 'CASHIER' },
-  { staffId: 300003, username: 'vinayak1', name: 'Vinayak Shinde', role: 'CASHIER' },
-  { staffId: 300004, username: 'babuji1', name: 'Babuji Namole', role: 'CASH_OFFICER' },
-  { staffId: 300005, username: 'amit1', name: 'Amit Verma', role: 'ACCOUNTANT' },
-  { staffId: 300006, username: 'auditor1', name: 'Rajesh Deshmukh', role: 'AUDITOR' },
-  { staffId: 300010, username: 'rohan1', name: 'Rohan Kadam', role: 'CASHIER' },
-  { staffId: 300011, username: 'sunita1', name: 'Sunita Pawar', role: 'CASHIER' },
-  { staffId: 300012, username: 'mahesh1', name: 'Mahesh Patil', role: 'CASHIER' },
-  { staffId: 300013, username: 'sachin1', name: 'Sachin Jadhav', role: 'CASHIER' },
-  { staffId: 300014, username: 'priya1', name: 'Priya Kulkarni', role: 'CASHIER' },
-  { staffId: 300015, username: 'rahul1', name: 'Rahul Chavan', role: 'CASHIER' },
-  { staffId: 300016, username: 'deepak1', name: 'Deepak Gaikwad', role: 'CASHIER' },
-  { staffId: 300017, username: 'sneha1', name: 'Sneha Joshi', role: 'CASHIER' },
-  { staffId: 300018, username: 'nitin1', name: 'Nitin More', role: 'CASHIER' },
-  { staffId: 300019, username: 'aniket1', name: 'Aniket Salunkhe', role: 'CASHIER' },
-];
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLoginSuccess }) => {
   const { login, theme } = useAuth();
@@ -43,8 +17,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const [staffList, setStaffList] = useState<StaffMember[]>(INITIAL_STAFF_LIST);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [staffSearchQuery, setStaffSearchQuery] = useState('');
+  const [directoryLoading, setDirectoryLoading] = useState(true);
+  const [directoryError, setDirectoryError] = useState(false);
   
   // Table is HIDDEN by default on screen load
   const [showStaffDirectory, setShowStaffDirectory] = useState(false);
@@ -53,26 +29,31 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
   const searchInputRef = useRef<HTMLInputElement>(null);
   const passwordInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch live staff members from API if available to auto-include newly provisioned accounts
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const res = await api.get('/users');
-        if (res.data?.users && Array.isArray(res.data.users)) {
-          const apiUsers: StaffMember[] = res.data.users.map((u: any) => ({
-            staffId: u.staffId,
-            username: u.username,
-            name: u.fullName || u.username,
-            role: u.role,
-          }));
-          if (apiUsers.length > 0) {
-            setStaffList(apiUsers);
-          }
-        }
-      } catch {
-        // Fallback to INITIAL_STAFF_LIST
+  // Fetch live staff directory from API
+  const fetchUsers = async () => {
+    setDirectoryLoading(true);
+    setDirectoryError(false);
+    try {
+      const res = await api.get('/auth/directory', { timeout: 15000 });
+      if (res.data?.users && Array.isArray(res.data.users)) {
+        const list: StaffMember[] = res.data.users.map((u: any) => ({
+          staffId: u.staffId,
+          username: u.username,
+          name: u.fullName || u.username,
+          role: u.role,
+        }));
+        setStaffList(list);
+      } else {
+        setDirectoryError(true);
       }
-    };
+    } catch {
+      setDirectoryError(true);
+    } finally {
+      setDirectoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchUsers();
   }, []);
 
@@ -88,10 +69,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
     );
   });
 
-  // Select staff member from directory table
+  // Select staff member from directory table (Auto-fills ID only)
   const handleSelectStaff = (staff: StaffMember) => {
     setIdentifier(staff.staffId.toString());
-    setShowStaffDirectory(false); // Hide table after selecting valid staff
+    setShowStaffDirectory(false);
     setError('');
     setTimeout(() => {
       passwordInputRef.current?.focus();
@@ -108,41 +89,31 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
         return;
       }
 
-      // Check if typed identifier matches a valid staff account
-      const matched = staffList.find(
-        (s) => s.staffId.toString() === val || s.username.toLowerCase() === val.toLowerCase()
-      );
-
-      if (matched) {
-        // Valid ID: keep table HIDDEN, set ID, jump to Password box
-        setIdentifier(matched.staffId.toString());
-        setShowStaffDirectory(false);
-        setError('');
-        passwordInputRef.current?.focus();
-      } else {
-        // Wrong ID: OPEN table automatically and show error message
-        setError(`Staff ID "${val}" not found. Please select your account from the directory table below.`);
-        setShowStaffDirectory(true);
-      }
+      // Automatically jump to Password input field
+      passwordInputRef.current?.focus();
     }
   };
 
-  // Form submission handler (instant 1-second login)
+  // Form submission handler (server authentication)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return; // Duplicate request protection
     setError('');
 
-    if (!identifier.trim() || !password) {
+    const cleanId = identifier.trim();
+    const cleanPass = password;
+
+    if (!cleanId || !cleanPass) {
       setError('Staff ID / Username and Password are required');
       return;
     }
 
     try {
       setLoading(true);
-      await login(identifier.trim(), password);
+      await login(cleanId, cleanPass);
       onLoginSuccess();
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Authentication failed');
+      setError(err.message || 'Unable to connect to authentication server. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -288,7 +259,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                justify: 'space-between',
+                justifyContent: 'space-between',
                 transition: 'all 0.15s ease',
               }}
               title="Click to select staff member from directory"
@@ -310,14 +281,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
             </div>
           </div>
 
-          {/* Directory Table — ONLY opens if wrong ID is entered or manually requested */}
+          {/* Directory Table — ONLY opens if manually requested or requested on Enter */}
           {showStaffDirectory && (
             <div style={{ width: '100%', border: '1px solid var(--accent-lime)', backgroundColor: 'var(--surface-color)', borderRadius: '4px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--accent-lime)', letterSpacing: '0.5px' }}>
                   Select Correct Account Below
                 </span>
-                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{filteredStaff.length} Accounts</span>
+                <span style={{ fontSize: '10px', color: directoryError ? 'var(--status-red)' : 'var(--text-muted)' }}>
+                  {directoryLoading ? 'Loading...' : directoryError ? 'Directory Unavailable' : `${filteredStaff.length} Accounts`}
+                </span>
               </div>
 
               {/* Big Search Input Box inside the opened table panel */}
@@ -330,7 +303,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
                   value={staffSearchQuery}
                   onChange={(e) => setStaffSearchQuery(e.target.value)}
                   placeholder="Search by Name, Staff ID, or Role..."
-                  disabled={loading}
+                  disabled={loading || directoryLoading}
                   style={{ fontSize: '13px', padding: '8px 12px 8px 36px', border: '1px solid var(--border-color)' }}
                   autoFocus
                 />
@@ -338,72 +311,92 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
 
               {/* Scrollable Accounts Table */}
               <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--border-color)' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: 'var(--bg-color)', borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase' }}>
-                      <th style={{ padding: '8px 12px' }}>STAFF ID</th>
-                      <th style={{ padding: '8px 12px' }}>STAFF NAME</th>
-                      <th style={{ padding: '8px 12px' }}>ROLE</th>
-                      <th style={{ padding: '8px 12px', textAlign: 'right' }}>ACTION</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredStaff.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                          No staff member matching "{staffSearchQuery}"
-                        </td>
+                {directoryLoading ? (
+                  <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Loading staff directory...</span>
+                  </div>
+                ) : directoryError ? (
+                  <div style={{ padding: '16px', textAlign: 'center', color: 'var(--status-red)', fontSize: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <div>Unable to load staff directory. Please try again.</div>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={fetchUsers}
+                      style={{ fontSize: '11px', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <RefreshCw size={12} />
+                      <span>Retry</span>
+                    </button>
+                  </div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: 'var(--bg-color)', borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase' }}>
+                        <th style={{ padding: '8px 12px' }}>STAFF ID</th>
+                        <th style={{ padding: '8px 12px' }}>STAFF NAME</th>
+                        <th style={{ padding: '8px 12px' }}>ROLE</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'right' }}>ACTION</th>
                       </tr>
-                    ) : (
-                      filteredStaff.map((staff) => {
-                        const isSelected = identifier.trim() === staff.staffId.toString() || identifier.trim().toLowerCase() === staff.username.toLowerCase();
-                        return (
-                          <tr
-                            key={staff.staffId}
-                            onClick={() => handleSelectStaff(staff)}
-                            style={{
-                              backgroundColor: isSelected ? 'var(--accent-soft)' : undefined,
-                              borderBottom: '1px solid var(--border-color)',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontWeight: 'bold', color: 'var(--text-main)' }}>
-                              {staff.staffId}
-                            </td>
-                            <td style={{ padding: '8px 12px', fontWeight: 'bold', color: isSelected ? 'var(--accent-lime)' : 'var(--text-main)' }}>
-                              {staff.name}
-                              {isSelected && <CheckCircle2 size={13} style={{ display: 'inline', marginLeft: '6px', color: 'var(--accent-lime)' }} />}
-                            </td>
-                            <td style={{ padding: '8px 12px' }}>
-                              <span
-                                style={{
-                                  fontSize: '10px',
-                                  padding: '2px 6px',
-                                  backgroundColor: 'rgba(255,255,255,0.06)',
-                                  border: '1px solid var(--border-color)',
-                                  color: 'var(--accent-lime)',
-                                  fontWeight: 'bold',
-                                }}
-                              >
-                                {staff.role}
-                              </span>
-                            </td>
-                            <td style={{ padding: '8px 12px', textAlign: 'right' }}>
-                              <button
-                                type="button"
-                                className={`btn ${isSelected ? 'btn-primary' : ''}`}
-                                style={{ padding: '2px 8px', fontSize: '11px' }}
-                                onClick={(e) => { e.stopPropagation(); handleSelectStaff(staff); }}
-                              >
-                                {isSelected ? 'Selected ✓' : 'Select'}
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {filteredStaff.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                            {staffSearchQuery ? `No staff member matching "${staffSearchQuery}"` : 'No active staff accounts found'}
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredStaff.map((staff) => {
+                          const isSelected = identifier.trim() === staff.staffId.toString() || identifier.trim().toLowerCase() === staff.username.toLowerCase();
+                          return (
+                            <tr
+                              key={staff.staffId}
+                              onClick={() => handleSelectStaff(staff)}
+                              style={{
+                                backgroundColor: isSelected ? 'var(--accent-soft)' : undefined,
+                                borderBottom: '1px solid var(--border-color)',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontWeight: 'bold', color: 'var(--text-main)' }}>
+                                {staff.staffId}
+                              </td>
+                              <td style={{ padding: '8px 12px', fontWeight: 'bold', color: isSelected ? 'var(--accent-lime)' : 'var(--text-main)' }}>
+                                {staff.name}
+                                {isSelected && <CheckCircle2 size={13} style={{ display: 'inline', marginLeft: '6px', color: 'var(--accent-lime)' }} />}
+                              </td>
+                              <td style={{ padding: '8px 12px' }}>
+                                <span
+                                  style={{
+                                    fontSize: '10px',
+                                    padding: '2px 6px',
+                                    backgroundColor: 'rgba(255,255,255,0.06)',
+                                    border: '1px solid var(--border-color)',
+                                    color: 'var(--accent-lime)',
+                                    fontWeight: 'bold',
+                                  }}
+                                >
+                                  {staff.role}
+                                </span>
+                              </td>
+                              <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                                <button
+                                  type="button"
+                                  className={`btn ${isSelected ? 'btn-primary' : ''}`}
+                                  style={{ padding: '2px 8px', fontSize: '11px' }}
+                                  onClick={(e) => { e.stopPropagation(); handleSelectStaff(staff); }}
+                                >
+                                  {isSelected ? 'Selected ✓' : 'Select'}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           )}
@@ -448,7 +441,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
               </button>
             </div>
             <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
-              Press Enter inside password field to sign in instantly
+              Press Enter inside password field to sign in
             </span>
           </div>
 
@@ -486,7 +479,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           <span style={{ margin: '0 8px' }}>·</span>
           <span>📞 <strong>+91 8625076618</strong></span>
           <span style={{ margin: '0 8px' }}>·</span>
-          <span>✉️ <strong>khangulamgousamjat@gmail.com</strong></span>
+          <span>✉️ <strong>gousk2004@gmail.com</strong></span>
         </div>
       </footer>
     </div>

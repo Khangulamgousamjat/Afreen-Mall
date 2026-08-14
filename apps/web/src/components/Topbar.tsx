@@ -1,15 +1,13 @@
 import React from 'react';
-import { Sun, Moon, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Topbar: React.FC = () => {
-  const { user, theme, toggleTheme, logout } = useAuth();
-
+  const { user, theme } = useAuth();
   const logoSrc = theme === 'dark' ? '/logo-dark.jpg' : '/logo-light.jpg';
 
   return (
     <header className="topbar">
-      {/* LEFT: Logo + Mall name (shared across every internal page) */}
+      {/* LEFT: Logo + Mall name */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <img
           src={logoSrc}
@@ -27,37 +25,17 @@ export const Topbar: React.FC = () => {
         </div>
       </div>
 
-      {/* RIGHT: Theme toggle + user info + logout */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-        <button
-          className="btn"
-          onClick={toggleTheme}
-          title="Toggle Light/Dark Theme"
-          style={{ padding: '6px 12px', fontSize: '12px' }}
-        >
-          {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-          <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
-        </button>
-
-        {user && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingLeft: '16px', borderLeft: '1px solid var(--border-color)' }}>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{user.fullName}</div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }} className="tabular-nums">
-                Staff ID: <strong>{user.staffId}</strong> | {user.role}
-              </div>
+      {/* RIGHT: Logged-in Staff Info Only */}
+      {user && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{user.fullName}</div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }} className="tabular-nums">
+              Staff ID: <strong>{user.staffId}</strong> | {user.role}
             </div>
-            <button
-              className="btn"
-              onClick={logout}
-              title="Logout"
-              style={{ padding: '6px 10px', color: 'var(--status-red)', borderColor: 'var(--border-color)' }}
-            >
-              <LogOut size={14} />
-            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </header>
   );
 };

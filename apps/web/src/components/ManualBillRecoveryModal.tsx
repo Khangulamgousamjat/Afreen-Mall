@@ -3,6 +3,8 @@ import { RefreshCw, AlertTriangle, CheckCircle2, ShieldAlert, X, CreditCard, QrC
 import { useAuth } from '../context/AuthContext';
 import { PaymentMode, RoleName } from '@afreen-mall/shared-types';
 import { api } from '../services/api';
+import { getApiErrorMessage } from '../services/apiError';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface ManualBillRecoveryModalProps {
   isOpen: boolean;
@@ -18,6 +20,8 @@ export const ManualBillRecoveryModal: React.FC<ManualBillRecoveryModalProps> = (
   defaultAmountRupees = 0,
 }) => {
   const { user } = useAuth();
+  const containerRef = useFocusTrap<HTMLDivElement>(isOpen);
+
   const [transactionId, setTransactionId] = useState('');
   const [amountRupees, setAmountRupees] = useState<string>(
     defaultAmountRupees > 0 ? defaultAmountRupees.toString() : ''
@@ -27,6 +31,24 @@ export const ManualBillRecoveryModal: React.FC<ManualBillRecoveryModalProps> = (
   const [checkingTx, setCheckingTx] = useState(false);
   const [loading, setLoading] = useState(false);
   const txnInputRef = useRef<HTMLInputElement>(null);
+
+  // Escape Key dismissal & Numpad Enter key handling
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const k = (e.key || '').toUpperCase();
+      const c = (e.code || '').toUpperCase();
+
+      if (k === 'ESCAPE' || c === 'ESCAPE') {
+        e.preventDefault(); e.stopPropagation();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [isOpen, onClose]);
 
   useEffect(() => {
     if (isOpen) {
@@ -105,67 +127,7 @@ export const ManualBillRecoveryModal: React.FC<ManualBillRecoveryModalProps> = (
         throw new Error('Invalid response from server');
       }
     } catch (err: any) {
-      // Local fallback in case server is unavailable
-      const apiErr = err.response?.data?.error;
-      if (apiErr) {
-        setError(apiErr);
-      } else {
-        // Mock fallback invoice generation for offline/dev operation
-        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        const mockInvoiceNo = `INV-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
-        const mockInvoice = {
-          id: `sale-rec-${Date.now()}`,
-          invoiceNo: mockInvoiceNo,
-          date: new Date().toISOString(),
-          saleType: 'Retail Sale',
-          cashierName: user?.fullName || 'Cash Officer',
-          cashierStaffId: user?.staffId || 300003,
-          paymentMode,
-          items: [],
-          totalQty: 1,
-          totalDiscount: 0,
-          totalAmount: amountPaise,
-          paidCash: 0,
-          paidCard: paymentMode === PaymentMode.CARD ? amountPaise : 0,
-          paidUPI: paymentMode === PaymentMode.UPI ? amountPaise : 0,
-          changeDue: 0,
-          transactionId: cleanTxId,
-          isManuallyRecovered: true,
-          recoveredByStaffId: user?.staffId || 300003,
-          recoveredAt: new Date().toISOString(),
-          status: 'COMPLETED',
-          createdAt: new Date().toISOString(),
-        };
-
-        const mockReceipt = `
-========================================
-             AFREEN MALL
-     City Center, Sector 4, Main Hub
-         GSTIN: 27AAAAA0000A1Z5
-========================================
-Invoice No : ${mockInvoiceNo} [RECOVERED]
-Date       : ${new Date().toLocaleString()}
-Cashier    : ${user?.fullName || 'Cash Officer'} (ID: ${user?.staffId || 300003})
-Type       : Retail Sale
-----------------------------------------
-Txn ID     : ${cleanTxId}
-Mode       : ${paymentMode} (MANUAL RECOVERY)
-----------------------------------------
-Manual Bill Recovery     x1  ₹${numAmount.toFixed(2)}
-----------------------------------------
-TOTAL BILL : ₹${numAmount.toFixed(2)}
-Paid ${paymentMode}  : ₹${numAmount.toFixed(2)}
-Status     : Verified & Completed
-========================================
-[ BARCODE: *${mockInvoiceNo}* ]
-Recovered By Cash Officer (ID: ${user?.staffId || 300003})
-Software by Gous Khan · Mobile: 8625076618
-========================================
-        `;
-
-        onSuccess(mockInvoice, mockReceipt);
-        onClose();
-      }
+      setError(getApiErrorMessage(err, 'Manual bill recovery failed'));
     } finally {
       setLoading(false);
     }
@@ -173,7 +135,7 @@ Software by Gous Khan · Mobile: 8625076618
 
   return (
     <div className="modal-overlay" style={{ zIndex: 1100 }}>
-      <div className="modal-content" style={{ maxWidth: '520px', width: '100%', borderRadius: '12px', padding: '24px' }}>
+      <div ref={containerRef} className="modal-content" tabIndex={-1} style={{ maxWidth: '520px', width: '100%', borderRadius: '12px', padding: '24px' }}>
         
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
@@ -237,7 +199,7 @@ Software by Gous Khan · Mobile: 8625076618
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justify: 'center',
+                    justifyContent: 'center',
                     gap: '8px',
                     padding: '10px',
                     borderRadius: '6px',
@@ -258,7 +220,7 @@ Software by Gous Khan · Mobile: 8625076618
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justify: 'center',
+                    justifyContent: 'center',
                     gap: '8px',
                     padding: '10px',
                     borderRadius: '6px',

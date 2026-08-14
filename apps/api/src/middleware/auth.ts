@@ -1,10 +1,18 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { RoleName } from '@afreen-mall/shared-types';
+import { prisma } from '../prisma.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'afreen_mall_super_secure_jwt_secret_key_2026';
+const getJwtSecret = (): string => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret && process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL SECURITY ERROR: JWT_SECRET environment variable is missing in production!');
+  }
+  return secret || 'afreen_mall_dev_jwt_secret_key_2026';
+};
 
-export interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest<P = any, ResBody = any, ReqBody = any, ReqQuery = any>
+  extends Request<P, ResBody, ReqBody, ReqQuery> {
   user?: {
     id: string;
     staffId: number;
@@ -13,9 +21,10 @@ export interface AuthenticatedRequest extends Request {
     role: RoleName;
     mustChangePassword: boolean;
   };
+  sessionToken?: string;
 }
 
-export function authenticateToken(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+export async function authenticateToken(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -24,8 +33,19 @@ export function authenticateToken(req: AuthenticatedRequest, res: Response, next
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, getJwtSecret()) as any;
+
+    // Server-side session validation: verify session exists in database and is not expired
+    const dbSession = await prisma.session.findUnique({
+      where: { token },
+    });
+
+    if (!dbSession || new Date() > dbSession.expiresAt) {
+      return res.status(401).json({ error: 'Session invalidated or expired' });
+    }
+
     req.user = decoded;
+    req.sessionToken = token;
     next();
   } catch (err) {
     return res.status(403).json({ error: 'Invalid or expired token' });
@@ -69,3 +89,4 @@ export function requireManagerOrAdmin(req: AuthenticatedRequest, res: Response, 
   }
   next();
 }
+
