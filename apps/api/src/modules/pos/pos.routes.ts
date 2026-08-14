@@ -279,5 +279,336 @@ router.get('/last-invoice', async (req: AuthenticatedRequest, res: Response) => 
   }
 });
 
+// GET /api/v1/pos/check-transaction-id/:transactionId - Check if transaction ID was already used
+router.get('/check-transaction-id/:transactionId', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { transactionId } = req.params;
+    if (!transactionId || !transactionId.trim()) {
+      return res.status(400).json({ error: 'Transaction ID is required' });
+    }
+
+    const existingSale = await prisma.sale.findFirst({
+      where: { transactionId: transactionId.trim() },
+    });
+
+    if (existingSale) {
+      return res.json({
+        exists: true,
+        invoiceNo: existingSale.invoiceNo,
+        amount: existingSale.totalAmount,
+        createdAt: existingSale.createdAt,
+        message: `Transaction ID '${transactionId}' has already been used to generate bill ${existingSale.invoiceNo}.`,
+      });
+    }
+
+    return res.json({ exists: false });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to check transaction ID' });
+  }
+});
+
+// POST /api/v1/pos/recover-bill - Manual bill recovery (Shift + F8)
+router.post('/recover-bill', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userRole = req.user?.role;
+    const allowedRoles = ['CASH_OFFICER', 'STORE_MANAGER', 'REGIONAL_MANAGER', 'SUPER_ADMIN', 'ACCOUNTANT', 'AUDITOR'];
+    
+    if (!userRole || !allowedRoles.includes(userRole)) {
+      return res.status(403).json({
+        error: 'Access Restricted: Manual bill recovery requires Cash Officer role or higher.',
+      });
+    }
+
+    const {
+      transactionId,
+      amount, // in paise
+      paymentMode,
+      registerId,
+      customerPhone,
+      customerName,
+      cartItems = [],
+    } = req.body;
+
+    const cleanTxId = (transactionId || '').trim();
+    if (!cleanTxId) {
+      return res.status(400).json({ error: 'Transaction ID is required.' });
+    }
+
+    const numAmount = parseInt(amount, 10);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      return res.status(400).json({ error: 'Amount paid must be greater than 0.' });
+    }
+
+    if (paymentMode !== PaymentMode.CARD && paymentMode !== PaymentMode.UPI) {
+      return res.status(400).json({ error: 'Payment mode must be either Card or UPI.' });
+    }
+
+    // Check duplicate Transaction ID
+    const duplicate = await prisma.sale.findFirst({
+      where: { transactionId: cleanTxId },
+    });
+
+    if (duplicate) {
+      return res.status(400).json({
+        error: `Duplicate Blocked: Transaction ID '${cleanTxId}' has already been used to generate bill ${duplicate.invoiceNo}.`,
+      });
+    }
+
+    const register = await prisma.register.findUnique({ where: { id: registerId || 'reg-01' } });
+    const regId = register ? register.id : (await prisma.register.findFirst())?.id || 'reg-01';
+
+    const paidCard = paymentMode === PaymentMode.CARD ? numAmount : 0;
+    const paidUPI = paymentMode === PaymentMode.UPI ? numAmount : 0;
+
+    const result = await prisma.$transaction(async (tx: any) => {
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const countToday = await tx.sale.count();
+      const invoiceNo = `INV-${dateStr}-${(countToday + 1).toString().padStart(4, '0')}`;
+
+      // Handle items array
+      const itemsToCreate = Array.isArray(cartItems) && cartItems.length > 0
+        ? cartItems
+        : [{
+            productId: (await tx.product.findFirst())?.id || 'manual-item',
+            qty: 1,
+            mrp: numAmount,
+            rate: numAmount,
+            discountPct: 0,
+            discountAmt: 0,
+            gstPct: 0,
+            netRate: numAmount,
+            totalValue: numAmount,
+          }];
+
+      const totalQty = itemsToCreate.reduce((sum: number, i: any) => sum + (i.qty || 1), 0);
+
+      const sale = await tx.sale.create({
+        data: {
+          invoiceNo,
+          registerId: regId,
+          saleType: SaleType.RETAIL,
+          cashierStaffId: req.user!.staffId,
+          cashierName: req.user!.fullName,
+          paymentMode,
+          totalQty,
+          totalDiscount: 0,
+          totalAmount: numAmount,
+          paidCash: 0,
+          paidCard,
+          paidUPI,
+          changeDue: 0,
+          customerPhone,
+          customerName,
+          transactionId: cleanTxId,
+          isManuallyRecovered: true,
+          recoveredByStaffId: req.user!.staffId,
+          recoveredAt: new Date(),
+          status: 'COMPLETED',
+          items: {
+            create: itemsToCreate.map((item: any) => ({
+              productId: item.id || item.productId,
+              qty: item.qty || 1,
+              mrp: item.mrp || numAmount,
+              rate: item.rate || numAmount,
+              discountPct: item.discountPercent || item.discountPct || 0,
+              discountAmt: item.discountAmount || item.discountAmt || 0,
+              gstPct: item.gstPercent || item.gstPct || 0,
+              netRate: item.netRate || item.rate || numAmount,
+              totalValue: (item.netRate || item.rate || numAmount) * (item.qty || 1),
+            })),
+          },
+        },
+        include: { items: { include: { product: true } } },
+      });
+
+      // Log Audit Entry for manual recovery
+      await tx.auditLog.create({
+        data: {
+          staffId: req.user!.staffId,
+          userName: req.user!.fullName,
+          userRole: req.user!.role,
+          action: 'MANUAL_BILL_RECOVERY',
+          entityName: 'Sale',
+          entityId: sale.id,
+          reason: `Manual bill recovery for ${paymentMode} payment with Transaction ID ${cleanTxId}`,
+          afterValue: {
+            transactionId: cleanTxId,
+            amount: numAmount,
+            paymentMode,
+            invoiceNo,
+            recoveredBy: req.user!.fullName,
+          },
+        },
+      });
+
+      return sale;
+    });
+
+    const formattedReceipt = `
+========================================
+             AFREEN MALL
+     City Center, Sector 4, Main Hub
+         GSTIN: 27AAAAA0000A1Z5
+========================================
+Invoice No : ${result.invoiceNo} [RECOVERED]
+Date       : ${new Date(result.createdAt).toLocaleString()}
+Cashier    : ${result.cashierName} (ID: ${result.cashierStaffId})
+Type       : ${result.saleType}
+----------------------------------------
+Txn ID     : ${result.transactionId}
+Mode       : ${result.paymentMode} (MANUAL RECOVERY)
+----------------------------------------
+${result.items
+  .map(
+    (i: any) =>
+      `${(i.product?.name || 'Manual Item').slice(0, 20).padEnd(20)} x${i.qty}  ₹${(i.totalValue / 100).toFixed(2)}`
+  )
+  .join('\n')}
+----------------------------------------
+TOTAL BILL : ₹${(result.totalAmount / 100).toFixed(2)}
+Paid ${result.paymentMode}  : ₹${(result.totalAmount / 100).toFixed(2)}
+Status     : Complete (Verified & Recovered)
+========================================
+[ BARCODE: *${result.invoiceNo}* ]
+Recovered By Cash Officer (ID: ${req.user!.staffId})
+Software by Gous Khan · Mobile: 8625076618
+========================================
+    `;
+
+    return res.status(201).json({
+      invoice: result,
+      receiptPrintContent: formattedReceipt,
+      message: 'Bill recovered successfully',
+    });
+  } catch (err: any) {
+    console.error('Bill recovery error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to recover bill' });
+  }
+});
+
+// GET /api/v1/pos/invoice-by-number/:invoiceNo - Search invoice by number
+router.get('/invoice-by-number/:invoiceNo', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { invoiceNo } = req.params;
+    const sale = await prisma.sale.findFirst({
+      where: { invoiceNo: invoiceNo.trim() },
+      include: { items: { include: { product: true } } },
+    });
+
+    if (!sale) {
+      return res.status(404).json({ error: `Invoice '${invoiceNo}' not found.` });
+    }
+
+    return res.json({ sale });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch invoice' });
+  }
+});
+
+// POST /api/v1/pos/reprint-duplicate - Reprint duplicate bill (Ctrl + F5)
+router.post('/reprint-duplicate', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userRole = req.user?.role;
+    const allowedRoles = ['CASH_OFFICER', 'STORE_MANAGER', 'REGIONAL_MANAGER', 'SUPER_ADMIN', 'ACCOUNTANT', 'AUDITOR'];
+
+    if (!userRole || !allowedRoles.includes(userRole)) {
+      return res.status(403).json({
+        error: 'Access Denied: Duplicate bill printing requires Cash Officer or Manager authorization.',
+      });
+    }
+
+    const { invoiceNo, reason } = req.body;
+    const cleanInvoiceNo = (invoiceNo || '').trim();
+
+    if (!cleanInvoiceNo) {
+      return res.status(400).json({ error: 'Invoice number is required.' });
+    }
+
+    const sale = await prisma.sale.findFirst({
+      where: { invoiceNo: cleanInvoiceNo },
+      include: { items: { include: { product: true } } },
+    });
+
+    if (!sale) {
+      return res.status(404).json({ error: `Invoice '${cleanInvoiceNo}' not found.` });
+    }
+
+    const nextReprintCount = (sale.reprintCount || 0) + 1;
+
+    // Update sale reprint count and log audit inside transaction
+    const updatedSale = await prisma.$transaction(async (tx: any) => {
+      const updated = await tx.sale.update({
+        where: { id: sale.id },
+        data: { reprintCount: nextReprintCount },
+        include: { items: { include: { product: true } } },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          staffId: req.user!.staffId,
+          userName: req.user!.fullName,
+          userRole: req.user!.role,
+          action: 'DUPLICATE_BILL_REPRINT',
+          entityName: 'Sale',
+          entityId: sale.id,
+          reason: reason || 'Duplicate bill print requested',
+          afterValue: {
+            invoiceNo: cleanInvoiceNo,
+            reprintCount: nextReprintCount,
+            reprintedBy: req.user!.fullName,
+            reprintedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      return updated;
+    });
+
+    const formattedDuplicateReceipt = `
+========================================
+         *** DUPLICATE COPY ***
+        (NOT AN ORIGINAL RECEIPT)
+========================================
+             AFREEN MALL
+     City Center, Sector 4, Main Hub
+         GSTIN: 27AAAAA0000A1Z5
+========================================
+Invoice No : ${updatedSale.invoiceNo}
+Reprint #  : ${nextReprintCount}
+Date       : ${new Date(updatedSale.createdAt).toLocaleString()}
+Original   : ${updatedSale.cashierName} (ID: ${updatedSale.cashierStaffId})
+Type       : ${updatedSale.saleType}
+----------------------------------------
+${updatedSale.items
+  .map(
+    (i: any) =>
+      `${(i.product?.name || 'Item').slice(0, 20).padEnd(20)} x${i.qty}  ₹${(i.totalValue / 100).toFixed(2)}`
+  )
+  .join('\n')}
+----------------------------------------
+TOTAL BILL : ₹${(updatedSale.totalAmount / 100).toFixed(2)}
+Payment    : ${updatedSale.paymentMode}
+----------------------------------------
+Reason     : ${reason || 'Customer / Printer Reprint Request'}
+Reprinted  : ${req.user!.fullName} (Staff ID: ${req.user!.staffId})
+Timestamp  : ${new Date().toLocaleString()}
+========================================
+[ BARCODE: *${updatedSale.invoiceNo}* ]
+         *** DUPLICATE COPY ***
+Software by Gous Khan · Mobile: 8625076618
+========================================
+    `;
+
+    return res.status(200).json({
+      invoice: updatedSale,
+      receiptPrintContent: formattedDuplicateReceipt,
+      message: 'Duplicate bill prepared for printing.',
+    });
+  } catch (err: any) {
+    console.error('Duplicate reprint error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to reprint duplicate bill' });
+  }
+});
+
 export default router;
 

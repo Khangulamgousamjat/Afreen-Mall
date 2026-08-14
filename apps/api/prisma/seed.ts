@@ -37,15 +37,25 @@ async function main() {
   });
   console.log(`Seeded Super Admin: Staff ID ${superAdmin.staffId} (${superAdmin.username})`);
 
-  // Seed standard staff accounts
+  // Seed standard staff accounts + 10 Cashier accounts
   const defaultHash = await bcrypt.hash('Pass@123', 12);
   const staffMembers = [
-    { staffId: 300001, username: 'manager1', name: 'Rajesh Sharma', role: RoleName.STORE_MANAGER },
-    { staffId: 300002, username: 'accountant1', name: 'Priya Patel', role: RoleName.ACCOUNTANT },
-    { staffId: 300003, username: 'cashier1', name: 'Amit Verma', role: RoleName.CASHIER },
-    { staffId: 300004, username: 'cashofficer1', name: 'Sanjay Gupta', role: RoleName.CASH_OFFICER },
-    { staffId: 300005, username: 'inventory1', name: 'Sunil Kumar', role: RoleName.INVENTORY_STAFF },
-    { staffId: 300006, username: 'purchase1', name: 'Neha Singh', role: RoleName.PURCHASE_TEAM },
+    { staffId: 300001, username: 'manager1', name: 'Rajesh Sharma (Store Manager)', role: RoleName.STORE_MANAGER },
+    { staffId: 300002, username: 'accountant1', name: 'Priya Patel (Accountant)', role: RoleName.ACCOUNTANT },
+    { staffId: 300003, username: 'cashofficer1', name: 'Sanjay Gupta (Cash Officer)', role: RoleName.CASH_OFFICER },
+    { staffId: 300004, username: 'inventory1', name: 'Sunil Kumar (Inventory Lead)', role: RoleName.INVENTORY_STAFF },
+    { staffId: 300005, username: 'purchase1', name: 'Neha Singh (Purchase Lead)', role: RoleName.PURCHASE_TEAM },
+    // 10 Normal Cashier accounts
+    { staffId: 300010, username: 'cashier1', name: 'Cashier 1', role: RoleName.CASHIER },
+    { staffId: 300011, username: 'cashier2', name: 'Cashier 2', role: RoleName.CASHIER },
+    { staffId: 300012, username: 'cashier3', name: 'Cashier 3', role: RoleName.CASHIER },
+    { staffId: 300013, username: 'cashier4', name: 'Cashier 4', role: RoleName.CASHIER },
+    { staffId: 300014, username: 'cashier5', name: 'Cashier 5', role: RoleName.CASHIER },
+    { staffId: 300015, username: 'cashier6', name: 'Cashier 6', role: RoleName.CASHIER },
+    { staffId: 300016, username: 'cashier7', name: 'Cashier 7', role: RoleName.CASHIER },
+    { staffId: 300017, username: 'cashier8', name: 'Cashier 8', role: RoleName.CASHIER },
+    { staffId: 300018, username: 'cashier9', name: 'Cashier 9', role: RoleName.CASHIER },
+    { staffId: 300019, username: 'cashier10', name: 'Cashier 10', role: RoleName.CASHIER },
   ];
 
   for (const s of staffMembers) {

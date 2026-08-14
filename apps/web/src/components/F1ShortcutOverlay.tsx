@@ -24,8 +24,9 @@ export const F1ShortcutOverlay: React.FC<F1ShortcutOverlayProps> = ({ isOpen, on
     { key: 'Alt + F12', desc: 'Issue Credit Note' },
     { key: 'Alt + B', desc: 'Get customer loyalty details' },
     { key: 'Ctrl + F11', desc: 'Restore held invoice' },
-    { key: 'Ctrl + F5', desc: 'Search invoice / item master' },
+    { key: 'Ctrl + F5', desc: 'Reprint Duplicate Bill (Cash Officer / Manager Authorization)' },
     { key: 'Shift + F2', desc: 'Change sale type (Retail/Wholesale)' },
+    { key: 'Shift + F8', desc: 'Recover Bill (Card/UPI Paid but Bill Not Generated)' },
     { key: 'Shift + B', desc: 'Open Item Master Detail side panel' },
   ];
 

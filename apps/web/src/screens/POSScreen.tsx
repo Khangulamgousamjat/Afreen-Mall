@@ -1,13 +1,19 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Trash2, ShoppingCart, QrCode, CreditCard, RefreshCw, HelpCircle, User, Save } from 'lucide-react';
+import { Trash2, ShoppingCart, QrCode, CreditCard, RefreshCw, HelpCircle, User, Save, Printer, Copy, Monitor } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { F1ShortcutOverlay } from '../components/F1ShortcutOverlay';
+import { ManualBillRecoveryModal } from '../components/ManualBillRecoveryModal';
+import { DuplicateBillReprintModal } from '../components/DuplicateBillReprintModal';
+import { RegisterSelectionModal, POSRegister } from '../components/RegisterSelectionModal';
 import { POSCartItem, PaymentMode, SaleType } from '@afreen-mall/shared-types';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 const formatDate = (d: Date) =>
   `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+
+const formatLiveClock = (d: Date) =>
+  `${d.toLocaleTimeString('en-IN', { hour12: true })} · ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 
 const paiseToRupee = (p: number) =>
   (p / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
@@ -17,7 +23,19 @@ export const POSScreen: React.FC = () => {
   const { user } = useAuth();
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Mode & Invoice ──────────────────────────────────────────────────────
+  // ── Real-Time Live Clock ────────────────────────────────────────────────
+  const [currentTime, setCurrentTime] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // ── Register & Mode ─────────────────────────────────────────────────────
+  const [currentRegister, setCurrentRegister] = useState<POSRegister>(() => {
+    const saved = localStorage.getItem('afreen_pos_register');
+    return saved ? JSON.parse(saved) : { id: 'reg-01', posNumber: 'POS-01', name: 'Main Billing Counter (Ground Floor)', isActive: true };
+  });
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [isReturnMode, setIsReturnMode] = useState(false);
   const [saleType, setSaleType] = useState<SaleType>(SaleType.RETAIL);
   const [paymentModeUpfront, setPaymentModeUpfront] = useState<PaymentMode>(PaymentMode.CASH);
@@ -27,9 +45,22 @@ export const POSScreen: React.FC = () => {
   // ── Cart ────────────────────────────────────────────────────────────────
   const [barcodeInput, setBarcodeInput] = useState('');
   const [barcodeError, setBarcodeError] = useState('');
+  const [cartError, setCartError] = useState('');
   const [lastScannedItem, setLastScannedItem] = useState<POSCartItem | null>(null);
   const [lastScannedFlash, setLastScannedFlash] = useState(false);
   const [cart, setCart] = useState<POSCartItem[]>([]);
+
+  // ── Cart Unload Guard ───────────────────────────────────────────────────
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (cart.length > 0) {
+        e.preventDefault();
+        e.returnValue = 'Active billing session in progress. Complete payment before navigating away.';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [cart]);
 
   // ── Customer ────────────────────────────────────────────────────────────
   const [customerPhone, setCustomerPhone] = useState('');
@@ -39,6 +70,10 @@ export const POSScreen: React.FC = () => {
   // ── Modals ──────────────────────────────────────────────────────────────
   const [showF1Overlay, setShowF1Overlay] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showManualRecoveryModal, setShowManualRecoveryModal] = useState(false);
+  const [showDuplicateReprintModal, setShowDuplicateReprintModal] = useState(false);
+  const [showCancelBillModal, setShowCancelBillModal] = useState(false);
+  const [receiptPrintContent, setReceiptPrintContent] = useState<string | null>(null);
   const [selectedCartIndex, setSelectedCartIndex] = useState<number | null>(null);
 
   // ── Payment breakdown (paise) ───────────────────────────────────────────
@@ -87,29 +122,45 @@ export const POSScreen: React.FC = () => {
     fetchLastInvoice();
   }, [fetchNextInvoiceNo, fetchLastInvoice]);
 
+  const handleToggleReturnMode = () => {
+    if (!isReturnMode) {
+      const isSuperOrManager = user?.role === RoleName.SUPER_ADMIN || user?.role === RoleName.STORE_MANAGER;
+      if (!isSuperOrManager && user?.canProcessSaleReturn === false) {
+        setCartError('Permission Denied: Cashier is restricted to sales only. Sale Return permission must be granted by Manager or Super Admin.');
+        setTimeout(() => setCartError(''), 6000);
+        return;
+      }
+    }
+    setIsReturnMode(prev => !prev);
+    refocusBarcode();
+  };
+
   // ── Global keyboard capture ─────────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'F1') { e.preventDefault(); setShowF1Overlay(true); return; }
+      if (e.ctrlKey && e.key === 'F5') { e.preventDefault(); setShowDuplicateReprintModal(true); return; }
+      if (e.shiftKey && e.key === 'F8') { e.preventDefault(); setShowManualRecoveryModal(true); return; }
       if (e.key === 'F3') { e.preventDefault(); if (lastScannedItem) addItemToCart(lastScannedItem); return; }
       if (e.key === 'F7') { e.preventDefault(); setPaymentModeUpfront(PaymentMode.UPI); triggerUPIPayment(); return; }
       if (e.key === 'F10') { e.preventDefault(); if (cart.length > 0) openPaymentModal(); return; }
-      if (e.altKey && e.key === 'F11') { e.preventDefault(); setIsReturnMode(p => !p); return; }
+      if (e.altKey && e.key === 'F11') { e.preventDefault(); handleToggleReturnMode(); return; }
       if (e.shiftKey && e.key === 'F2') { e.preventDefault(); setSaleType(p => p === SaleType.RETAIL ? SaleType.WHOLESALE : SaleType.RETAIL); return; }
 
       // Redirect stray keystrokes to barcode box when no modal is open
       const active = document.activeElement as HTMLElement;
       const isInputFocused = active && (active.tagName === 'INPUT' || active.tagName === 'SELECT' || active.tagName === 'TEXTAREA');
-      if (!showPaymentModal && !showF1Overlay && !isInputFocused && e.key.length === 1) {
+      const isModalOpen = showPaymentModal || showF1Overlay || showManualRecoveryModal || showDuplicateReprintModal || Boolean(receiptPrintContent);
+      if (!isModalOpen && !isInputFocused && e.key.length === 1) {
         barcodeInputRef.current?.focus();
       }
-      if (e.key === 'Enter' && active !== barcodeInputRef.current && !showPaymentModal && !showF1Overlay) {
+      if (e.key === 'Enter' && active !== barcodeInputRef.current && !isModalOpen) {
         barcodeInputRef.current?.focus();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, lastScannedItem, showPaymentModal, showF1Overlay]);
+  }, [cart, lastScannedItem, showPaymentModal, showF1Overlay, showManualRecoveryModal, showDuplicateReprintModal, receiptPrintContent]);
 
   // ── Barcode scan ────────────────────────────────────────────────────────
   const handleBarcodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -155,6 +206,7 @@ export const POSScreen: React.FC = () => {
 
   // ── Cart operations ─────────────────────────────────────────────────────
   const addItemToCart = (item: POSCartItem) => {
+    setCartError('');
     setCart(prev => {
       const idx = prev.findIndex(i => i.barcode === item.barcode);
       if (idx >= 0) {
@@ -168,6 +220,11 @@ export const POSScreen: React.FC = () => {
 
   const updateItemQty = (index: number, newQty: number) => {
     if (newQty <= 0) {
+      if (cart.length <= 1) {
+        setCartError('At least 1 item must remain in the invoice. Use "Cancel Bill" button to reset bill.');
+        setTimeout(() => setCartError(''), 4000);
+        return;
+      }
       setCart(prev => prev.filter((_, i) => i !== index));
     } else {
       setCart(prev => {
@@ -180,7 +237,20 @@ export const POSScreen: React.FC = () => {
   };
 
   const removeItem = (index: number) => {
+    if (cart.length <= 1) {
+      setCartError('At least 1 item must remain in the invoice. Use "Cancel Bill" button to reset bill.');
+      setTimeout(() => setCartError(''), 4000);
+      return;
+    }
     setCart(prev => prev.filter((_, i) => i !== index));
+    refocusBarcode();
+  };
+
+  const handleCancelBillConfirm = () => {
+    setCart([]);
+    setLastScannedItem(null);
+    setShowCancelBillModal(false);
+    setCartError('');
     refocusBarcode();
   };
 
@@ -214,17 +284,48 @@ export const POSScreen: React.FC = () => {
   const finalizeInvoice = async (finalMode: PaymentMode) => {
     try {
       const payload = {
-        registerId: 'reg-01', saleType, paymentMode: finalMode,
+        registerId: currentRegister.id, saleType, paymentMode: finalMode,
         invoiceNo, items: cart, paidCash, paidCard, paidUPI,
         customerPhone, customerName, isReturn: isReturnMode,
       };
       const res = await api.post('/pos/invoice', payload);
       const savedNo = res.data.invoice?.invoiceNo || invoiceNo;
       setLastSavedInvoice({ invoiceNo: savedNo, amount: totalAmount });
+      if (res.data?.receiptPrintContent) {
+        setReceiptPrintContent(res.data.receiptPrintContent);
+        setTimeout(() => window.print(), 400);
+      }
     } catch {
       setLastSavedInvoice({ invoiceNo, amount: totalAmount });
+      const mockPrintReceipt = `
+========================================
+             AFREEN MALL
+     City Center, Sector 4, Main Hub
+         GSTIN: 27AAAAA0000A1Z5
+========================================
+Invoice No : ${invoiceNo}
+Date       : ${new Date().toLocaleString()}
+Cashier    : ${user?.fullName || 'Cashier'} (ID: ${user?.staffId || 300003})
+Type       : ${saleType}
+----------------------------------------
+${cart
+  .map(
+    (i: any) =>
+      `${i.name.slice(0, 20).padEnd(20)} x${i.qty}  ₹${paiseToRupee(i.value)}`
+  )
+  .join('\n')}
+----------------------------------------
+TOTAL BILL : ₹${paiseToRupee(totalAmount)}
+Payment    : ${finalMode}
+========================================
+[ BARCODE: *${invoiceNo}* ]
+Software by Gous Khan · Mobile: 8625076618
+========================================
+      `;
+      setReceiptPrintContent(mockPrintReceipt);
+      setTimeout(() => window.print(), 400);
     } finally {
-      setCart([]); setLastScannedItem(null); setShowPaymentModal(false);
+      setCart([]); setLastScannedItem(null); setShowPaymentModal(false); setCartError('');
       await fetchNextInvoiceNo();
       await fetchLastInvoice();
       refocusBarcode();
@@ -247,13 +348,81 @@ export const POSScreen: React.FC = () => {
 
       {/* ── 1. HEADER ───────────────────────────────────────────────────── */}
       <div style={{ borderBottom: '1px solid var(--border-color)', padding: '10px 0 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ fontSize: '20px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '2px', color: 'var(--text-main)', margin: 0 }}>
-          Afreen Mall
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '2px', color: 'var(--text-main)', margin: 0 }}>
+            Afreen Mall
+          </h1>
+          <button
+            onClick={() => setShowRegisterModal(true)}
+            className="btn"
+            style={{
+              padding: '2px 8px',
+              fontSize: '11px',
+              fontWeight: 'bold',
+              fontFamily: 'monospace',
+              backgroundColor: 'rgba(59, 130, 246, 0.2)',
+              borderColor: '#3b82f6',
+              color: '#3b82f6',
+              borderRadius: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              cursor: 'pointer',
+            }}
+            title="Click to switch active POS register terminal"
+          >
+            <Monitor size={12} />
+            <span>{currentRegister.posNumber}</span>
+          </button>
+          
+          {/* Live Real-Time Clock Badge */}
+          <div
+            style={{
+              fontSize: '11px',
+              fontFamily: 'monospace',
+              fontWeight: 'bold',
+              color: '#10b981',
+              padding: '3px 8px',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              borderRadius: '4px',
+              letterSpacing: '0.5px',
+            }}
+            title="Real-time live synced system time"
+          >
+            {formatLiveClock(currentTime)}
+          </div>
+        </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {cart.length > 0 && (
+            <button
+              className="btn"
+              onClick={() => setShowCancelBillModal(true)}
+              style={{ padding: '3px 10px', fontSize: '11px', backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: '#ef4444', color: '#ef4444' }}
+              title="Cancel active invoice session and reset cart"
+            >
+              <Trash2 size={13} /><span>Cancel Bill</span>
+            </button>
+          )}
+          <button
+            className="btn"
+            onClick={() => { setShowDuplicateReprintModal(true); refocusBarcode(); }}
+            style={{ padding: '3px 10px', fontSize: '11px', backgroundColor: 'rgba(234, 179, 8, 0.15)', borderColor: '#eab308', color: '#eab308' }}
+            title="Print duplicate bill copy for failed prints (Ctrl + F5)"
+          >
+            <Copy size={13} /><span>Print Duplicate (Ctrl+F5)</span>
+          </button>
+          <button
+            className="btn"
+            onClick={() => { setShowManualRecoveryModal(true); refocusBarcode(); }}
+            style={{ padding: '3px 10px', fontSize: '11px', backgroundColor: 'rgba(59, 130, 246, 0.15)', borderColor: '#3b82f6', color: '#3b82f6' }}
+            title="Recover Card/UPI payment where bill was not generated (Shift + F8)"
+          >
+            <RefreshCw size={13} /><span>Recover Bill (Shift+F8)</span>
+          </button>
           <button
             className={`btn`}
-            onClick={() => { setIsReturnMode(p => !p); refocusBarcode(); }}
+            onClick={handleToggleReturnMode}
             style={{ padding: '3px 10px', fontSize: '11px', backgroundColor: isReturnMode ? 'var(--status-red)' : undefined, borderColor: isReturnMode ? 'var(--status-red)' : undefined, color: isReturnMode ? '#fff' : undefined }}
           >
             {isReturnMode ? '⚠ RETURN MODE' : 'RETAIL SALE'}
@@ -389,6 +558,13 @@ export const POSScreen: React.FC = () => {
 
         {/* ── 5. ITEM LIST TABLE ───────────────────────────────────────── */}
         <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column' }}>
+          {cartError && (
+            <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.12)', border: '1px solid #ef4444', color: '#ef4444', padding: '8px 12px', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Trash2 size={14} />
+              <span>{cartError}</span>
+            </div>
+          )}
+
           <div className="table-container" style={{ maxHeight: '320px', overflowY: 'auto' }}>
             <table>
               <thead>
@@ -592,6 +768,139 @@ export const POSScreen: React.FC = () => {
           </div>
           <div style={{ fontSize: '15px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <RefreshCw size={16} /><span>{overlayStatus}</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── POS REGISTER SELECTION MODAL ───────────────────────────────── */}
+      <RegisterSelectionModal
+        isOpen={showRegisterModal}
+        currentRegisterId={currentRegister.id}
+        onClose={() => {
+          setShowRegisterModal(false);
+          refocusBarcode();
+        }}
+        onSelectRegister={(reg) => {
+          setCurrentRegister(reg);
+          refocusBarcode();
+        }}
+      />
+
+      {/* ── CANCEL BILL CONFIRMATION MODAL ───────────────────────────── */}
+      {showCancelBillModal && (
+        <div className="modal-overlay" style={{ zIndex: 1250 }}>
+          <div className="modal-content" style={{ maxWidth: '440px', padding: '24px', borderRadius: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#ef4444', marginBottom: '12px' }}>
+              <Trash2 size={24} />
+              <h3 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>Cancel Active Invoice?</h3>
+            </div>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px', lineHeight: 1.4 }}>
+              Are you sure you want to cancel the current invoice and clear all <strong>{cart.length} items</strong> from the cart?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setShowCancelBillModal(false);
+                  refocusBarcode();
+                }}
+              >
+                Keep Invoice
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleCancelBillConfirm}
+                style={{ backgroundColor: '#ef4444', borderColor: '#b91c1c', color: '#fff' }}
+              >
+                Yes, Cancel Bill & Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MANUAL BILL RECOVERY MODAL (SHIFT + F8) ────────────────────── */}
+      <ManualBillRecoveryModal
+        isOpen={showManualRecoveryModal}
+        onClose={() => {
+          setShowManualRecoveryModal(false);
+          refocusBarcode();
+        }}
+        onSuccess={(invoice, receiptContent) => {
+          setLastSavedInvoice({ invoiceNo: invoice.invoiceNo, amount: invoice.totalAmount });
+          setReceiptPrintContent(receiptContent);
+          setCart([]);
+          setLastScannedItem(null);
+          fetchNextInvoiceNo();
+          fetchLastInvoice();
+        }}
+      />
+
+      {/* ── DUPLICATE BILL REPRINT MODAL (CTRL + F5) ──────────────────── */}
+      <DuplicateBillReprintModal
+        isOpen={showDuplicateReprintModal}
+        lastInvoiceNo={lastSavedInvoice?.invoiceNo}
+        onClose={() => {
+          setShowDuplicateReprintModal(false);
+          refocusBarcode();
+        }}
+        onSuccess={(_, receiptContent) => {
+          setReceiptPrintContent(receiptContent);
+        }}
+      />
+
+      {/* ── THERMAL RECEIPT PRINT PREVIEW MODAL ───────────────────────── */}
+      {receiptPrintContent && (
+        <div className="modal-overlay" style={{ zIndex: 1200 }}>
+          <div className="modal-content" style={{ maxWidth: '440px', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontWeight: 'bold' }}>
+                <Printer size={20} />
+                <span>Thermal Bill Receipt</span>
+              </div>
+              <button
+                className="btn"
+                onClick={() => setReceiptPrintContent(null)}
+                style={{ padding: '2px 8px', fontSize: '12px' }}
+              >
+                ✕ Close
+              </button>
+            </div>
+            <pre
+              style={{
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                backgroundColor: '#1e293b',
+                color: '#38bdf8',
+                padding: '14px',
+                borderRadius: '6px',
+                whiteSpace: 'pre-wrap',
+                maxHeight: '380px',
+                overflowY: 'auto',
+                border: '1px solid var(--border-color)',
+                lineHeight: '1.4',
+              }}
+            >
+              {receiptPrintContent}
+            </pre>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '16px', justifyContent: 'flex-end' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setReceiptPrintContent(null)}
+              >
+                Done
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  window.print();
+                }}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Printer size={16} />
+                <span>Print Receipt</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

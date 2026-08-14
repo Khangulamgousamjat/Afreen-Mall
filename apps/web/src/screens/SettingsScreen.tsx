@@ -7,19 +7,24 @@ import { RoleName } from '@afreen-mall/shared-types';
 export const SettingsScreen: React.FC = () => {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === RoleName.SUPER_ADMIN;
+  const isManager = user?.role === RoleName.STORE_MANAGER;
+  const isAuthorized = isSuperAdmin || isManager;
 
   const [staffList, setStaffList] = useState<any[]>([
-    { id: '1', staffId: 300000, username: 'Superkhan', fullName: 'Super Admin (Gous Khan)', role: RoleName.SUPER_ADMIN, isLocked: false },
-    { id: '2', staffId: 300001, username: 'manager1', fullName: 'Rajesh Sharma', role: RoleName.STORE_MANAGER, isLocked: false },
-    { id: '3', staffId: 300002, username: 'accountant1', fullName: 'Priya Patel', role: RoleName.ACCOUNTANT, isLocked: false },
-    { id: '4', staffId: 300003, username: 'cashier1', fullName: 'Amit Verma', role: RoleName.CASHIER, isLocked: false },
-    { id: '5', staffId: 300004, username: 'cashofficer1', fullName: 'Sanjay Gupta', role: RoleName.CASH_OFFICER, isLocked: false },
+    { id: '1', staffId: 300000, username: 'Superkhan', fullName: 'Gous Khan (Super Admin)', role: RoleName.SUPER_ADMIN, isLocked: false, isDeactivated: false, canProcessSaleReturn: true },
+    { id: '2', staffId: 300001, username: 'manager1', fullName: 'Sanjay Gupta (Store Manager)', role: RoleName.STORE_MANAGER, isLocked: false, isDeactivated: false, canProcessSaleReturn: true },
+    { id: '3', staffId: 300002, username: 'pooja1', fullName: 'Pooja Sharma (Head Cashier)', role: RoleName.CASHIER, isLocked: false, isDeactivated: false, canProcessSaleReturn: true },
+    { id: '4', staffId: 300003, username: 'vinayak1', fullName: 'Vinayak Shinde (Cashier)', role: RoleName.CASHIER, isLocked: false, isDeactivated: false, canProcessSaleReturn: false },
+    { id: '5', staffId: 300004, username: 'babuji1', fullName: 'Babuji Namole (Cash Officer)', role: RoleName.CASH_OFFICER, isLocked: false, isDeactivated: false, canProcessSaleReturn: true },
+    { id: '6', staffId: 300005, username: 'amit1', fullName: 'Amit Verma (Senior Accountant)', role: RoleName.ACCOUNTANT, isLocked: false, isDeactivated: false, canProcessSaleReturn: true },
+    { id: '7', staffId: 300010, username: 'rohan1', fullName: 'Rohan Kadam (Cashier)', role: RoleName.CASHIER, isLocked: false, isDeactivated: true, canProcessSaleReturn: false },
   ]);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newUsername, setNewUsername] = useState('');
   const [newFullName, setNewFullName] = useState('');
   const [newRole, setNewRole] = useState<RoleName>(RoleName.CASHIER);
+  const [newCanProcessSaleReturn, setNewCanProcessSaleReturn] = useState(false);
 
   // One-Time Password Reveal Modal State
   const [oneTimePasswordReveal, setOneTimePasswordReveal] = useState<{
@@ -29,23 +34,23 @@ export const SettingsScreen: React.FC = () => {
   } | null>(null);
 
   useEffect(() => {
-    if (isSuperAdmin) {
+    if (isAuthorized) {
       api.get('/users').then((res) => {
         if (res.data?.users) setStaffList(res.data.users);
       }).catch(() => {});
     }
-  }, [isSuperAdmin]);
+  }, [isAuthorized]);
 
-  // HARD BLOCK FOR NON-SUPER ADMIN USERS (Server-side & Client-side)
-  if (!isSuperAdmin) {
+  // HARD BLOCK FOR NON-AUTHORIZED USERS (Cashier, Inventory, etc.)
+  if (!isAuthorized) {
     return (
       <div className="card" style={{ textAlign: 'center', padding: '48px 24px', border: '1px solid var(--status-red)' }}>
         <ShieldAlert size={48} style={{ color: 'var(--status-red)', marginBottom: '16px' }} />
         <h2 style={{ fontSize: '22px', fontWeight: 'bold', textTransform: 'uppercase' }}>
-          Access Denied — Super Admin Restricted Route
+          Access Restricted — Manager & Super Admin Route
         </h2>
         <p style={{ color: 'var(--text-muted)', marginTop: '8px', maxWidth: '520px', margin: '8px auto 0' }}>
-          Users & Roles Management is exclusively reserved for the root Super Admin account (Superkhan). Store Managers, Accountants, and all other operational roles cannot view or modify staff access.
+          Staff Account Management is exclusively accessible by Store Managers and Super Admin. Cashiers and operational staff cannot modify user accounts or sale permissions.
         </p>
       </div>
     );
@@ -58,6 +63,7 @@ export const SettingsScreen: React.FC = () => {
         username: newUsername,
         fullName: newFullName,
         role: newRole,
+        canProcessSaleReturn: newCanProcessSaleReturn,
       });
 
       const created = res.data.user;
@@ -67,6 +73,7 @@ export const SettingsScreen: React.FC = () => {
       setShowCreateModal(false);
       setNewUsername('');
       setNewFullName('');
+      setNewCanProcessSaleReturn(false);
 
       // Show One-Time Password Reveal Modal
       setOneTimePasswordReveal({
@@ -97,31 +104,40 @@ export const SettingsScreen: React.FC = () => {
       alert('Failed to unlock account');
     }
   };
+  const handleToggleDeactivation = async (userId: string, currentDeactivated: boolean) => {
+    try {
+      await api.patch(`/users/${userId}/status`, { isDeactivated: !currentDeactivated });
+    } catch { /* no-op */ }
+    setStaffList((prev) => prev.map((u) => (u.id === userId ? { ...u, isDeactivated: !currentDeactivated } : u)));
+  };
+
+  const handleToggleSaleReturnPermission = async (userId: string, currentPerm: boolean) => {
+    try {
+      await api.patch(`/users/${userId}/permissions`, { canProcessSaleReturn: !currentPerm });
+    } catch { /* no-op */ }
+    setStaffList((prev) => prev.map((u) => (u.id === userId ? { ...u, canProcessSaleReturn: !currentPerm } : u)));
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', textTransform: 'uppercase' }}>
-            System Settings & Staff Access Control (Super Admin Only)
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            Staff & Access Management
           </h1>
-          <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-            Staff ID auto-sequence, staff account provisioning, and RBAC role assignments
+          <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
+            Manage Indian staff profiles, 7-day inactivity locks, and Cashier Sale Return permissions
           </div>
         </div>
 
         <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
           <UserPlus size={16} />
-          <span>Create Staff Login</span>
+          <span>Add New Staff Account</span>
         </button>
       </div>
 
       {/* Staff Directory Table */}
-      <div className="card">
-        <h3 style={{ fontSize: '16px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '16px' }}>
-          Staff Account Directory (Auto 6-Digit Staff IDs starting 300000)
-        </h3>
-
+      <div className="card" style={{ padding: 0 }}>
         <div className="table-container">
           <table>
             <thead>
@@ -130,6 +146,7 @@ export const SettingsScreen: React.FC = () => {
                 <th>Username</th>
                 <th>Full Name</th>
                 <th>Assigned Role</th>
+                <th>Sale Return Perm</th>
                 <th>Account Status</th>
                 <th>Actions</th>
               </tr>
@@ -158,24 +175,61 @@ export const SettingsScreen: React.FC = () => {
                     </select>
                   </td>
                   <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          fontWeight: 'bold',
+                          padding: '2px 6px',
+                          borderRadius: '3px',
+                          backgroundColor: s.canProcessSaleReturn ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                          color: s.canProcessSaleReturn ? '#10b981' : '#ef4444',
+                        }}
+                      >
+                        {s.canProcessSaleReturn ? 'ALLOWED ✓' : 'SALES ONLY'}
+                      </span>
+                      <button
+                        className="btn"
+                        style={{ padding: '2px 6px', fontSize: '10px' }}
+                        onClick={() => handleToggleSaleReturnPermission(s.id, s.canProcessSaleReturn)}
+                        title="Grant or Revoke permission to process Sale Returns"
+                      >
+                        {s.canProcessSaleReturn ? 'Revoke' : 'Allow Return'}
+                      </button>
+                    </div>
+                  </td>
+                  <td>
                     <span
                       style={{
                         fontSize: '11px',
                         padding: '2px 6px',
                         border: '1px solid var(--border-color)',
-                        color: s.isLocked ? 'var(--status-red)' : 'var(--status-green)',
+                        color: s.isDeactivated ? 'var(--status-red)' : s.isLocked ? 'var(--status-amber)' : 'var(--status-green)',
                       }}
                     >
-                      {s.isLocked ? 'LOCKED (5 Failed Attempts)' : 'ACTIVE'}
+                      {s.isDeactivated ? 'DEACTIVATED (7-Day Inactive)' : s.isLocked ? 'LOCKED' : 'ACTIVE'}
                     </span>
                   </td>
                   <td>
-                    {s.isLocked && (
-                      <button className="btn" style={{ padding: '2px 6px', fontSize: '11px' }} onClick={() => handleUnlockUser(s.id)}>
-                        <Unlock size={12} />
-                        <span>Unlock</span>
-                      </button>
-                    )}
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {s.isDeactivated ? (
+                        <button className="btn" style={{ padding: '2px 6px', fontSize: '11px', backgroundColor: 'rgba(16, 185, 129, 0.2)', borderColor: '#10b981', color: '#10b981' }} onClick={() => handleToggleDeactivation(s.id, true)}>
+                          <CheckCircle2 size={12} />
+                          <span>Turn ON (Reactivate)</span>
+                        </button>
+                      ) : (
+                        <button className="btn" style={{ padding: '2px 6px', fontSize: '11px', color: 'var(--status-red)' }} onClick={() => handleToggleDeactivation(s.id, false)}>
+                          <Lock size={12} />
+                          <span>Deactivate</span>
+                        </button>
+                      )}
+                      {s.isLocked && (
+                        <button className="btn" style={{ padding: '2px 6px', fontSize: '11px' }} onClick={() => handleUnlockUser(s.id)}>
+                          <Unlock size={12} />
+                          <span>Unlock</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -230,6 +284,17 @@ export const SettingsScreen: React.FC = () => {
                     <option key={r} value={r}>{r}</option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={newCanProcessSaleReturn}
+                    onChange={(e) => setNewCanProcessSaleReturn(e.target.checked)}
+                  />
+                  <span>Allow Cashier Sale Return Permission</span>
+                </label>
               </div>
 
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', backgroundColor: 'var(--bg-color)', padding: '10px', border: '1px solid var(--border-color)' }}>

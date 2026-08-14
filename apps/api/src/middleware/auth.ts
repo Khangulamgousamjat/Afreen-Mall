@@ -60,3 +60,12 @@ export function requireSuperAdmin(req: AuthenticatedRequest, res: Response, next
   }
   next();
 }
+
+export function requireManagerOrAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  if (!req.user || (req.user.role !== RoleName.SUPER_ADMIN && req.user.role !== RoleName.STORE_MANAGER)) {
+    return res.status(403).json({
+      error: 'Access denied. Manager or Super Admin role is required for staff account management.',
+    });
+  }
+  next();
+}

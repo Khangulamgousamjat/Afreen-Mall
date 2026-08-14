@@ -1,15 +1,15 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { prisma } from '../../prisma.js';
-import { authenticateToken, requireSuperAdmin, AuthenticatedRequest } from '../../middleware/auth.js';
+import { authenticateToken, requireManagerOrAdmin, AuthenticatedRequest } from '../../middleware/auth.js';
 import { RoleName } from '@afreen-mall/shared-types';
 
 const router = Router();
 
-// Apply Super Admin requirement to ALL routes in this file
-router.use(authenticateToken, requireSuperAdmin);
+// Apply Manager or Super Admin requirement to ALL routes in this file
+router.use(authenticateToken, requireManagerOrAdmin);
 
-// GET /api/v1/users - List all staff (passwords never returned!)
+// GET /api/v1/users - List all staff
 router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const users = await prisma.user.findMany({
@@ -22,6 +22,8 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
         role: true,
         mustChangePassword: true,
         isLocked: true,
+        isDeactivated: true,
+        canProcessSaleReturn: true,
         failedAttempts: true,
         createdAt: true,
       },
@@ -37,7 +39,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
 // POST /api/v1/users - Create new staff account (Auto-increments Staff ID starting 300000)
 router.post('/', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { username, fullName, role } = req.body;
+    const { username, fullName, role, canProcessSaleReturn } = req.body;
 
     if (!username || !fullName || !role) {
       return res.status(400).json({ error: 'Username, Full Name, and Role are required' });
@@ -53,7 +55,6 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ error: `Username '${username}' is already taken.` });
     }
 
-    // Find highest staff ID to compute next 6-digit Staff ID starting at 300000
     const highestUser = await prisma.user.findFirst({
       orderBy: { staffId: 'desc' },
       select: { staffId: true },
@@ -71,6 +72,8 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
         passwordHash,
         role: role as RoleName,
         mustChangePassword: true,
+        isDeactivated: false,
+        canProcessSaleReturn: Boolean(canProcessSaleReturn),
       },
       select: {
         id: true,
@@ -79,11 +82,12 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
         fullName: true,
         role: true,
         mustChangePassword: true,
+        isDeactivated: true,
+        canProcessSaleReturn: true,
         createdAt: true,
       },
     });
 
-    // Audit log entry
     await prisma.auditLog.create({
       data: {
         userId: req.user!.id,
@@ -94,11 +98,10 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
         entityName: 'User',
         entityId: newUser.id,
         afterValue: { staffId: newUser.staffId, username: newUser.username, role: newUser.role },
-        reason: 'New staff account created by Super Admin.',
+        reason: `New staff account created by ${req.user!.fullName}.`,
       },
     });
 
-    // ONE-TIME REVEAL OF TEMPORARY PASSWORD in creation response payload
     return res.status(201).json({
       user: newUser,
       oneTimeTemporaryPassword: temporaryPassword,
@@ -125,7 +128,6 @@ router.patch('/:id/role', async (req: AuthenticatedRequest, res: Response) => {
       return res.status(404).json({ error: 'Staff user not found' });
     }
 
-    // Prevent revoking Super Admin role from main account
     if (targetUser.staffId === 300000 && role !== RoleName.SUPER_ADMIN) {
       return res.status(400).json({ error: 'Root Super Admin role cannot be modified or revoked.' });
     }
@@ -136,24 +138,45 @@ router.patch('/:id/role', async (req: AuthenticatedRequest, res: Response) => {
       select: { id: true, staffId: true, username: true, fullName: true, role: true },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        staffId: req.user!.staffId,
-        userName: req.user!.fullName,
-        userRole: req.user!.role,
-        action: 'UPDATE_ROLE',
-        entityName: 'User',
-        entityId: targetUser.id,
-        beforeValue: { role: targetUser.role },
-        afterValue: { role: updatedUser.role },
-        reason: `Role changed from ${targetUser.role} to ${updatedUser.role} by Super Admin.`,
-      },
-    });
-
     return res.json({ user: updatedUser, message: 'Role updated successfully.' });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to update role' });
+  }
+});
+
+// PATCH /api/v1/users/:id/status - Toggle deactivation / Reactivate account (Turn ON)
+router.patch('/:id/status', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { isDeactivated } = req.body;
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: { isDeactivated: Boolean(isDeactivated) },
+      select: { id: true, staffId: true, username: true, isDeactivated: true },
+    });
+
+    return res.json({ user: updatedUser, message: 'Account status updated successfully.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update account status' });
+  }
+});
+
+// PATCH /api/v1/users/:id/permissions - Toggle Sale Return Permission
+router.patch('/:id/permissions', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { canProcessSaleReturn } = req.body;
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: { canProcessSaleReturn: Boolean(canProcessSaleReturn) },
+      select: { id: true, staffId: true, username: true, canProcessSaleReturn: true },
+    });
+
+    return res.json({ user: updatedUser, message: 'Sale return permission updated successfully.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update sale return permission' });
   }
 });
 
@@ -170,19 +193,6 @@ router.post('/:id/unlock', async (req: AuthenticatedRequest, res: Response) => {
         lockoutUntil: null,
       },
       select: { id: true, staffId: true, username: true, isLocked: true },
-    });
-
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        staffId: req.user!.staffId,
-        userName: req.user!.fullName,
-        userRole: req.user!.role,
-        action: 'UNLOCK_USER',
-        entityName: 'User',
-        entityId: user.id,
-        reason: 'Account unlocked by Super Admin.',
-      },
     });
 
     return res.json({ user, message: 'Account unlocked successfully.' });
