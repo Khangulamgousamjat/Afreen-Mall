@@ -6,8 +6,6 @@
 ---
 
 ![Afreen Mall Security](https://img.shields.io/badge/Security-Military%20%26%20Bank--Grade-10b981?style=for-the-badge&logo=shield)
-![Crafted by Gous Organisation](https://img.shields.io/badge/Made%20With-%E2%9D%A4%EF%B8%8F%20by%20Gous%20Organisation-FF1493?style=for-the-badge)
-![Architect](https://img.shields.io/badge/Architect-Gous%20Khan-10b981?style=for-the-badge)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Monorepo-3178C6?style=for-the-badge&logo=typescript)
 ![React](https://img.shields.io/badge/Frontend-Vite%20React-61DAFB?style=for-the-badge&logo=react)
 ![Express](https://img.shields.io/badge/Backend-Node.js%20Express-000000?style=for-the-badge&logo=express)
@@ -116,41 +114,6 @@
 
 ---
 
-### 🔑 15. Extreme Session Invalidation & 15-Minute Idle Auto-Logout
-- **Ephemeral `sessionStorage` Enforcement**: All session tokens and user objects are stored in ephemeral `sessionStorage` (legacy persistent `localStorage` is explicitly purged on startup).
-- **Tab & Browser Exit Invalidation**: Closing the browser tab or window **INSTANTLY DESTROYS** the session. Opening the URL link again in a new tab/window **ALWAYS forces a fresh password login**.
-- **15-Minute Inactivity Watchdog (`useIdleTimer`)**: A background security watchdog tracks user interaction (`mousemove`, `keydown`, `click`, `scroll`, `touchstart`). If no user activity occurs for **15 minutes (900,000 ms)**, the system automatically purges all session tokens, logs out the user, and displays a red **Security Session Expired** modal requiring re-authentication.
-- **Session Time-To-Live (TTL)**: Enforces an 8-hour maximum shift limit (`afreen_session_expires`). If expired on load/refresh, the session is purged immediately.
-
----
-
-### 🎯 16. Strict Cashier Role Navigation & Streamlined Command Center
-- **Sidebar Role Filtering (`Sidebar.tsx`)**: When logged in as a **Cashier** (`RoleName.CASHIER`), all store-wide management modules (Inventory, Purchasing, Warehouse, Reports, Settings) are **HIDDEN**. The sidebar displays **ONLY 3 Essential Operational Items**:
-  1. 🛒 **Sale (POS Billing)**
-  2. 🔄 **Sale Return**
-  3. 🕒 **Close Sale & Return (Day Close)**
-- **Cashier Command Center (`DashboardScreen.tsx`)**: Replaces complex store-wide KPIs with a focused **Cashier Terminal Desk** featuring **4 Quick Action Cards**:
-  1. 💳 **1. Retail Sale (POS)** (Launch POS Barcode Billing)
-  2. 🔄 **2. Process Sale Return** (Launch POS Return Mode)
-  3. 🕒 **3. Close Sale (Register Close)** (Launch Shift Day Close)
-  4. 📋 **4. Close Sale Return Summary** (Launch Day Close Handover Summary)
-
----
-
-### 🔍 17. POS Barcode Scanner Validations & Zero Price Guard
-- **Unregistered / Invalid Barcode Alert**: Scanned barcodes not present in the store catalog (e.g. unknown barcode `99999999`) trigger an instant red modal: `❌ BARCODE NOT FOUND: Barcode "99999999" is WRONG or NOT AVAILABLE in store catalog.`
-- **Zero Price Prevention Guard**: Items with an MRP / selling price of `₹0.00` are blocked from being added to the cart with an amber warning: `⚠️ INVALID ITEM PRICE: Item price cannot be ₹0.00. Please set valid price in Inventory master.`
----
-
-### ⌨️ 18. Global Keyboard Operability System (WCAG 2.1.1 / 2.1.2 Compliant)
-- **Zero-Mouse Rule Guarantee**: Cashiers can complete 100% of POS tasks using only keyboard shortcuts and navigation without touching a mouse.
-- **Centralized Shortcut Registry (`shortcutRegistry.ts`)**: Single collision-checked registry avoiding OS/browser reserved keys (`F5`, `F11`, `F12`, `Ctrl+W`, `Ctrl+T`, `Ctrl+F`). Maps `F1` (Help Legend), `F2` (Sale Type), `F3` (Repeat Item), `F7` (Instant UPI), `F10` (Checkout), `Shift + F8` (Manual Bill Recovery), `Ctrl + F5` (Duplicate Print), `Alt + F11` (Return Mode), and `Escape` (Cancel Modal).
-- **High-Contrast Focus Indicator (WCAG 2.4.7)**: Enforces 3:1 minimum contrast `:focus-visible` emerald outline (`outline: 2px solid var(--accent-lime); outline-offset: 2px;`) across all buttons, inputs, selects, and table rows.
-- **Modal Focus Trap (`useFocusTrap.ts` - WCAG 2.1.2)**: Auto-focuses the first field inside modals on open. Traps `Tab` / `Shift + Tab` cycling strictly inside modal bounds. Restores focus to the triggering element on close.
-- **Full Numeric Keypad (Numpad) Support**: Treats `NumpadEnter` and `NumpadDecimal` identically to main keyboard keys across all amount and quantity fields.
-
----
-
 ## 📐 Monorepo Architecture & Tech Stack
 
 ```mermaid
@@ -180,16 +143,20 @@ graph TD
 | **Cash Officer** | `300004` | `babuji1` | Babuji Namole | `Pass@123` |
 | **Senior Accountant** | `300005` | `amit1` | Amit Verma | `Pass@123` |
 
+---
 
+## 🛠️ Build & Deployment Instructions
 
-<div align="center">
+### Prerequisites
+- Node.js >= 18.x
+- npm >= 9.x
 
-### 💖 Made by **Gous Organisation**
+### Build Commands
+```bash
+# Build all monorepo workspaces (shared-types, api, web)
+npm run build
+```
 
-*Software Architect: **Gous Khan** · Afreen Mall Enterprise Platform*
+---
 
-📞 **Mobile**: `+91 8625076618` | ✉️ **Email**: `gousk2004@gmail.com`
-
-![Made with Love by Gous Organisation](https://img.shields.io/badge/Crafted%20With-%E2%9D%A4%EF%B8%8F%20by%20Gous%20Organisation-FF1493?style=for-the-badge)
-
-</div>
+*Afreen Mall Enterprise Operations Platform — Software Architecture by Gous Khan*

@@ -8,25 +8,6 @@ const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'afreen_mall_super_secure_jwt_secret_key_2026';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'afreen_mall_refresh_secret_key_2026';
 
-// Public Staff Directory listing (for Login Screen directory search)
-router.get('/directory', async (req, res) => {
-  try {
-    const users = await prisma.user.findMany({
-      where: { deletedAt: null, isDeactivated: false },
-      select: {
-        staffId: true,
-        username: true,
-        fullName: true,
-        role: true,
-      },
-      orderBy: { staffId: 'asc' },
-    });
-    return res.json({ users });
-  } catch (err: any) {
-    return res.status(500).json({ error: 'Failed to fetch directory' });
-  }
-});
-
 // Staff Login: Accepts 6-digit Staff ID (or username) + password
 router.post('/login', async (req, res) => {
   try {

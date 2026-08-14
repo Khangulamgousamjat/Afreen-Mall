@@ -53,50 +53,25 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
   const searchInputRef = useRef<HTMLInputElement>(null);
   const passwordInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch live staff members from API & merge with local custom accounts
+  // Fetch live staff members from API if available to auto-include newly provisioned accounts
   useEffect(() => {
     const fetchUsers = async () => {
-      let combined: StaffMember[] = [...INITIAL_STAFF_LIST];
-
-      // Read locally created custom staff accounts
       try {
-        const savedCustom = localStorage.getItem('afreen_custom_staff');
-        if (savedCustom) {
-          const parsedCustom = JSON.parse(savedCustom);
-          if (Array.isArray(parsedCustom)) {
-            parsedCustom.forEach((c: any) => {
-              if (!combined.some((s) => s.staffId === c.staffId)) {
-                combined.push({
-                  staffId: c.staffId,
-                  username: c.username,
-                  name: c.fullName || c.name || c.username,
-                  role: c.role,
-                });
-              }
-            });
+        const res = await api.get('/users');
+        if (res.data?.users && Array.isArray(res.data.users)) {
+          const apiUsers: StaffMember[] = res.data.users.map((u: any) => ({
+            staffId: u.staffId,
+            username: u.username,
+            name: u.fullName || u.username,
+            role: u.role,
+          }));
+          if (apiUsers.length > 0) {
+            setStaffList(apiUsers);
           }
         }
-      } catch { /* no-op */ }
-
-      try {
-        const res = await api.get('/auth/directory');
-        if (res.data?.users && Array.isArray(res.data.users)) {
-          res.data.users.forEach((u: any) => {
-            if (!combined.some((s) => s.staffId === u.staffId)) {
-              combined.push({
-                staffId: u.staffId,
-                username: u.username,
-                name: u.fullName || u.username,
-                role: u.role,
-              });
-            }
-          });
-        }
       } catch {
-        // Fallback to merged list
+        // Fallback to INITIAL_STAFF_LIST
       }
-
-      setStaffList(combined);
     };
     fetchUsers();
   }, []);
@@ -482,38 +457,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           </button>
         </form>
 
-        <div style={{ width: '100%', marginTop: '16px', textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
-          Strictly internal access. Accounts provisioned by Store Manager / Super Admin.
+        <div style={{ width: '100%', marginTop: '20px', textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '14px' }}>
+          Strictly internal access. Accounts provisioned by Super Admin.
         </div>
       </div>
-
-      {/* Page Footer at Very Bottom of Viewport */}
-      <footer
-        style={{
-          position: 'absolute',
-          bottom: '16px',
-          left: 0,
-          right: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '0 16px',
-        }}
-      >
-        <div className="crafted-by-badge">
-          <span>Made with</span>
-          <span className="animated-heart">❤️</span>
-          <span>by <strong style={{ color: 'var(--accent-lime)' }}>Gous Organisation</strong></span>
-        </div>
-        <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.4 }}>
-          <span>Software Architect: <strong>Gous Khan</strong></span>
-          <span style={{ margin: '0 8px' }}>·</span>
-          <span>📞 <strong>+91 8625076618</strong></span>
-          <span style={{ margin: '0 8px' }}>·</span>
-          <span>✉️ <strong>gousk2004@gmail.com</strong></span>
-        </div>
-      </footer>
     </div>
   );
 };

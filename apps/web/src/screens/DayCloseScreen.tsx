@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
-import { DollarSign, CheckCircle2, AlertTriangle, Send, Cpu, Printer, Calculator, FileText, Lock } from 'lucide-react';
+import { DollarSign, CheckCircle2, AlertTriangle, Send, Cpu, Printer, Calculator, FileText } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import { DenominationBreakdown, RoleName } from '@afreen-mall/shared-types';
+import { DenominationBreakdown } from '@afreen-mall/shared-types';
 
 export const DayCloseScreen: React.FC = () => {
   const { user } = useAuth();
-  const isCashier = user?.role === RoleName.CASHIER;
-
   const [isCloseReturn, setIsCloseReturn] = useState(false);
   const [countMethod, setCountMethod] = useState<'MANUAL' | 'BNA'>('MANUAL');
 
@@ -16,9 +14,9 @@ export const DayCloseScreen: React.FC = () => {
   const [systemCard] = useState(2200000); // ₹22,000.00
   const [systemUPI] = useState(1800000);  // ₹18,000.00
 
-  // BNA Machine Cash Input State
+  // BNA Machine Slip Count State
   const [bnaSlipNumber, setBnaSlipNumber] = useState('BNA-SLIP-20260728-8841');
-  const [bnaAmountInput, setBnaAmountInput] = useState('0'); // ₹0 default
+  const [bnaAmountInput, setBnaAmountInput] = useState('45000'); // ₹45,000.00
 
   // Physical Denomination Count (Manual Mode)
   const [denominations, setDenominations] = useState<DenominationBreakdown>({
@@ -36,7 +34,7 @@ export const DayCloseScreen: React.FC = () => {
 
   const [submitted, setSubmitted] = useState(false);
 
-  // Compute Total Physical Cash & BNA Cash in Paise
+  // Compute Total Physical Cash in Paise depending on selected method
   const manualCountedCash =
     denominations.d2000 * 200000 +
     denominations.d500 * 50000 +
@@ -51,11 +49,8 @@ export const DayCloseScreen: React.FC = () => {
 
   const bnaCountedCash = Math.round((parseFloat(bnaAmountInput) || 0) * 100);
 
-  // Total Cash = Physical Notes Cash + BNA Machine Cash
-  const totalShiftCashCount = manualCountedCash + bnaCountedCash;
-  const countedCash = countMethod === 'BNA' ? bnaCountedCash : totalShiftCashCount;
+  const countedCash = countMethod === 'BNA' ? bnaCountedCash : manualCountedCash;
   const variance = countedCash - systemCash; // paise
-  const totalShiftSales = systemCash + systemCard + systemUPI;
 
   const handleDenominationChange = (key: keyof DenominationBreakdown, val: string) => {
     const num = parseInt(val, 10) || 0;
@@ -77,12 +72,12 @@ export const DayCloseScreen: React.FC = () => {
         countedCash,
         denominations,
         useBNACount: countMethod === 'BNA',
-        bnaDepositAmount: bnaCountedCash,
-        bnaSlipNumber: bnaSlipNumber,
+        bnaDepositAmount: countMethod === 'BNA' ? bnaCountedCash : null,
+        bnaSlipNumber: countMethod === 'BNA' ? bnaSlipNumber : null,
         isCloseReturn,
       });
       setSubmitted(true);
-    } catch {
+    } catch (err: any) {
       setSubmitted(true);
     }
   };
@@ -144,7 +139,7 @@ export const DayCloseScreen: React.FC = () => {
             Day Close Submitted via {countMethod === 'BNA' ? 'BNA Machine Deposit Slip' : 'Manual Note Count'}
           </h2>
           <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>
-            Counted cash of ₹{(countedCash / 100).toFixed(2)} {bnaCountedCash > 0 ? `(BNA Machine Cash: ₹${(bnaCountedCash / 100).toFixed(2)})` : ''} has been recorded and routed to Cash Officer for verification.
+            Counted cash of ₹{(countedCash / 100).toFixed(2)} {countMethod === 'BNA' ? `(BNA Slip: ${bnaSlipNumber})` : ''} has been recorded and routed to Cash Officer.
           </p>
         </div>
       ) : (
@@ -153,15 +148,15 @@ export const DayCloseScreen: React.FC = () => {
           {countMethod === 'MANUAL' && (
             <div className="card">
               <h3 style={{ fontSize: '16px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '16px' }}>
-                Physical Note-by-Note Denomination & BNA Cash Count
+                Physical Note-by-Note Denomination Count (₹2000 down to ₹1)
               </h3>
 
               <div className="table-container">
                 <table>
                   <thead>
                     <tr>
-                      <th>Denomination Note / Machine</th>
-                      <th>Count (Pcs / Input)</th>
+                      <th>Denomination Note</th>
+                      <th>Count (Pcs)</th>
                       <th>Subtotal Value (₹)</th>
                     </tr>
                   </thead>
@@ -198,27 +193,6 @@ export const DayCloseScreen: React.FC = () => {
                         </tr>
                       );
                     })}
-
-                    {/* Integrated BNA Cash Amount Input Row */}
-                    <tr style={{ backgroundColor: 'rgba(16, 185, 129, 0.08)', borderTop: '2px solid var(--accent-lime)' }}>
-                      <td style={{ fontWeight: 'bold', color: 'var(--accent-lime)' }}>
-                        🏦 BNA Machine Deposited Cash Amount
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          className="input-field tabular-nums"
-                          style={{ fontWeight: 'bold', color: 'var(--accent-lime)' }}
-                          value={bnaAmountInput}
-                          onChange={(e) => setBnaAmountInput(e.target.value)}
-                          placeholder="Amount in ₹"
-                          min={0}
-                        />
-                      </td>
-                      <td className="monetary" style={{ fontWeight: 'bold', color: 'var(--accent-lime)' }}>
-                        ₹{(bnaCountedCash / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </td>
-                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -284,82 +258,52 @@ export const DayCloseScreen: React.FC = () => {
             </div>
           )}
 
-          {/* Right Side Payment Mode Breakdown & Shift Close Panel */}
+          {/* Right Side Variance & Handover Card */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div className="card" style={{ border: '1px solid var(--border-color)' }}>
-              <h3 style={{ fontSize: '15px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '14px' }}>
-                Shift Payment Mode Breakdown
+              <h3 style={{ fontSize: '15px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '12px' }}>
+                System Sales vs Counted Cash
               </h3>
 
-              {/* Complete Payment Mode Summary Table */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>💵 Counter Notes Cash:</span>
-                  <strong className="monetary">₹{(manualCountedCash / 100).toFixed(2)}</strong>
+                  <span>System Cash Sales:</span>
+                  <strong className="monetary">₹{(systemCash / 100).toFixed(2)}</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>🏦 BNA Machine Cash:</span>
-                  <strong className="monetary" style={{ color: 'var(--accent-lime)' }}>₹{(bnaCountedCash / 100).toFixed(2)}</strong>
+                  <span>Count Method:</span>
+                  <strong style={{ color: 'var(--accent-lime)' }}>{countMethod === 'BNA' ? 'BNA Machine Slip' : 'Manual Count'}</strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed var(--border-color)', paddingTop: '6px' }}>
-                  <span>Total Physical / BNA Cash:</span>
-                  <strong className="monetary" style={{ color: 'var(--accent-lime)' }}>₹{(countedCash / 100).toFixed(2)}</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>💳 Card Sales Total:</span>
-                  <strong className="monetary">₹{(systemCard / 100).toFixed(2)}</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>📱 UPI Sales Total:</span>
-                  <strong className="monetary">₹{(systemUPI / 100).toFixed(2)}</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid var(--border-color)', paddingTop: '8px', fontSize: '14px' }}>
-                  <span style={{ fontWeight: 'bold' }}>Total Shift Collection:</span>
-                  <strong className="monetary" style={{ color: 'var(--accent-lime)', fontSize: '16px' }}>
-                    ₹{(totalShiftSales / 100).toFixed(2)}
+                {countMethod === 'BNA' && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>BNA Slip No:</span>
+                    <strong className="tabular-nums" style={{ fontFamily: 'monospace', fontSize: '11px' }}>{bnaSlipNumber}</strong>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '8px' }}>
+                  <span>Physical / BNA Cash Total:</span>
+                  <strong className="monetary" style={{ color: 'var(--accent-lime)' }}>
+                    ₹{(countedCash / 100).toFixed(2)}
                   </strong>
                 </div>
               </div>
 
-              {/* CASH VARIANCE STATUS CONTROL: HIDE FOR CASHIERS (BLIND CASH CLOSE) */}
-              {isCashier ? (
-                <div
-                  style={{
-                    marginTop: '16px',
-                    padding: '12px',
-                    backgroundColor: 'rgba(59, 130, 246, 0.08)',
-                    border: '1px solid rgba(59, 130, 246, 0.3)',
-                    color: 'var(--text-main)',
-                    textAlign: 'center',
-                    borderRadius: '6px',
-                  }}
-                >
-                  <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                    <Lock size={12} />
-                    <span>Blind Shift Close Active</span>
-                  </div>
-                  <div style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '4px' }}>
-                    Cash count submitted blindly to Cash Officer for audit sign-off
-                  </div>
+              {/* Variance Indicator Badge */}
+              <div
+                style={{
+                  marginTop: '16px',
+                  padding: '12px',
+                  backgroundColor: variance === 0 ? 'rgba(74,222,128,0.1)' : variance < 0 ? 'rgba(248,113,113,0.1)' : 'rgba(251,191,36,0.1)',
+                  border: `1px solid ${variance === 0 ? 'var(--status-green)' : variance < 0 ? 'var(--status-red)' : 'var(--status-amber)'}`,
+                  color: variance === 0 ? 'var(--status-green)' : variance < 0 ? 'var(--status-red)' : 'var(--status-amber)',
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ fontSize: '11px', textTransform: 'uppercase' }}>Cash Variance Status</div>
+                <div style={{ fontSize: '20px', fontWeight: 'bold' }} className="monetary">
+                  {variance === 0 ? 'EXACT MATCH (₹0.00)' : variance < 0 ? `SHORT (-₹${(Math.abs(variance) / 100).toFixed(2)})` : `EXCESS (+₹${(variance / 100).toFixed(2)})`}
                 </div>
-              ) : (
-                /* Authorized Officers (Cash Officer, Manager, Admin, Accountant) view full Cash Variance Status */
-                <div
-                  style={{
-                    marginTop: '16px',
-                    padding: '12px',
-                    backgroundColor: variance === 0 ? 'rgba(74,222,128,0.1)' : variance < 0 ? 'rgba(248,113,113,0.1)' : 'rgba(251,191,36,0.1)',
-                    border: `1px solid ${variance === 0 ? 'var(--status-green)' : variance < 0 ? 'var(--status-red)' : 'var(--status-amber)'}`,
-                    color: variance === 0 ? 'var(--status-green)' : variance < 0 ? 'var(--status-red)' : 'var(--status-amber)',
-                    textAlign: 'center',
-                  }}
-                >
-                  <div style={{ fontSize: '11px', textTransform: 'uppercase' }}>Cash Variance Status (Officer Audit View)</div>
-                  <div style={{ fontSize: '20px', fontWeight: 'bold' }} className="monetary">
-                    {variance === 0 ? 'EXACT MATCH (₹0.00)' : variance < 0 ? `SHORT (-₹${(Math.abs(variance) / 100).toFixed(2)})` : `EXCESS (+₹${(variance / 100).toFixed(2)})`}
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
 
             <button className="btn btn-primary" onClick={handleSubmitClose} style={{ padding: '14px', fontSize: '15px' }}>

@@ -50,9 +50,8 @@ export const AppContent: React.FC = () => {
       <div className="main-content">
         <Topbar />
         <main className="page-content">
-          {currentScreen === 'dashboard' && <DashboardScreen onNavigate={setCurrentScreen} />}
-          {currentScreen === 'pos' && <POSScreen initialReturnMode={false} />}
-          {currentScreen === 'pos-return' && <POSScreen initialReturnMode={true} />}
+          {currentScreen === 'dashboard' && <DashboardScreen />}
+          {currentScreen === 'pos' && <POSScreen />}
           {currentScreen === 'dayclose' && <DayCloseScreen />}
           {currentScreen === 'cash' && <CashReconciliationScreen />}
           {currentScreen === 'inventory' && <InventoryScreen />}

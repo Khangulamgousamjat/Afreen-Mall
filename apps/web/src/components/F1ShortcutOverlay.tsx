@@ -1,6 +1,5 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { X, Keyboard } from 'lucide-react';
-import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface F1ShortcutOverlayProps {
   isOpen: boolean;
@@ -8,22 +7,6 @@ interface F1ShortcutOverlayProps {
 }
 
 export const F1ShortcutOverlay: React.FC<F1ShortcutOverlayProps> = ({ isOpen, onClose }) => {
-  const containerRef = useFocusTrap<HTMLDivElement>(isOpen);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
   if (!isOpen) return null;
 
   const shortcuts = [
@@ -49,7 +32,7 @@ export const F1ShortcutOverlay: React.FC<F1ShortcutOverlayProps> = ({ isOpen, on
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div ref={containerRef} className="modal-content" tabIndex={-1} style={{ maxWidth: '750px' }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" style={{ maxWidth: '750px' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Keyboard size={24} style={{ color: 'var(--accent-lime)' }} />

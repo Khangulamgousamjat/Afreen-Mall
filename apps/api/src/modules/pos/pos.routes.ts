@@ -19,56 +19,10 @@ router.get('/registers', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-// GET /api/v1/pos/product/:barcode - Fast barcode scan lookup with weighted scale support
+// GET /api/v1/pos/product/:barcode - Fast barcode scan lookup
 router.get('/product/:barcode', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    let { barcode } = req.params;
-    let weighedQty: number | null = null;
-
-    // Check EAN-13 scale-weighed embedded barcode (Prefix 20 or 21, length 13)
-    if ((barcode.startsWith('20') || barcode.startsWith('21')) && barcode.length === 13) {
-      const itemCode = barcode.substring(2, 7); // 5 digit product code
-      const weightVal = parseInt(barcode.substring(7, 12), 10); // weight in grams
-      weighedQty = weightVal / 1000; // e.g. 500g -> 0.5 kg
-
-      const weightedMatch = await prisma.product.findFirst({
-        where: {
-          OR: [
-            { barcode: { contains: itemCode } },
-            { barcode },
-          ],
-        },
-        include: { category: true, unit: true, taxRate: true, hsnCode: true, inventory: true },
-      });
-
-      if (weightedMatch) {
-        const mrp = weightedMatch.mrp;
-        const rate = weightedMatch.saleRate;
-        const discountAmt = Math.round(mrp * (weightedMatch.discountPct / 100));
-        const gstPct = weightedMatch.taxRate.rate;
-        const netRate = Math.round(rate * (1 + gstPct / 100));
-
-        return res.json({
-          product: {
-            id: weightedMatch.id,
-            barcode: weightedMatch.barcode,
-            name: weightedMatch.name,
-            description: weightedMatch.description,
-            mrp,
-            rate,
-            discountPercent: weightedMatch.discountPct,
-            discountAmount: discountAmt,
-            gstPercent: gstPct,
-            netRate,
-            value: netRate,
-            unit: weightedMatch.unit.name,
-            hsnCode: weightedMatch.hsnCode?.code || '1905',
-            stock: weightedMatch.inventory?.currentStock || 0,
-            weighedQty,
-          },
-        });
-      }
-    }
+    const { barcode } = req.params;
 
     const product = await prisma.product.findUnique({
       where: { barcode },
@@ -156,12 +110,12 @@ router.post('/invoice', async (req: AuthenticatedRequest, res: Response) => {
     const totalPaid = paidCash + paidCard + paidUPI;
     const changeDue = totalPaid > totalAmount ? totalPaid - totalAmount : 0;
 
-    // Run inside database transaction for stock atomicity & accounting ledger creation
+    // Run inside database transaction for stock atomicity
     const result = await prisma.$transaction(async (tx: any) => {
-      // Generate sequential invoice number: AFM-2026-XXXXXX
-      const year = new Date().getFullYear();
-      const totalCount = await tx.sale.count();
-      const invoiceNo = `AFM-${year}-${(totalCount + 1).toString().padStart(6, '0')}`;
+      // Generate sequential invoice number: INV-YYYYMMDD-XXXX
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const countToday = await tx.sale.count();
+      const invoiceNo = `INV-${dateStr}-${(countToday + 1).toString().padStart(4, '0')}`;
 
       // Create Sale Record
       const sale = await tx.sale.create({
