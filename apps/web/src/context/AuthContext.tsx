@@ -17,11 +17,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserSession | null>(() => {
-    const saved = localStorage.getItem('afreen_user');
+    // Purge legacy persistent localStorage tokens on initial load to prevent overnight session leakage
+    localStorage.removeItem('afreen_token');
+    localStorage.removeItem('afreen_user');
+
+    const expiresAt = sessionStorage.getItem('afreen_session_expires');
+    if (expiresAt && Date.now() > parseInt(expiresAt, 10)) {
+      sessionStorage.clear();
+      return null;
+    }
+
+    const saved = sessionStorage.getItem('afreen_user');
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('afreen_token'));
+  const [token, setToken] = useState<string | null>(() => {
+    const expiresAt = sessionStorage.getItem('afreen_session_expires');
+    if (expiresAt && Date.now() > parseInt(expiresAt, 10)) {
+      sessionStorage.clear();
+      return null;
+    }
+    return sessionStorage.getItem('afreen_token');
+  });
 
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('afreen_theme') as 'dark' | 'light') || 'dark';
@@ -38,6 +55,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Instant 1-second login with fast server check & instant local fallback
   const login = async (identifier: string, password: string) => {
+    // Set 8-hour shift maximum session expiry window
+    const sessionExpiresAt = Date.now() + 8 * 60 * 60 * 1000;
+
     try {
       const res = await api.post('/auth/login', { identifier, password }, { timeout: 2500 });
 
@@ -45,8 +65,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { token: jwtToken, user: userPayload } = res.data;
         setToken(jwtToken);
         setUser(userPayload);
-        localStorage.setItem('afreen_token', jwtToken);
-        localStorage.setItem('afreen_user', JSON.stringify(userPayload));
+        sessionStorage.setItem('afreen_token', jwtToken);
+        sessionStorage.setItem('afreen_user', JSON.stringify(userPayload));
+        sessionStorage.setItem('afreen_session_expires', String(sessionExpiresAt));
         return res.data;
       }
     } catch (err: any) {
@@ -105,8 +126,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setToken(fallbackToken);
     setUser(fallbackUser);
-    localStorage.setItem('afreen_token', fallbackToken);
-    localStorage.setItem('afreen_user', JSON.stringify(fallbackUser));
+    sessionStorage.setItem('afreen_token', fallbackToken);
+    sessionStorage.setItem('afreen_user', JSON.stringify(fallbackUser));
+    sessionStorage.setItem('afreen_session_expires', String(sessionExpiresAt));
 
     return { token: fallbackToken, user: fallbackUser };
   };
@@ -120,13 +142,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user) {
       const updated = { ...user, mustChangePassword: false };
       setUser(updated);
-      localStorage.setItem('afreen_user', JSON.stringify(updated));
+      sessionStorage.setItem('afreen_user', JSON.stringify(updated));
     }
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
+    sessionStorage.clear();
     localStorage.removeItem('afreen_token');
     localStorage.removeItem('afreen_user');
   };

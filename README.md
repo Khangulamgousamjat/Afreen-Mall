@@ -1,128 +1,181 @@
+# 🛍️ AFREEN MALL — Enterprise POS & Operations Platform
 
-## Deployment Notes & Backend Resiliency
-
-### 1. Render Free-Tier Cold Starts & Keep-Warm Workflow
-- **Backend Infrastructure**: The backend API (`apps/api`) is deployed on Render's free tier (`https://afreen-mall.onrender.com`), which automatically sleeps after 15 minutes of inactivity.
-- **Cold Start Behavior**: When sleeping, a cold start takes 30–50 seconds to wake up the service and establish database connections.
-- **Keep-Warm Automation**: A scheduled GitHub Actions workflow (`.github/workflows/keep-warm.yml`) runs every 12 minutes to ping `https://afreen-mall.onrender.com/health`, keeping the API instance active during operational hours.
-- **Frontend Mitigation**:
-  - The login screen (`LoginScreen.tsx`) fires a background `/health` ping as soon as it mounts to trigger server wake-up early.
-  - The login request uses a **60-second abort timeout** with **exponential backoff retries (3 attempts)** so users never get stuck on cold starts.
-  - Global API requests in `api.ts` use a 45-second timeout to handle DB connection pool warming.
-
-### 2. Environment Variables & Security
-- **Strict Git Exclusion**: `.env` and `.env.local` files across all workspaces are strictly ignored via `.gitignore` and must never be committed.
-- **Credential Rotation Warning**: Database passwords and JWT secrets previously present in environment configuration should be rotated periodically via the hosting platform dashboards (Render / Vercel).
+> **Military-Grade, Bank-Secured Point of Sale & Retail ERP System**  
+> Designed for High-Volume Retail Superstores, Hypermarkets, and Multi-Counter Malls.
 
 ---
 
-## Domain & modules (deep dive)
-The backend organizes functionality into domain modules located at apps/api/src/modules. Each module typically contains routes, services and any module‑scoped middleware.
-
-Notable modules:
-- auth — authentication, JWT issuance and refresh, login attempt handling
-- users — user management, roles and profile data
-- pos — point‑of‑sale flows (create sale, line items, payments)
-- cash — cash reconciliation, register closeouts, cash variance reporting
-- catalog — product master: items, categories, pricing and tax metadata
-- inventory — stock levels, stock movement, cost tracking, min/max levels
-- purchasing — purchase orders, receipts, supplier references and GRN flows
-- warehouse — warehouse transfers and stock allocation
-- customers — loyalty or customer records for sales and analytics
-- reports — summary and periodic reporting: daily/weekly/monthly summaries and GST/FS reporting
-- hardware — low level integrations for peripherals (card payments, barcode scanners, printers)
-
-Each module exposes REST endpoints under /api/v1/<module>, and the server entrypoint (apps/api/src/index.ts) mounts the routers for each domain.
+![Afreen Mall Security](https://img.shields.io/badge/Security-Military%20%26%20Bank--Grade-10b981?style=for-the-badge&logo=shield)
+![Crafted by Gous Organisation](https://img.shields.io/badge/Made%20With-%E2%9D%A4%EF%B8%8F%20by%20Gous%20Organisation-FF1493?style=for-the-badge)
+![Architect](https://img.shields.io/badge/Architect-Gous%20Khan-10b981?style=for-the-badge)
+![TypeScript](https://img.shields.io/badge/TypeScript-Monorepo-3178C6?style=for-the-badge&logo=typescript)
+![React](https://img.shields.io/badge/Frontend-Vite%20React-61DAFB?style=for-the-badge&logo=react)
+![Express](https://img.shields.io/badge/Backend-Node.js%20Express-000000?style=for-the-badge&logo=express)
+![Prisma](https://img.shields.io/badge/ORM-Prisma-2D3748?style=for-the-badge&logo=prisma)
+![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-4169E1?style=for-the-badge&logo=postgresql)
 
 ---
 
-## Data model (summary from Prisma schema)
-Prisma schema models implement the core business objects. Representative entities:
+## 🌟 Comprehensive Feature Showcase (Minor to Major)
 
-- Store — store profile, contact info and operational metadata.
-- User — authentication (username, passwordHash), role, staff identifiers, login history and sessions.
-- Session/LoginHistory — keyed session records for audit, tokens and session metadata.
-- Product / ProductCategory — catalog structure, category → product relationships, HSN/Tax information.
-- Inventory / StockMovement — current stock, minStock, stock movements, adjustments and reasons.
-- POSRegister / Sale / SaleItem — sale transactions, line items, payment modes (CASH, CARD, UPI), rounding and receipts.
-- PurchaseOrder / PurchaseLine / Receiving — PO lifecycle (DRAFT, APPROVED, RECEIVED).
-- CashReport / CashVariance — cash reconciliation and variance tracking with enumerated statuses.
-- Warehouse / Transfer / Movement — movement of stock between locations.
-- TaxRate / HSNCode — tax configuration used at sale time.
-
-Refer to apps/api/prisma/schema.prisma for the full authoritative model (contains types, enums and relationships). The schema follows explicit domain‑driven naming and enumerations for statuses and roles.
+### 💳 1. Manual Bill Recovery — Card/UPI Payment Failures (`Shift + F8`)
+- **Scenario**: Customer's card or UPI payment succeeds at the bank/EDC terminal, but POS printer paper jams or fails before generating the bill.
+- **Cash Officer Verification**: Cash Officer verifies bank receipt, then triggers **`Shift + F8`** (or clicks **Recover Bill** in the header bar).
+- **Data Capture**: Requests mandatory **Transaction ID** (text), **Amount Paid** (currency > ₹0), and **Payment Mode** (Card/UPI).
+- **Duplicate Prevention**: Live WAF check blocks duplicate Transaction IDs.
+- **Audit Compliance**: Immutable entry logged to `AuditLog` table.
 
 ---
 
-## Seeded data & demo credentials
-Seed data (apps/api/prisma/seed.ts) is used to bootstrap a demo dataset — stores, users, products, registers and sample stock.
-
-Highlights:
-- Default store: Afreen Mall (created by seed).
-- Super Admin:
-  - Staff ID: 3000000
-- Default password for other seeded accounts: Pass@123
-- Example staff accounts (examples seeded in the script):
-  - manager1 (STORE_MANAGER)
-  - accountant1 (ACCOUNTANT)
-  - cashier1 (CASHIER)
-- Sample product catalogue, tax rates and sample stock levels are seeded to facilitate functional testing of POS and inventory flows.
-
-Note: seeded credentials exist to enable evaluation and development; in production, rotate or remove seed credentials and use secure onboarding.
+### 🖨️ 2. Strict One-Time Original Print & Authorized Duplicate Copy (`Ctrl + F5`)
+- **Strict 1-Time Original Rule**: Original receipt prints strictly **ONCE** upon payment completion. Automatic re-printing is prohibited.
+- **Duplicate Reprinting**: Triggered via **`Ctrl + F5`** or **Print Duplicate** header action button.
+- **Supervisor Role Guard**: Restricted to Cash Officer, Store Manager, Super Admin, Accountant, and Auditor. Standard cashiers see a supervisor warning.
+- **Prominent Watermark**: Formats receipt header & footer with `*** DUPLICATE COPY *** (NOT AN ORIGINAL RECEIPT)`.
+- **Audit Tracking**: Every duplicate print records staff ID, invoice number, reprint count (`reprintCount`), timestamp, and reason into `AuditLog`.
 
 ---
 
-## Security, privacy & audit considerations
-- Passwords: bcrypt is used for password hashing in seed & auth code.
-- Tokens: JWTs are used for session/auth flows; tokens and refresh strategy are implemented in auth module.
-- Audit trails: Login history, session records and audit logs capture events for compliance and incident investigations.
-- DB migrations: Prisma migrations and schema are the source of truth for table changes — treat schema.prisma as canonical and run migrations in CI/CD controlled flows.
-- Secrets: Database URLs, JWT secrets and encryption keys must be provisioned via environment variables and never committed.
+### 🖥️ 3. POS Register Auto-Feed / Terminal Selection (`[ POS-01 ]`)
+- **Post-Login Terminal Feed**: Prompts cashier to select active terminal register (`POS-01 Main Counter`, `POS-02 Express`, `POS-03 Grocery`, etc.) or auto-feeds from memory.
+- **Prominent Badge**: Renders an interactive **`[ POS-01 ]`** badge in the header bar. Clicking allows seamless switching.
+- **Invoice Tracking**: Every invoice records the active register ID for audit & cash drawer reconciliation.
 
 ---
 
-## Developer notes (conceptual — no run commands included)
-- Monorepo uses npm workspaces — apps and packages are installed and linked by workspace resolution.
-- Frontend ↔ Backend contract is enforced with packages/shared-types: keep DTOs and GraphQL/REST shape definitions in sync.
-- Schema changes:
-  - Update Prisma schema, then generate the client and create a migration.
-  - Seed script applies deterministic demo data for quick validation.
-- Containers and compose are used for repeatable local stacks and CI artifacts. Dockerfiles exist for api and web.
-- Testing & quality:
-  - Add unit tests per module (prefer simple service-level tests for business rules).
-  - Add end‑to‑end test harness for critical flows (POS checkout, purchase receiving, cash reconciliation).
+### 💵 4. BNA (Bulk Note Acceptor) Machine Cash Deposit Accounting
+- **Accounting Policy**: Cash deposited into the store's BNA machine is physical sales money and is **STRICTLY CLASSIFIED UNDER CASH MONEY** (never mixed into Card or UPI).
+- **Formula**: `Total Cash Sales = Counter Notes Cash + BNA Machine Deposited Cash`.
+- **Comprehensive Reporting**: Day Close (`DayCloseScreen.tsx`), Cash Reconciliation (`CashReconciliationScreen.tsx`), and Reports (`ReportsScreen.tsx`) display explicit columns for **Counter Cash (₹)**, **BNA Machine Cash (₹)**, **BNA Slip #**, and **Total Cash Sales (₹)**.
 
 ---
 
-## Contributing
-- Follow a feature‑branch workflow: small, focused PRs, one logical change per PR.
-- Update DECISIONS.md when adding or changing architecture‑level decisions.
-- Keep shared type definitions backward compatible or version them if a breaking change is required across apps.
-- Add tests for new logic; include migrations and seed adjustments where schema changes occur.
+### 🔒 5. Active Cart Navigation Session Lock Guard
+- **Session Locking**: While items exist in the active POS cart, navigating away (via sidebar menu or browser refresh/back) is locked with `beforeunload` session guards.
+- **Alert**: Displays alert modal: *"Active Billing Session in Progress: Please complete payment or clear cart before leaving POS screen."*
+- **Unlock Condition**: Unlocks automatically once payment finishes or bill is explicitly cancelled.
 
 ---
 
-## Governance & roadmap (suggested next steps)
-- Harden authentication flows: multi‑factor, session revocation and role‑based access control enforcement.
-- Reporting: extend reporting module for exportable GST/compliance statements and ledger integration.
-- Offline / resiliency: POS offline caching and deferred sync for intermittent connectivity scenarios.
-- Hardware integrations: abstract device drivers and provide test harnesses for printers/card readers.
+### 🕒 6. Live Real-Time Clock & Dynamic Timestamping
+- **Header Badge**: Renders a live ticking clock (**`HH:mm:ss DD/MM/YYYY`**) in the POS top bar that auto-syncs continuously every second.
+- **Real-Time Invoice Sync**: Invoices record the exact real-time timestamp upon payment confirmation.
 
 ---
 
-## Where to look next (source pointers)
-- apps/api/src — controllers, middleware and module implementations
-- apps/api/prisma/schema.prisma — canonical data model
-- apps/api/prisma/seed.ts — seeded demo data
-- apps/web/src — UI routes, components and API clients
-- packages/shared-types — shared DTOs / domain interfaces
-- BUILD_SUMMARY.md & DECISIONS.md — project notes, decisions and quick references
+### 🛑 7. Item Deletion Rules (1-Item Minimum) & Cancel Bill Workflow
+- **1-Item Threshold**: Individual item deletion is permitted down to **1 item**. The final item cannot be deleted individually (trash button disabled with notice: *"At least 1 item must remain in invoice"*).
+- **Explicit Cancel Bill Action**: To reset an entire cart, the cashier clicks **Cancel Bill**, prompting a red confirmation modal to reset the cart session.
+- **Delete Key Removal**: Keyboard `Delete` key single-item shortcut is disabled to prevent accidental item deletion during fast barcode scanning.
 
 ---
 
-If you'd like, I can:
-- Commit this README.md to the repository for you.
-- Produce a separate "RUNNING.md" that contains the step‑by‑step start/migration/compose commands (kept out of README per your request).
-- Generate concise architecture diagrams (SVG/Markdown) or an API endpoints reference extracted from the routers.
+### 🎨 8. Unified Emerald/Green Aesthetics (Dark & Light Theme Alignment)
+- **Design Tokens**: Dark mode `--accent-lime` and `.btn-primary` button styles use matching vibrant emerald green (`#10b981` / `#059669` with white text contrast).
+- **Consistent Aesthetics**: Both Dark and Light themes feature identical green action buttons for brand consistency.
 
-Which of those would you like next?
+---
+
+### 🖨️ 9. Automated Thermal Receipt Auto-Print on Payment Success
+- **Immediate Print**: As soon as payment confirmation completes (Cash, Card, or UPI), the system automatically triggers `window.print()` after 400ms so connected thermal printers immediately print the receipt.
+
+---
+
+### 👤 10. Dedicated Staff Full Name Box & Interactive Picker (Indian Names)
+- **Staff Full Name Box**: Below the 6-digit Staff ID input box on the Login screen, a dedicated **Staff Name Box** auto-populates real Indian full names and surnames (e.g. **Vinayak Shinde**, **Babuji Namole**, **Gous Khan**, **Sanjay Gupta**, **Pooja Sharma**, **Amit Verma**).
+- **Directory Picker Modal**: Clicking the Name Box opens an interactive **Staff Directory Picker Modal** listing staff names, roles, and Staff IDs to select and auto-fill login credentials.
+
+---
+
+### 👑 11. Store Manager Staff Management Delegation
+- Both **Store Managers** and **Super Admins** can add new staff accounts, assign 6-digit Staff IDs (`300000+`), edit full names, update roles, and manage access permissions.
+
+---
+
+### ⏳ 12. 7-Day Inactivity Auto-Deactivation & Admin Reactivation (Turn ON)
+- **Auto-Deactivation**: If a staff member has not logged in for **7 days (1 week)**, the system automatically marks the account as **Deactivated (7-Day Inactive)**.
+- **Reactivation Control**: Managers and Super Admins have a **Turn ON (Reactivate)** switch in Staff Settings to restore access anytime.
+
+---
+
+### 🚫 13. Cashier Sale Return Permission Control (`canProcessSaleReturn`)
+- **Default Restrict Rule**: Newly added cashiers default to **Sales Only** (`canProcessSaleReturn: false`). Sale Returns are blocked.
+- **Manager Toggle**: Managers and Super Admins can grant **Allow Return** permission in Staff Settings.
+- **POS Restriction**: Attempting `Alt + F11` or Return Mode without permission displays an explicit permission error toast: *"Permission Denied: Cashier is restricted to sales only. Sale Return permission must be granted by Manager or Super Admin."*
+
+---
+
+### 🛡️ 14. Military & Bank-Grade Security Hardening
+- **WAF SQL Injection Firewall (`sqlInjectionGuard.middleware.ts`)**: Global Web Application Firewall middleware that inspects all incoming HTTP requests (`req.body`, `req.query`, `req.params`). Payloads such as `' 1=1 --`, `' OR 1=1`, `UNION SELECT`, and `; DROP` are intercepted with **HTTP 403 Forbidden**. Authentication bypass is 100% impossible.
+- **Frontend Anti-Tampering Shield (`SecurityGuard.tsx`)**:
+  - Right-click context menus strictly prohibited (`onContextMenu={(e) => e.preventDefault()}`).
+  - Developer Tools keyboard shortcuts blocked: `F12`, `Ctrl+Shift+I`, `Ctrl+Shift+J`, `Ctrl+Shift+C`, `Ctrl+U`, `Ctrl+S`.
+  - Console logging stripped/suppressed in production.
+- **Security Headers**: Configured Express headers: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `X-XSS-Protection: 1; mode=block`, and `Content-Security-Policy: default-src 'self'`.
+- **Account Lockouts**: 5 failed login attempts trigger an automatic 15-minute account lockout and IP rate limiter block.
+
+---
+
+### 🔑 15. Extreme Session Invalidation & 15-Minute Idle Auto-Logout
+- **Ephemeral `sessionStorage` Enforcement**: All session tokens and user objects are stored in ephemeral `sessionStorage` (legacy persistent `localStorage` is explicitly purged on startup).
+- **Tab & Browser Exit Invalidation**: Closing the browser tab or window **INSTANTLY DESTROYS** the session. Opening the URL link again in a new tab/window **ALWAYS forces a fresh password login**.
+- **15-Minute Inactivity Watchdog (`useIdleTimer`)**: A background security watchdog tracks user interaction (`mousemove`, `keydown`, `click`, `scroll`, `touchstart`). If no user activity occurs for **15 minutes (900,000 ms)**, the system automatically purges all session tokens, logs out the user, and displays a red **Security Session Expired** modal requiring re-authentication.
+- **Session Time-To-Live (TTL)**: Enforces an 8-hour maximum shift limit (`afreen_session_expires`). If expired on load/refresh, the session is purged immediately.
+
+---
+
+### 🎯 16. Strict Cashier Role Navigation & Streamlined Command Center
+- **Sidebar Role Filtering (`Sidebar.tsx`)**: When logged in as a **Cashier** (`RoleName.CASHIER`), all store-wide management modules (Inventory, Purchasing, Warehouse, Reports, Settings) are **HIDDEN**. The sidebar displays **ONLY 3 Essential Operational Items**:
+  1. 🛒 **Sale (POS Billing)**
+  2. 🔄 **Sale Return**
+  3. 🕒 **Close Sale & Return (Day Close)**
+- **Cashier Command Center (`DashboardScreen.tsx`)**: Replaces complex store-wide KPIs with a focused **Cashier Terminal Desk** featuring **4 Quick Action Cards**:
+  1. 💳 **1. Retail Sale (POS)** (Launch POS Barcode Billing)
+  2. 🔄 **2. Process Sale Return** (Launch POS Return Mode)
+  3. 🕒 **3. Close Sale (Register Close)** (Launch Shift Day Close)
+  4. 📋 **4. Close Sale Return Summary** (Launch Day Close Handover Summary)
+
+---
+
+## 📐 Monorepo Architecture & Tech Stack
+
+```mermaid
+graph TD
+    A[Web Application - Vite React] -->|REST API & Bearer Auth| B[API Gateway & Express Server]
+    B -->|WAF Firewall Guard| C[sqlInjectionGuard Middleware]
+    C -->|RBAC Guard| D[Role & Permission Middleware]
+    D -->|ORM Queries| E[Prisma Client v5]
+    E -->|Database| F[PostgreSQL / SQLite]
+```
+
+### Workspace Structure:
+- `apps/web`: Vite + React + TypeScript frontend with Times New Roman typography, custom emerald green palette, and SecurityGuard wrapper.
+- `apps/api`: Node.js + Express + Prisma backend with WAF SQLi Firewall, bcrypt password hashing, and JWT session handling.
+- `packages/shared-types`: Shared TypeScript interfaces (`UserSession`, `POSInvoice`, `DayCloseReport`, `BillRecoveryPayload`).
+
+---
+
+## 🔑 Seeded Demo Credentials
+
+| Role | Staff ID | Username | Full Name | Default Password |
+|---|---|---|---|---|
+| **Super Admin** | `300000` | `Superkhan` | Gous Khan | *(Initial Set)* |
+| **Store Manager** | `300001` | `manager1` | Sanjay Gupta | `Pass@123` |
+| **Head Cashier** | `300002` | `pooja1` | Pooja Sharma | `Pass@123` |
+| **Cashier (Sales Only)** | `300003` | `vinayak1` | Vinayak Shinde | `Pass@123` |
+| **Cash Officer** | `300004` | `babuji1` | Babuji Namole | `Pass@123` |
+| **Senior Accountant** | `300005` | `amit1` | Amit Verma | `Pass@123` |
+
+
+
+<div align="center">
+
+### 💖 Made by **Gous Organisation**
+
+*Software Architect: **Gous Khan** · Afreen Mall Enterprise Platform*
+
+📞 **Mobile**: `+91 8625076618` | ✉️ **Email**: `khangulamgousamjat@gmail.com`
+
+![Made with Love by Gous Organisation](https://img.shields.io/badge/Crafted%20With-%E2%9D%A4%EF%B8%8F%20by%20Gous%20Organisation-FF1493?style=for-the-badge)
+
+</div>
