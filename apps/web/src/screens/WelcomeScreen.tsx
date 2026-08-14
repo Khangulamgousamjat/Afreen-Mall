@@ -1,6 +1,7 @@
 import React from 'react';
-import { Store, ShieldCheck, Sun, Moon, ArrowRight } from 'lucide-react';
+import { Sun, Moon, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { AfreenMallLogo } from '../components/AfreenMallLogo';
 
 interface WelcomeScreenProps {
   onGoToLogin: () => void;
@@ -32,42 +33,52 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGoToLogin }) => 
       <div
         className="card"
         style={{
-          maxWidth: '560px',
+          maxWidth: '540px',
           width: '100%',
           textAlign: 'center',
-          padding: '48px 32px',
+          padding: '36px 32px',
           border: '1px solid var(--border-color)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
-          <div style={{ padding: '16px', backgroundColor: 'var(--accent-soft)', border: '1px solid var(--accent-lime)' }}>
-            <Store size={48} style={{ color: 'var(--accent-lime)' }} />
-          </div>
-        </div>
+        {/* Sleek, Compact Transparent Vector Logo */}
+        <AfreenMallLogo size="large" />
 
-        <h1 style={{ fontSize: '32px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>
-          Afreen Mall
-        </h1>
-        <div style={{ fontSize: '16px', color: 'var(--text-muted)', marginBottom: '24px' }}>
-          Internal Retail & Store Operations Platform
-        </div>
-
-        <div style={{ fontSize: '14px', lineHeight: '1.6', color: 'var(--text-main)', marginBottom: '32px', padding: '16px', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)' }}>
-          Authorized Staff Portal for Store Operations, POS Billing, Cash Reconciliation, Inventory Control, and Purchasing Management.
-        </div>
-
+        {/* Single CTA Button */}
         <button
           className="btn btn-primary"
           onClick={onGoToLogin}
-          style={{ width: '100%', padding: '14px', fontSize: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }}
+          style={{
+            width: '100%',
+            maxWidth: '340px',
+            padding: '14px',
+            fontSize: '16px',
+            marginTop: '24px',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '10px',
+          }}
         >
           <span>Staff Login</span>
           <ArrowRight size={18} />
         </button>
 
-        <div style={{ marginTop: '24px', fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-          <ShieldCheck size={14} />
-          <span>Staff-Only Access · Restricted Operations System</span>
+        <div
+          style={{
+            marginTop: '20px',
+            fontSize: '12px',
+            color: 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+          }}
+        >
+          <ShieldCheck size={14} style={{ color: 'var(--accent-lime)' }} />
+          <span>Internal Operations Platform · Authorized Staff Access Only</span>
         </div>
       </div>
     </div>

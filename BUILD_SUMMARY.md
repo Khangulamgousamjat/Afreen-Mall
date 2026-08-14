@@ -27,7 +27,7 @@ docker-compose up --build
 2. **Login Screen**: 6-digit Staff ID + password, account lockout message on 5 failed attempts.
 3. **Dashboard**: Live financial KPIs, 7-day sales trend, low-stock table with shelf-tag gauge bars, recent transactions log.
 4. **POS / Billing**: Barcode auto-focus (resets on Enter press anywhere on invoice), last scanned item block, running totals, footer credit line (*"Software by Gous Khan · Mobile: 8625076618 · gousk2004@gmail.com"*), split payment capture (Cash, Card, UPI), full-screen UPI QR & Card overlays, F1-F10 shortcuts + F1 help overlay.
-5. **Day Close**: Cashier end-of-shift screen with note breakdown counter (₹2000 down to ₹1), system vs physical variance calculation, Close Sale & Close Sale Return.
+5. **Day Close**: Cashier end-of-shift screen supporting both **Manual Note-by-Note Count** (₹2000 down to ₹1) and **BNA Machine Auto-Count & Slip Deposit** (inserts cash into BNA machine, scans/reads printed deposit receipt slip, auto-populates total cash, and computes live variance against system cash sales). Supports Close Sale & Close Sale Return.
 6. **Cash Reconciliation**:
    - Cash Officer view (matched/short/excess status per POS register).
    - Manager Cash Collection report form (POS #, Cash Officer, note breakdown, BNA deposit, final variance).

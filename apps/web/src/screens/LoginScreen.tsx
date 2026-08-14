@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Lock, AlertOctagon, ArrowLeft, Shield } from 'lucide-react';
+import { AlertOctagon, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { AfreenMallLogo } from '../components/AfreenMallLogo';
 
 interface LoginScreenProps {
   onBackToWelcome: () => void;
@@ -45,33 +46,38 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
         padding: '24px',
       }}
     >
-      <div className="card" style={{ maxWidth: '440px', width: '100%', padding: '36px 28px' }}>
-        <button
-          className="btn"
-          onClick={onBackToWelcome}
-          style={{ marginBottom: '20px', padding: '4px 8px', fontSize: '12px' }}
-        >
-          <ArrowLeft size={14} />
-          <span>Back</span>
-        </button>
+      <div className="card" style={{ maxWidth: '440px', width: '100%', padding: '32px 28px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-start', marginBottom: '8px' }}>
+          <button
+            className="btn"
+            onClick={onBackToWelcome}
+            style={{ padding: '4px 8px', fontSize: '12px' }}
+          >
+            <ArrowLeft size={14} />
+            <span>Back</span>
+          </button>
+        </div>
 
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <Shield size={36} style={{ color: 'var(--accent-lime)', marginBottom: '8px' }} />
-          <h2 style={{ fontSize: '22px', fontWeight: 'bold', textTransform: 'uppercase' }}>Afreen Mall Staff Login</h2>
-          <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Enter your 6-digit Staff ID (e.g. 300000) or Username
+        {/* Compact Vector Logo Emblem */}
+        <AfreenMallLogo size="medium" />
+
+        <div style={{ textAlign: 'center', marginBottom: '20px', marginTop: '8px' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Staff Secure Login</h2>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+            Enter 6-digit Staff ID (e.g. 300000) or Username
           </div>
         </div>
 
         {error && (
           <div
             style={{
+              width: '100%',
               backgroundColor: 'rgba(248, 113, 113, 0.1)',
               border: '1px solid var(--status-red)',
               color: 'var(--status-red)',
-              padding: '12px',
+              padding: '10px 12px',
               fontSize: '13px',
-              marginBottom: '20px',
+              marginBottom: '16px',
               display: 'flex',
               alignItems: 'flex-start',
               gap: '10px',
@@ -82,9 +88,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
-            <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+            <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
               6-Digit Staff ID / Username
             </label>
             <input
@@ -99,7 +105,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
           </div>
 
           <div>
-            <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+            <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
               Password
             </label>
             <input
@@ -112,13 +118,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
             />
           </div>
 
-          <button type="submit" className="btn btn-primary" disabled={loading} style={{ padding: '12px', marginTop: '8px' }}>
+          <button type="submit" className="btn btn-primary" disabled={loading} style={{ padding: '12px', marginTop: '6px' }}>
             {loading ? 'Authenticating...' : 'Sign In to Operations'}
           </button>
         </form>
 
-        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-          Strictly internal access. Accounts are created exclusively by Super Admin.
+        <div style={{ width: '100%', marginTop: '20px', textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '14px' }}>
+          Strictly internal access. Accounts provisioned by Super Admin.
         </div>
       </div>
     </div>

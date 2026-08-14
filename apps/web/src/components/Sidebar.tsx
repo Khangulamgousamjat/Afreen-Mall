@@ -10,10 +10,10 @@ import {
   Users,
   BarChart3,
   Settings,
-  Store,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { RoleName } from '@afreen-mall/shared-types';
+import { AfreenMallLogo } from './AfreenMallLogo';
 
 interface SidebarProps {
   currentScreen: string;
@@ -38,14 +38,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentScreen, onNavigate }) =
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Store size={22} style={{ color: 'var(--accent-lime)' }} />
-          <div>
-            <div className="sidebar-logo">Afreen Mall</div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Operations Platform</div>
-          </div>
-        </div>
+      <div className="sidebar-header" style={{ padding: '16px 12px' }}>
+        <AfreenMallLogo size="small" />
       </div>
 
       <nav className="sidebar-nav">
@@ -53,11 +47,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentScreen, onNavigate }) =
           const Icon = item.icon;
           const isActive = currentScreen === item.id;
           const isSuperAdmin = user?.role === RoleName.SUPER_ADMIN;
-
-          // Visual tag for Super Admin exclusive screen
-          if (item.isSuperAdminOnly && !isSuperAdmin) {
-            // Keep rendered in list but show as locked/disabled for transparency per spec
-          }
 
           return (
             <div
