@@ -39,6 +39,20 @@ export enum PurchaseOrderStatus {
   COMPLETED = 'COMPLETED',
 }
 
+export enum SaleState {
+  DRAFT = 'DRAFT',
+  SCANNING = 'SCANNING',
+  HOLD = 'HOLD',
+  PENDING_PAYMENT = 'PENDING_PAYMENT',
+  PAID = 'PAID',
+  CANCELLED = 'CANCELLED',
+  RETURNED = 'RETURNED',
+  EXCHANGED = 'EXCHANGED',
+  FAILED = 'FAILED',
+  SYNCED = 'SYNCED',
+  OFFLINE_PENDING = 'OFFLINE_PENDING',
+}
+
 export interface UserSession {
   id: string;
   staffId: number;

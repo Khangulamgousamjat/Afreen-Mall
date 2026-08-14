@@ -72,13 +72,21 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
   const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null);
 
   // ── Modals ──────────────────────────────────────────────────────────────
+  // ── Modals & Alerts ─────────────────────────────────────────────────────
   const [showF1Overlay, setShowF1Overlay] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showManualRecoveryModal, setShowManualRecoveryModal] = useState(false);
   const [showDuplicateReprintModal, setShowDuplicateReprintModal] = useState(false);
   const [showCancelBillModal, setShowCancelBillModal] = useState(false);
   const [receiptPrintContent, setReceiptPrintContent] = useState<string | null>(null);
-  const [selectedCartIndex, setSelectedCartIndex] = useState<number | null>(null);
+
+  const [scanAlertModal, setScanAlertModal] = useState<{
+    show: boolean;
+    type: 'NOT_FOUND' | 'ZERO_PRICE' | 'MALFORMED';
+    title: string;
+    message: string;
+    barcode?: string;
+  }>({ show: false, type: 'NOT_FOUND', title: '', message: '' });
 
   // ── Payment breakdown (paise) ───────────────────────────────────────────
   const [paidCash, setPaidCash] = useState(0);
@@ -139,34 +147,111 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
     refocusBarcode();
   };
 
-  // ── Global keyboard capture ─────────────────────────────────────────────
+  // ── Global Bulletproof Event-Capturing Keyboard Listener ────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'F1') { e.preventDefault(); setShowF1Overlay(true); return; }
-      if (e.ctrlKey && e.key === 'F5') { e.preventDefault(); setShowDuplicateReprintModal(true); return; }
-      if (e.shiftKey && e.key === 'F8') { e.preventDefault(); setShowManualRecoveryModal(true); return; }
-      if (e.key === 'F3') { e.preventDefault(); if (lastScannedItem) addItemToCart(lastScannedItem); return; }
-      if (e.key === 'F7') { e.preventDefault(); setPaymentModeUpfront(PaymentMode.UPI); triggerUPIPayment(); return; }
-      if (e.key === 'F10') { e.preventDefault(); if (cart.length > 0) openPaymentModal(); return; }
-      if (e.altKey && e.key === 'F11') { e.preventDefault(); handleToggleReturnMode(); return; }
-      if (e.shiftKey && e.key === 'F2') { e.preventDefault(); setSaleType(p => p === SaleType.RETAIL ? SaleType.WHOLESALE : SaleType.RETAIL); return; }
+      const k = (e.key || '').toUpperCase();
+      const c = (e.code || '').toUpperCase();
 
-      // Redirect stray keystrokes to barcode box when no modal is open
+      const isF1 = k === 'F1' || c === 'F1';
+      const isF2 = k === 'F2' || c === 'F2';
+      const isF3 = k === 'F3' || c === 'F3';
+      const isF5 = k === 'F5' || c === 'F5';
+      const isF7 = k === 'F7' || c === 'F7';
+      const isF8 = k === 'F8' || c === 'F8';
+      const isF10 = k === 'F10' || c === 'F10';
+      const isF11 = k === 'F11' || c === 'F11';
+      const isEscape = k === 'ESCAPE' || c === 'ESCAPE';
+      const isEnter = k === 'ENTER' || c === 'ENTER' || c === 'NUMPADENTER';
+
+      // 1. F1: Shortcut Reference Help Overlay
+      if (isF1 && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault(); e.stopPropagation();
+        setShowF1Overlay(true);
+        return;
+      }
+
+      // 2. Shift + F8: Manual Bill Recovery Dialog
+      if (isF8 && e.shiftKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault(); e.stopPropagation();
+        setShowManualRecoveryModal(true);
+        return;
+      }
+
+      // 3. Ctrl + F5: Duplicate Bill Reprint Modal
+      if (isF5 && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+        e.preventDefault(); e.stopPropagation();
+        setShowDuplicateReprintModal(true);
+        return;
+      }
+
+      // 4. Alt + F11: Toggle Sale Return Mode
+      if (isF11 && e.altKey && !e.ctrlKey && !e.shiftKey) {
+        e.preventDefault(); e.stopPropagation();
+        handleToggleReturnMode();
+        return;
+      }
+
+      // 5. Shift + F2: Toggle Retail / Wholesale Sale Type
+      if (isF2 && e.shiftKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault(); e.stopPropagation();
+        setSaleType(p => p === SaleType.RETAIL ? SaleType.WHOLESALE : SaleType.RETAIL);
+        return;
+      }
+
+      // 6. F3: Repeat Last Scanned Item (+1 Qty)
+      if (isF3 && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault(); e.stopPropagation();
+        if (lastScannedItem) addItemToCart(lastScannedItem);
+        return;
+      }
+
+      // 7. F7: Instant UPI QR Code Payment
+      if (isF7 && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault(); e.stopPropagation();
+        setPaymentModeUpfront(PaymentMode.UPI);
+        triggerUPIPayment();
+        return;
+      }
+
+      // 8. F10: Checkout / Open Payment Modal
+      if (isF10 && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault(); e.stopPropagation();
+        if (cart.length > 0) openPaymentModal();
+        return;
+      }
+
+      // 9. Escape: Close open modals & restore barcode focus
+      if (isEscape) {
+        setShowPaymentModal(false);
+        setShowF1Overlay(false);
+        setShowManualRecoveryModal(false);
+        setShowDuplicateReprintModal(false);
+        setShowCancelBillModal(false);
+        setReceiptPrintContent(null);
+        setScanAlertModal({ show: false, type: 'NOT_FOUND', title: '', message: '' });
+        refocusBarcode();
+        return;
+      }
+
+      // Redirect stray typing focus to barcode box when no modal is active
       const active = document.activeElement as HTMLElement;
       const isInputFocused = active && (active.tagName === 'INPUT' || active.tagName === 'SELECT' || active.tagName === 'TEXTAREA');
-      const isModalOpen = showPaymentModal || showF1Overlay || showManualRecoveryModal || showDuplicateReprintModal || Boolean(receiptPrintContent);
-      if (!isModalOpen && !isInputFocused && e.key.length === 1) {
+      const isModalOpen = showPaymentModal || showF1Overlay || showManualRecoveryModal || showDuplicateReprintModal || scanAlertModal.show || Boolean(receiptPrintContent);
+      if (!isModalOpen && !isInputFocused && e.key.length === 1 && !e.ctrlKey && !e.altKey) {
         barcodeInputRef.current?.focus();
       }
-      if (e.key === 'Enter' && active !== barcodeInputRef.current && !isModalOpen) {
+      if (isEnter && active !== barcodeInputRef.current && !isModalOpen) {
         barcodeInputRef.current?.focus();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, lastScannedItem, showPaymentModal, showF1Overlay, showManualRecoveryModal, showDuplicateReprintModal, receiptPrintContent]);
 
-  // ── Barcode scan ────────────────────────────────────────────────────────
+    // Note: useCapture = true guarantees capturing global hotkeys FIRST
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [cart, lastScannedItem, showPaymentModal, showF1Overlay, showManualRecoveryModal, showDuplicateReprintModal, scanAlertModal, receiptPrintContent]);
+
+  // ── Barcode scan with 3 Strict Validations ──────────────────────────────
   const handleBarcodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
@@ -209,16 +294,18 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
   };
 
   // ── Cart operations ─────────────────────────────────────────────────────
-  const addItemToCart = (item: POSCartItem) => {
+  const addItemToCart = (item: POSCartItem & { weighedQty?: number }) => {
     setCartError('');
+    const addQty = item.weighedQty && item.weighedQty > 0 ? item.weighedQty : 1;
     setCart(prev => {
       const idx = prev.findIndex(i => i.barcode === item.barcode);
       if (idx >= 0) {
         const updated = [...prev];
-        updated[idx] = { ...updated[idx], qty: updated[idx].qty + 1, value: updated[idx].netRate * (updated[idx].qty + 1) };
+        const newQty = updated[idx].qty + addQty;
+        updated[idx] = { ...updated[idx], qty: newQty, value: Math.round(updated[idx].netRate * newQty) };
         return updated;
       }
-      return [...prev, { ...item, qty: 1, value: item.netRate }];
+      return [...prev, { ...item, qty: addQty, value: Math.round(item.netRate * addQty) }];
     });
   };
 
@@ -905,6 +992,36 @@ Software by Gous Khan · Mobile: 8625076618
                 <span>Print Receipt</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── BARCODE SCAN ERROR / ZERO PRICE ALERT MODAL ───────────────── */}
+      {scanAlertModal.show && (
+        <div className="modal-overlay" style={{ zIndex: 2500 }}>
+          <div className="modal-content" style={{ maxWidth: '440px', padding: '24px', textAlign: 'center', border: '2px solid #ef4444', borderRadius: '10px' }}>
+            <div style={{ padding: '12px', backgroundColor: 'rgba(239, 68, 68, 0.15)', borderRadius: '50%', width: '56px', height: '56px', margin: '0 auto 14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <AlertTriangle size={32} style={{ color: '#ef4444' }} />
+            </div>
+
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', color: '#ef4444', marginBottom: '8px' }}>
+              {scanAlertModal.title}
+            </h3>
+
+            <p style={{ fontSize: '13px', color: 'var(--text-main)', margin: '12px 0 20px', lineHeight: 1.5 }}>
+              {scanAlertModal.message}
+            </p>
+
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                setScanAlertModal({ show: false, type: 'NOT_FOUND', title: '', message: '' });
+                refocusBarcode();
+              }}
+              style={{ width: '100%', padding: '12px', backgroundColor: '#ef4444', borderColor: '#b91c1c', color: '#fff', fontSize: '14px', fontWeight: 'bold' }}
+            >
+              <span>Acknowledge & Re-Scan Barcode</span>
+            </button>
           </div>
         </div>
       )}
