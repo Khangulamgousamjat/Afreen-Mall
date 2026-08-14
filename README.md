@@ -54,39 +54,13 @@ graph TD
 - **`apps/api`**: Express + TypeScript backend running on Node.js with WAF SQL injection firewall, bcrypt password hashing, dynamic database bootstrapper, and 12 departmental REST API controllers.
 - **`packages/shared-types`**: Shared types, role enums, cart payloads, and financial calculation interfaces.
 
----
 
-## 🔑 Seeded Official Staff & Credential Directory
-
-The production backend automatically bootstraps and activates all official staff accounts on server boot.
 
 ### 👑 Super Admin Account
 | Role | Staff ID | Username | Full Name | Default Password | Permissions |
 |---|---|---|---|---|---|
 | **Super Admin** | `300000` | `Superkhan` | Gous Khan (Super Admin) | `Kingkhan@12` | Full unrestricted access to all 12 modules, staff password reset, role assignment, audit logs, and system config. |
 
-### 👥 Official Staff Roster Matrix (Default Password: `Pass@123`)
-*All staff members can log in and change their password at any time via the Change Password screen. Super Admin can also reset any staff password from the Admin panel.*
-
-| Staff ID | Username | Full Name | Department / Role | Default Password | Initial Return Access |
-|---|---|---|---|---|---|
-| **`300001`** | `manager1` | Sanjay Gupta | **STORE_MANAGER** | `Pass@123` | ✅ Allowed |
-| **`300002`** | `cashofficer1` | Babuji Namole | **CASH_OFFICER** | `Pass@123` | ✅ Allowed |
-| **`300003`** | `accountant1` | Amit Verma | **ACCOUNTANT** | `Pass@123` | ✅ Allowed |
-| **`300004`** | `inventory1` | Vikram Singh | **INVENTORY_STAFF** | `Pass@123` | ❌ Sales/GRN Only |
-| **`300005`** | `warehouse1` | Deepak Gaikwad | **WAREHOUSE_STAFF** | `Pass@123` | ❌ Warehouse Only |
-| **`300006`** | `purchase1` | Neha Singh | **PURCHASE_TEAM** | `Pass@123` | ❌ Purchase Only |
-| **`300007`** | `auditor1` | Rajesh Deshmukh | **AUDITOR** | `Pass@123` | ✅ Allowed |
-| **`300008`** | `hr1` | Priya Kulkarni | **HR_MANAGER** | `Pass@123` | ❌ HR Admin Only |
-| **`300009`** | `sales1` | Rohan Kadam | **SALES_MANAGER** | `Pass@123` | ✅ Allowed |
-| **`300010`** | `crm1` | Sneha Joshi | **CRM_MANAGER** | `Pass@123` | ❌ CRM Only |
-| **`300011`** | `cashier1` | Pooja Sharma | **CASHIER** (Counter 1) | `Pass@123` | 🔒 Restricted (Sales Only) |
-| **`300012`** | `cashier2` | Vinayak Shinde | **CASHIER** (Counter 2) | `Pass@123` | 🔒 Restricted (Sales Only) |
-| **`300013`** | `cashier3` | Mahesh Patil | **CASHIER** (Counter 3) | `Pass@123` | 🔒 Restricted (Sales Only) |
-| **`300014`** | `cashier4` | Sachin Jadhav | **CASHIER** (Express Counter) | `Pass@123` | 🔒 Restricted (Sales Only) |
-| **`300015`** | `cashier5` | Rahul Chavan | **CASHIER** (Floater Cashier) | `Pass@123` | 🔒 Restricted (Sales Only) |
-
----
 
 ## 🌟 Deep Feature Catalog (Minor to Major)
 
@@ -233,38 +207,7 @@ The production backend automatically bootstraps and activates all official staff
 | **`Alt + F11`** | **Sale Return Mode** | POS Screen | Toggles between Sale Mode and Return Mode (Role Guarded). |
 | **`Escape`** | **Close / Dismiss** | Modals | Closes active modals and returns focus to barcode input. |
 
----
 
-## ⚙️ Environment Variables & Deployment
-
-### Backend API Configuration (`apps/api/.env`)
-```env
-# PostgreSQL Connection (Render PostgreSQL)
-DATABASE_URL="postgresql://afreen_mall_user:password@host:5432/afreen_mall"
-
-# Port & Node Environment
-PORT=4000
-NODE_ENV="production"
-
-# JWT Security Secrets
-JWT_SECRET="your_64_char_secure_jwt_secret"
-JWT_REFRESH_SECRET="your_64_char_secure_refresh_secret"
-
-# Allowed CORS Origins
-ALLOWED_ORIGINS="https://afreen-mall.vercel.app"
-
-# Bootstrap Credentials
-INITIAL_SUPER_ADMIN_PASSWORD="Kingkhan@12"
-INITIAL_STAFF_PASSWORD="Pass@123"
-```
-
-### Frontend Web Configuration (`apps/web/.env.local`)
-```env
-# Production API URL (Render Web Service)
-VITE_API_URL="https://afreen-mall.onrender.com"
-```
-
----
 
 <div align="center">
 
