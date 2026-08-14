@@ -1,29 +1,31 @@
 /* ==========================================================================
    AFREEN MALL INTERNAL OPERATIONS PLATFORM — GLOBAL STYLESHEET
    Typography: Times New Roman everywhere ("Times New Roman", Times, serif)
-   Palette: Dark (#171717), Accent Lime (#E4FD97), Secondary Teal (#004741), Light (#F0EDE4)
+   Dark Palette: #0B0F0D bg, #3E8A6E accent, Forest Green tones
+   Light Palette: #F0EDE4 bg, #004741 accent
    ========================================================================== */
 
 :root {
   --font-family: "Times New Roman", Times, serif;
 
-  /* Dark Theme (Default) */
-  --bg-color: #171717;
-  --surface-color: #212121;
-  --surface-hover: #2a2a2a;
-  --border-color: #2e2e2e;
-  --border-focus: #E4FD97;
-  --text-main: #f0f0f0;
-  --text-muted: #a0a0a0;
-  
-  --accent-lime: #E4FD97;
-  --accent-lime-hover: #d2f76d;
-  --accent-teal: #004741;
-  --accent-soft: rgba(228, 253, 151, 0.12);
+  /* Dark Theme (Default) — Custom Forest Green Palette */
+  --bg-color: #0B0F0D;
+  --surface-color: #151C18;
+  --surface-secondary: #1C2521;
+  --surface-hover: #1C2521;
+  --border-color: #2A342E;
+  --border-focus: #3E8A6E;
+  --text-main: #E6EDE8;
+  --text-muted: #5FA88C;
 
-  --status-green: #4ade80;
-  --status-amber: #fbbf24;
-  --status-red: #f87171;
+  --accent-lime: #3E8A6E;
+  --accent-lime-hover: #357a61;
+  --accent-teal: #5FA88C;
+  --accent-soft: rgba(62, 138, 110, 0.16);
+
+  --status-green: #5FA88C;
+  --status-amber: #d4a843;
+  --status-red: #C97A73;
 
   --sidebar-width: 232px;
 }
@@ -46,6 +48,7 @@
   --status-amber: #b45309;
   --status-red: #b91c1c;
 }
+
 
 * {
   box-sizing: border-box;

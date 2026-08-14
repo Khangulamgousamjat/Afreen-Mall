@@ -1,4 +1,19 @@
 
+## Deployment Notes & Backend Resiliency
+
+### 1. Render Free-Tier Cold Starts & Keep-Warm Workflow
+- **Backend Infrastructure**: The backend API (`apps/api`) is deployed on Render's free tier (`https://afreen-mall.onrender.com`), which automatically sleeps after 15 minutes of inactivity.
+- **Cold Start Behavior**: When sleeping, a cold start takes 30–50 seconds to wake up the service and establish database connections.
+- **Keep-Warm Automation**: A scheduled GitHub Actions workflow (`.github/workflows/keep-warm.yml`) runs every 12 minutes to ping `https://afreen-mall.onrender.com/health`, keeping the API instance active during operational hours.
+- **Frontend Mitigation**:
+  - The login screen (`LoginScreen.tsx`) fires a background `/health` ping as soon as it mounts to trigger server wake-up early.
+  - The login request uses a **60-second abort timeout** with **exponential backoff retries (3 attempts)** so users never get stuck on cold starts.
+  - Global API requests in `api.ts` use a 45-second timeout to handle DB connection pool warming.
+
+### 2. Environment Variables & Security
+- **Strict Git Exclusion**: `.env` and `.env.local` files across all workspaces are strictly ignored via `.gitignore` and must never be committed.
+- **Credential Rotation Warning**: Database passwords and JWT secrets previously present in environment configuration should be rotated periodically via the hosting platform dashboards (Render / Vercel).
+
 ---
 
 ## Domain & modules (deep dive)

@@ -253,4 +253,31 @@ router.get('/invoices', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
+// GET /api/v1/pos/next-invoice-number - Sequential invoice number for next sale
+router.get('/next-invoice-number', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const count = await prisma.sale.count();
+    const nextNum = (count + 1).toString().padStart(6, '0');
+    return res.json({ invoice_number: `INV-${nextNum}` });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to generate invoice number' });
+  }
+});
+
+// GET /api/v1/pos/last-invoice - Most recent completed sale for this cashier
+router.get('/last-invoice', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const last = await prisma.sale.findFirst({
+      where: { cashierStaffId: req.user!.staffId, status: 'COMPLETED' },
+      orderBy: { createdAt: 'desc' },
+      select: { invoiceNo: true, totalAmount: true },
+    });
+    if (!last) return res.json(null);
+    return res.json({ invoice_number: last.invoiceNo, total_paise: last.totalAmount });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch last invoice' });
+  }
+});
+
 export default router;
+

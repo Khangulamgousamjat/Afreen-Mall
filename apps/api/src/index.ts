@@ -19,7 +19,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors({ origin: '*', credentials: true }));
+app.use(cors({ origin: '*', credentials: false }));
 app.use(express.json());
 
 // Healthcheck
@@ -40,8 +40,8 @@ app.use('/api/v1/customers', customersRouter);
 app.use('/api/v1/reports', reportsRouter);
 app.use('/api/v1/hardware', hardwareRouter);
 
-// Start listening
-app.listen(PORT, () => {
+// Start listening on 0.0.0.0 for Render compatibility
+app.listen(Number(PORT), '0.0.0.0', () => {
   console.log(`===========================================================`);
   console.log(`  Afreen Mall API Server running on port ${PORT}`);
   console.log(`  Healthcheck: http://localhost:${PORT}/health`);

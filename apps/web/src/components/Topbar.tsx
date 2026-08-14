@@ -1,21 +1,33 @@
 import React from 'react';
-import { Sun, Moon, LogOut, ShieldCheck, User } from 'lucide-react';
+import { Sun, Moon, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Topbar: React.FC = () => {
   const { user, theme, toggleTheme, logout } = useAuth();
 
+  const logoSrc = theme === 'dark' ? '/logo-dark.jpg' : '/logo-light.jpg';
+
   return (
     <header className="topbar">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-        <h2 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          Afreen Mall
-        </h2>
-        <span style={{ fontSize: '12px', padding: '2px 8px', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-          INTERNAL OPERATIONS
-        </span>
+      {/* LEFT: Logo + Mall name (shared across every internal page) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <img
+          src={logoSrc}
+          alt="Afreen Mall"
+          style={{ height: '42px', width: 'auto', objectFit: 'contain', display: 'block' }}
+          draggable={false}
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+          <span style={{ fontSize: '16px', fontWeight: '500', letterSpacing: '0.5px', color: 'var(--text-main)' }}>
+            Afreen Mall
+          </span>
+          <span style={{ fontSize: '10px', color: 'var(--text-muted)', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
+            Internal Operations
+          </span>
+        </div>
       </div>
 
+      {/* RIGHT: Theme toggle + user info + logout */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
         <button
           className="btn"

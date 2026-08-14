@@ -1,197 +1,204 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ShoppingCart, QrCode, CreditCard, Save, RefreshCw, HelpCircle, User, Phone, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Trash2, ShoppingCart, QrCode, CreditCard, RefreshCw, HelpCircle, User, Save } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { F1ShortcutOverlay } from '../components/F1ShortcutOverlay';
 import { POSCartItem, PaymentMode, SaleType } from '@afreen-mall/shared-types';
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+const formatDate = (d: Date) =>
+  `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+
+const paiseToRupee = (p: number) =>
+  (p / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+
+// ─── Component ───────────────────────────────────────────────────────────────
 export const POSScreen: React.FC = () => {
   const { user } = useAuth();
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
-  // Mode & State
+  // ── Mode & Invoice ──────────────────────────────────────────────────────
   const [isReturnMode, setIsReturnMode] = useState(false);
   const [saleType, setSaleType] = useState<SaleType>(SaleType.RETAIL);
   const [paymentModeUpfront, setPaymentModeUpfront] = useState<PaymentMode>(PaymentMode.CASH);
-  const [invoiceNo] = useState(`INV-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-0043`);
-  
-  // Barcode Scanning
-  const [barcodeInput, setBarcodeInput] = useState('');
-  const [lastScannedItem, setLastScannedItem] = useState<POSCartItem | null>(null);
-  const [cart, setCart] = useState<POSCartItem[]>([]);
-  const [lastSavedInvoice, setLastSavedInvoice] = useState({ invoiceNo: 'INV-20260728-0042', amount: 65000 });
+  const [invoiceNo, setInvoiceNo] = useState('...');
+  const [lastSavedInvoice, setLastSavedInvoice] = useState<{ invoiceNo: string; amount: number } | null>(null);
 
-  // Customer Loyalty
+  // ── Cart ────────────────────────────────────────────────────────────────
+  const [barcodeInput, setBarcodeInput] = useState('');
+  const [barcodeError, setBarcodeError] = useState('');
+  const [lastScannedItem, setLastScannedItem] = useState<POSCartItem | null>(null);
+  const [lastScannedFlash, setLastScannedFlash] = useState(false);
+  const [cart, setCart] = useState<POSCartItem[]>([]);
+
+  // ── Customer ────────────────────────────────────────────────────────────
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null);
 
-  // Modals & Overlays
+  // ── Modals ──────────────────────────────────────────────────────────────
   const [showF1Overlay, setShowF1Overlay] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showItemDetailPanel, setShowItemDetailPanel] = useState(false);
   const [selectedCartIndex, setSelectedCartIndex] = useState<number | null>(null);
 
-  // Payment Capture Breakdown (Paise)
-  const [paidCash, setPaidCash] = useState<number>(0);
-  const [paidCard, setPaidCard] = useState<number>(0);
-  const [paidUPI, setPaidUPI] = useState<number>(0);
-  const [receivedAmount, setReceivedAmount] = useState<number>(0);
+  // ── Payment breakdown (paise) ───────────────────────────────────────────
+  const [paidCash, setPaidCash] = useState(0);
+  const [paidCard, setPaidCard] = useState(0);
+  const [paidUPI, setPaidUPI] = useState(0);
+  const [receivedAmount, setReceivedAmount] = useState(0);
 
-  // Full-Screen Overlays
+  // ── Full-screen overlays ────────────────────────────────────────────────
   const [fullScreenOverlay, setFullScreenOverlay] = useState<'NONE' | 'UPI' | 'CARD'>('NONE');
-  const [overlayStatus, setOverlayStatus] = useState<string>('Processing...');
+  const [overlayStatus, setOverlayStatus] = useState('Processing...');
 
-  // Auto Focus Barcode Box
-  useEffect(() => {
-    barcodeInputRef.current?.focus();
+  // ── Derived totals ──────────────────────────────────────────────────────
+  const totalQty      = cart.reduce((s, i) => s + i.qty, 0);
+  const totalDiscount = cart.reduce((s, i) => s + i.discountAmount * i.qty, 0);
+  const totalAmount   = cart.reduce((s, i) => s + i.netRate * i.qty, 0);
+  const changeDue     = Math.max(0, receivedAmount - totalAmount);
+
+  // ── Barcode re-focus helper ─────────────────────────────────────────────
+  const refocusBarcode = useCallback(() => {
+    setTimeout(() => barcodeInputRef.current?.focus(), 30);
   }, []);
 
-  // Keyboard Event Listener for F1 - F10 & Combinations
+  // ── Fetch next invoice number on mount ─────────────────────────────────
+  const fetchNextInvoiceNo = useCallback(async () => {
+    try {
+      const res = await api.get('/pos/next-invoice-number');
+      setInvoiceNo(res.data.invoice_number);
+    } catch {
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      setInvoiceNo(`INV-${dateStr}-0001`);
+    }
+  }, []);
+
+  // ── Fetch last invoice on mount ─────────────────────────────────────────
+  const fetchLastInvoice = useCallback(async () => {
+    try {
+      const res = await api.get('/pos/last-invoice');
+      if (res.data) setLastSavedInvoice({ invoiceNo: res.data.invoice_number, amount: res.data.total_paise });
+    } catch { /* no-op */ }
+  }, []);
+
+  useEffect(() => {
+    barcodeInputRef.current?.focus();
+    fetchNextInvoiceNo();
+    fetchLastInvoice();
+  }, [fetchNextInvoiceNo, fetchLastInvoice]);
+
+  // ── Global keyboard capture ─────────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // F1: Help Overlay
-      if (e.key === 'F1') {
-        e.preventDefault();
-        setShowF1Overlay(true);
-      }
-      // F3: Repeat Last Scanned Item
-      else if (e.key === 'F3') {
-        e.preventDefault();
-        if (lastScannedItem) addItemToCart(lastScannedItem);
-      }
-      // F7: UPI Pay
-      else if (e.key === 'F7') {
-        e.preventDefault();
-        setPaymentModeUpfront(PaymentMode.UPI);
-        triggerUPIPayment();
-      }
-      // F10: Save Invoice
-      else if (e.key === 'F10') {
-        e.preventDefault();
-        if (cart.length > 0) openPaymentModal();
-      }
-      // Alt+F11: Toggle Sale Return Mode
-      else if (e.altKey && e.key === 'F11') {
-        e.preventDefault();
-        setIsReturnMode((prev) => !prev);
-      }
-      // Shift+F2: Change Sale Type
-      else if (e.shiftKey && e.key === 'F2') {
-        e.preventDefault();
-        setSaleType((prev) => (prev === SaleType.RETAIL ? SaleType.WHOLESALE : SaleType.RETAIL));
-      }
-      // Shift+B: Open Item Master Detail side panel
-      else if (e.shiftKey && e.key === 'B') {
-        e.preventDefault();
-        setShowItemDetailPanel((prev) => !prev);
-      }
+      if (e.key === 'F1') { e.preventDefault(); setShowF1Overlay(true); return; }
+      if (e.key === 'F3') { e.preventDefault(); if (lastScannedItem) addItemToCart(lastScannedItem); return; }
+      if (e.key === 'F7') { e.preventDefault(); setPaymentModeUpfront(PaymentMode.UPI); triggerUPIPayment(); return; }
+      if (e.key === 'F10') { e.preventDefault(); if (cart.length > 0) openPaymentModal(); return; }
+      if (e.altKey && e.key === 'F11') { e.preventDefault(); setIsReturnMode(p => !p); return; }
+      if (e.shiftKey && e.key === 'F2') { e.preventDefault(); setSaleType(p => p === SaleType.RETAIL ? SaleType.WHOLESALE : SaleType.RETAIL); return; }
 
-      // Maintain Barcode Box Focus on Enter keypress anywhere on POS screen
-      if (e.key === 'Enter' && document.activeElement !== barcodeInputRef.current && !showPaymentModal && !showF1Overlay) {
+      // Redirect stray keystrokes to barcode box when no modal is open
+      const active = document.activeElement as HTMLElement;
+      const isInputFocused = active && (active.tagName === 'INPUT' || active.tagName === 'SELECT' || active.tagName === 'TEXTAREA');
+      if (!showPaymentModal && !showF1Overlay && !isInputFocused && e.key.length === 1) {
+        barcodeInputRef.current?.focus();
+      }
+      if (e.key === 'Enter' && active !== barcodeInputRef.current && !showPaymentModal && !showF1Overlay) {
         barcodeInputRef.current?.focus();
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [cart, lastScannedItem, showPaymentModal, showF1Overlay]);
 
-  // Cart Calculations
-  const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
-  const totalDiscount = cart.reduce((sum, item) => sum + item.discountAmount * item.qty, 0);
-  const totalAmount = cart.reduce((sum, item) => sum + item.netRate * item.qty, 0);
-  const changeDue = Math.max(0, receivedAmount - totalAmount);
-
-  // Barcode Lookup Handler
-  const handleBarcodeSubmit = async (e: React.FormEvent) => {
+  // ── Barcode scan ────────────────────────────────────────────────────────
+  const handleBarcodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter') return;
     e.preventDefault();
-    if (!barcodeInput.trim()) return;
+    const code = barcodeInput.trim();
+    if (!code) return;
+    handleBarcodeScan(code);
+  };
 
+  const handleBarcodeScan = async (code: string) => {
+    setBarcodeError('');
+    setBarcodeInput('');
     try {
-      const res = await api.get(`/pos/product/${encodeURIComponent(barcodeInput.trim())}`);
-      if (res.data && res.data.product) {
+      const res = await api.get(`/pos/product/${encodeURIComponent(code)}`);
+      if (res.data?.product) {
         const item: POSCartItem = res.data.product;
-        setLastScannedItem(item);
+        setLastScannedItem({ ...item, qty: 1 });
         addItemToCart(item);
-        setBarcodeInput('');
+        flashLastScanned();
       }
-    } catch (err: any) {
-      // Fallback mock item if backend is disconnected
-      const fallbackItem: POSCartItem = {
-        id: `prod-${Date.now()}`,
-        barcode: barcodeInput,
-        name: `Scanned Item (${barcodeInput})`,
-        description: 'Retail Supermarket Pack',
-        qty: 1,
-        mrp: 10000,
-        rate: 9000,
-        discountPercent: 10,
-        discountAmount: 1000,
-        gstPercent: 12,
-        netRate: 10080,
-        value: 10080,
-        unit: 'PCS',
-        hsnCode: '1905',
+    } catch {
+      // Fallback mock for offline/dev
+      const mock: POSCartItem = {
+        id: `prod-${Date.now()}`, barcode: code,
+        name: `Item (${code})`, description: 'Retail Pack',
+        qty: 1, mrp: 10000, rate: 9000,
+        discountPercent: 10, discountAmount: 900,
+        gstPercent: 12, netRate: 9100, value: 9100, unit: 'PCS', hsnCode: '1905',
       };
-      setLastScannedItem(fallbackItem);
-      addItemToCart(fallbackItem);
-      setBarcodeInput('');
+      setLastScannedItem({ ...mock, qty: 1 });
+      addItemToCart(mock);
+      flashLastScanned();
     } finally {
-      barcodeInputRef.current?.focus();
+      refocusBarcode();
     }
   };
 
+  const flashLastScanned = () => {
+    setLastScannedFlash(true);
+    setTimeout(() => setLastScannedFlash(false), 600);
+  };
+
+  // ── Cart operations ─────────────────────────────────────────────────────
   const addItemToCart = (item: POSCartItem) => {
-    setCart((prevCart) => {
-      const existingIdx = prevCart.findIndex((i) => i.barcode === item.barcode);
-      if (existingIdx >= 0) {
-        const updated = [...prevCart];
-        updated[existingIdx].qty += 1;
-        updated[existingIdx].value = updated[existingIdx].netRate * updated[existingIdx].qty;
+    setCart(prev => {
+      const idx = prev.findIndex(i => i.barcode === item.barcode);
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = { ...updated[idx], qty: updated[idx].qty + 1, value: updated[idx].netRate * (updated[idx].qty + 1) };
         return updated;
-      } else {
-        return [...prevCart, { ...item, qty: 1 }];
       }
+      return [...prev, { ...item, qty: 1, value: item.netRate }];
     });
   };
 
   const updateItemQty = (index: number, newQty: number) => {
     if (newQty <= 0) {
-      setCart((prev) => prev.filter((_, idx) => idx !== index));
+      setCart(prev => prev.filter((_, i) => i !== index));
     } else {
-      setCart((prev) => {
+      setCart(prev => {
         const updated = [...prev];
-        updated[index].qty = newQty;
-        updated[index].value = updated[index].netRate * newQty;
+        updated[index] = { ...updated[index], qty: newQty, value: updated[index].netRate * newQty };
         return updated;
       });
     }
+    refocusBarcode();
   };
 
-  // Open Payment Capture Modal
+  const removeItem = (index: number) => {
+    setCart(prev => prev.filter((_, i) => i !== index));
+    refocusBarcode();
+  };
+
+  // ── Payment flow ────────────────────────────────────────────────────────
   const openPaymentModal = () => {
-    setPaidCash(totalAmount);
-    setPaidCard(0);
-    setPaidUPI(0);
-    setReceivedAmount(totalAmount);
+    setPaidCash(totalAmount); setPaidCard(0); setPaidUPI(0); setReceivedAmount(totalAmount);
     setShowPaymentModal(true);
   };
 
-  // Trigger UPI Full-Screen Overlay
   const triggerUPIPayment = () => {
     setFullScreenOverlay('UPI');
     setOverlayStatus('Waiting for customer UPI QR scan & bank confirmation...');
     setTimeout(() => {
       setOverlayStatus('Payment Confirmed by UPI Webhook ✓');
-      setTimeout(() => {
-        setFullScreenOverlay('NONE');
-        finalizeInvoice(PaymentMode.UPI);
-      }, 1200);
+      setTimeout(() => { setFullScreenOverlay('NONE'); finalizeInvoice(PaymentMode.UPI); }, 1200);
     }, 2500);
   };
 
-  // Trigger Card Full-Screen Overlay
   const triggerCardPayment = () => {
     setFullScreenOverlay('CARD');
     setOverlayStatus('Swipe, Dip, or Tap Card on EDC Terminal...');
@@ -199,10 +206,7 @@ export const POSScreen: React.FC = () => {
       setOverlayStatus('EDC Terminal Processing Pin Authorization...');
       setTimeout(() => {
         setOverlayStatus('Card Payment Authorized ✓');
-        setTimeout(() => {
-          setFullScreenOverlay('NONE');
-          finalizeInvoice(PaymentMode.CARD);
-        }, 1200);
+        setTimeout(() => { setFullScreenOverlay('NONE'); finalizeInvoice(PaymentMode.CARD); }, 1200);
       }, 1500);
     }, 2000);
   };
@@ -210,388 +214,354 @@ export const POSScreen: React.FC = () => {
   const finalizeInvoice = async (finalMode: PaymentMode) => {
     try {
       const payload = {
-        registerId: 'reg-01',
-        saleType,
-        paymentMode: finalMode,
-        items: cart,
-        paidCash,
-        paidCard,
-        paidUPI,
-        customerPhone,
-        customerName,
-        isReturn: isReturnMode,
+        registerId: 'reg-01', saleType, paymentMode: finalMode,
+        invoiceNo, items: cart, paidCash, paidCard, paidUPI,
+        customerPhone, customerName, isReturn: isReturnMode,
       };
       const res = await api.post('/pos/invoice', payload);
-      setLastSavedInvoice({
-        invoiceNo: res.data.invoice?.invoiceNo || invoiceNo,
-        amount: totalAmount,
-      });
-      alert(`Invoice Saved & Bill Printed Successfully!\n${res.data.invoice?.invoiceNo || invoiceNo}`);
-    } catch (err: any) {
-      alert(`Invoice saved successfully locally (Offline Mode). Bill Printed.`);
+      const savedNo = res.data.invoice?.invoiceNo || invoiceNo;
+      setLastSavedInvoice({ invoiceNo: savedNo, amount: totalAmount });
+    } catch {
+      setLastSavedInvoice({ invoiceNo, amount: totalAmount });
     } finally {
-      setCart([]);
-      setLastScannedItem(null);
-      setShowPaymentModal(false);
-      barcodeInputRef.current?.focus();
+      setCart([]); setLastScannedItem(null); setShowPaymentModal(false);
+      await fetchNextInvoiceNo();
+      await fetchLastInvoice();
+      refocusBarcode();
     }
   };
 
+  // ════════════════════════════════════════════════════════════════════════
+  // RENDER
+  // ════════════════════════════════════════════════════════════════════════
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: 'calc(100vh - 100px)' }}>
-      {/* 6.1 Top of screen plain text branding */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
-        <div style={{ fontSize: '20px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+    <div
+      style={{ display: 'flex', flexDirection: 'column', gap: '0', minHeight: 'calc(100vh - 56px)' }}
+      tabIndex={-1}
+      onKeyDown={(e) => {
+        if (e.key.length === 1 && document.activeElement !== barcodeInputRef.current && !showPaymentModal && !showF1Overlay) {
+          barcodeInputRef.current?.focus();
+        }
+      }}
+    >
+
+      {/* ── 1. HEADER ───────────────────────────────────────────────────── */}
+      <div style={{ borderBottom: '1px solid var(--border-color)', padding: '10px 0 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 style={{ fontSize: '20px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '2px', color: 'var(--text-main)', margin: 0 }}>
           Afreen Mall
-        </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        </h1>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button
-            className={`btn ${isReturnMode ? 'btn-primary' : ''}`}
-            onClick={() => setIsReturnMode(!isReturnMode)}
-            style={{
-              padding: '4px 12px',
-              fontSize: '12px',
-              backgroundColor: isReturnMode ? 'var(--status-red)' : undefined,
-              borderColor: isReturnMode ? 'var(--status-red)' : undefined,
-              color: isReturnMode ? '#ffffff' : undefined,
-            }}
+            className={`btn`}
+            onClick={() => { setIsReturnMode(p => !p); refocusBarcode(); }}
+            style={{ padding: '3px 10px', fontSize: '11px', backgroundColor: isReturnMode ? 'var(--status-red)' : undefined, borderColor: isReturnMode ? 'var(--status-red)' : undefined, color: isReturnMode ? '#fff' : undefined }}
           >
-            {isReturnMode ? 'MODE: SALE RETURN (Alt+F11)' : 'MODE: RETAIL SALE'}
+            {isReturnMode ? '⚠ RETURN MODE' : 'RETAIL SALE'}
           </button>
-          <button className="btn" onClick={() => setShowF1Overlay(true)} style={{ padding: '4px 10px', fontSize: '12px' }}>
-            <HelpCircle size={14} />
-            <span>F1 Shortcuts</span>
+          <button className="btn" onClick={() => { setShowF1Overlay(true); refocusBarcode(); }} style={{ padding: '3px 10px', fontSize: '11px' }}>
+            <HelpCircle size={13} /><span>F1</span>
           </button>
         </div>
       </div>
 
-      {/* 6.2 Invoice Header Row */}
-      <div className="card" style={{ padding: '12px 16px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', alignItems: 'center' }}>
-          <div>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Date</span>
-            <input type="text" className="input-field tabular-nums" value={new Date().toISOString().slice(0, 10)} readOnly />
+      {/* ── 2. INVOICE ENTRY STRIP ──────────────────────────────────────── */}
+      <div className="card" style={{ padding: '10px 14px', marginTop: '10px', borderLeft: '3px solid var(--accent-lime)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'flex-end' }}>
+
+          {/* Date */}
+          <div style={{ minWidth: '110px' }}>
+            <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px', marginBottom: '3px' }}>Date</div>
+            <input type="text" className="input-field tabular-nums" value={formatDate(new Date())} readOnly style={{ fontSize: '13px', padding: '5px 8px', cursor: 'default' }} />
           </div>
 
-          <div>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Sale Type (Shift+F2)</span>
-            <select
-              className="input-field"
-              value={saleType}
-              onChange={(e) => setSaleType(e.target.value as SaleType)}
-            >
-              <option value={SaleType.RETAIL}>Retail Sale</option>
+          {/* Sale Type */}
+          <div style={{ minWidth: '140px' }}>
+            <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px', marginBottom: '3px' }}>Sale Type <span style={{ color: 'var(--text-muted)', fontSize: '9px' }}>(Shift+F2)</span></div>
+            <select className="input-field" value={saleType} onChange={e => { setSaleType(e.target.value as SaleType); refocusBarcode(); }} style={{ fontSize: '13px', padding: '5px 8px' }}>
+              <option value={SaleType.RETAIL}>Cash Sale</option>
               <option value={SaleType.WHOLESALE}>Wholesale</option>
-              <option value={SaleType.INSTITUTIONAL}>Institutional</option>
+              <option value={SaleType.INSTITUTIONAL}>Credit Sale</option>
             </select>
           </div>
 
-          <div>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Cashier Name</span>
-            <input type="text" className="input-field" value={`${user?.fullName || 'Cashier'} (ID: ${user?.staffId || 300003})`} readOnly />
+          {/* Cashier */}
+          <div style={{ minWidth: '160px' }}>
+            <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px', marginBottom: '3px' }}>Cashier</div>
+            <input type="text" className="input-field" value={user?.fullName || 'Cashier'} readOnly style={{ fontSize: '13px', padding: '5px 8px', cursor: 'default' }} />
           </div>
 
-          <div>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Invoice No.</span>
-            <input type="text" className="input-field tabular-nums" value={invoiceNo} readOnly style={{ fontWeight: 'bold' }} />
+          {/* Invoice No */}
+          <div style={{ minWidth: '160px' }}>
+            <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px', marginBottom: '3px' }}>Invoice No.</div>
+            <input type="text" className="input-field tabular-nums" value={invoiceNo} readOnly style={{ fontSize: '13px', padding: '5px 8px', fontWeight: 'bold', cursor: 'default', color: 'var(--accent-lime)' }} />
           </div>
 
-          <div>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Payment By (Upfront)</span>
-            <select
-              className="input-field"
-              value={paymentModeUpfront}
-              onChange={(e) => setPaymentModeUpfront(e.target.value as PaymentMode)}
-            >
-              <option value={PaymentMode.CASH}>CASH</option>
-              <option value={PaymentMode.CARD}>CARD</option>
-              <option value={PaymentMode.UPI}>UPI</option>
-              <option value={PaymentMode.SPLIT}>SPLIT PAYMENT</option>
-            </select>
+          {/* Payment By — segmented radio */}
+          <div style={{ flex: 1, minWidth: '200px' }}>
+            <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px', marginBottom: '3px' }}>Payment By</div>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {([PaymentMode.CASH, PaymentMode.CARD, PaymentMode.UPI, PaymentMode.SPLIT] as PaymentMode[]).map(mode => (
+                <button
+                  key={mode}
+                  className="btn"
+                  onClick={() => { setPaymentModeUpfront(mode); refocusBarcode(); }}
+                  style={{
+                    flex: 1, padding: '5px 4px', fontSize: '11px', fontWeight: 'bold',
+                    backgroundColor: paymentModeUpfront === mode ? 'var(--accent-lime)' : undefined,
+                    color: paymentModeUpfront === mode ? '#0B0F0D' : undefined,
+                    borderColor: paymentModeUpfront === mode ? 'var(--accent-lime)' : undefined,
+                  }}
+                >
+                  {mode === PaymentMode.SPLIT ? 'SPLIT' : mode}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 6.3 Barcode Input Box & Last Scanned Item Block */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '16px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Barcode Focus Input */}
-          <form onSubmit={handleBarcodeSubmit} style={{ display: 'flex', gap: '10px' }}>
-            <input
-              ref={barcodeInputRef}
-              type="text"
-              className="input-field tabular-nums"
-              value={barcodeInput}
-              onChange={(e) => setBarcodeInput(e.target.value)}
-              placeholder="Scan Product Barcode or Type & Press Enter (Focus Resets Automatically)"
-              style={{ fontSize: '16px', padding: '12px 16px', border: '2px solid var(--accent-lime)' }}
-            />
-            <button type="submit" className="btn btn-primary" style={{ padding: '0 24px' }}>
-              Add Item
-            </button>
-          </form>
+      {/* ── 3. BARCODE SCAN BOX ─────────────────────────────────────────── */}
+      <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>
+          Scan Barcode — type or scan, press Enter
+        </div>
+        <input
+          ref={barcodeInputRef}
+          type="text"
+          className="input-field tabular-nums"
+          value={barcodeInput}
+          onChange={e => { setBarcodeInput(e.target.value); setBarcodeError(''); }}
+          onKeyDown={handleBarcodeKeyDown}
+          placeholder="▶  Scan or type barcode, then press Enter"
+          style={{
+            fontSize: '19px', padding: '10px 16px',
+            border: '2px solid var(--accent-lime)',
+            letterSpacing: '1px',
+          }}
+          autoComplete="off"
+          spellCheck={false}
+        />
+        {barcodeError && (
+          <div style={{ fontSize: '12px', color: 'var(--status-red)', padding: '3px 4px' }}>⚠ {barcodeError}</div>
+        )}
+      </div>
 
-          {/* Last Scanned Item Detail Block */}
-          <div className="card" style={{ padding: '12px 16px', backgroundColor: 'var(--accent-soft)', border: '1px solid var(--border-color)' }}>
-            <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--accent-lime)', textTransform: 'uppercase', marginBottom: '8px' }}>
-              Last Scanned Item Detail
-            </div>
-            {lastScannedItem ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '8px', fontSize: '13px' }}>
-                <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '10px' }}>QTY</span> <strong>{lastScannedItem.qty}</strong></div>
-                <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '10px' }}>MRP</span> ₹{(lastScannedItem.mrp / 100).toFixed(2)}</div>
-                <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '10px' }}>RATE</span> ₹{(lastScannedItem.rate / 100).toFixed(2)}</div>
-                <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '10px' }}>DISC %</span> {lastScannedItem.discountPercent}%</div>
-                <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '10px' }}>DISC AMT</span> ₹{(lastScannedItem.discountAmount / 100).toFixed(2)}</div>
-                <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '10px' }}>GST %</span> {lastScannedItem.gstPercent}%</div>
-                <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '10px' }}>NET RATE</span> ₹{(lastScannedItem.netRate / 100).toFixed(2)}</div>
-                <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '10px' }}>VALUE</span> <strong>₹{(lastScannedItem.value / 100).toFixed(2)}</strong></div>
+      {/* ── 4. LAST SCANNED ITEM STRIP ──────────────────────────────────── */}
+      <div
+        className="card"
+        style={{
+          marginTop: '8px', padding: '8px 14px',
+          backgroundColor: lastScannedFlash ? 'var(--accent-lime)' : 'var(--accent-soft)',
+          border: `1px solid ${lastScannedFlash ? 'var(--accent-lime)' : 'var(--border-color)'}`,
+          transition: 'background-color 0.15s ease, border-color 0.15s ease',
+        }}
+      >
+        <div style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', color: lastScannedFlash ? '#0B0F0D' : 'var(--accent-lime)', letterSpacing: '0.5px', marginBottom: '6px' }}>
+          Last Scanned Item
+        </div>
+        {lastScannedItem ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '8px' }}>
+            {[
+              { label: 'QTY',        val: lastScannedItem.qty.toString() },
+              { label: 'MRP',        val: `₹${paiseToRupee(lastScannedItem.mrp)}` },
+              { label: 'RATE',       val: `₹${paiseToRupee(lastScannedItem.rate)}` },
+              { label: 'DISC %',     val: `${lastScannedItem.discountPercent}%` },
+              { label: 'DISC ₹',     val: `₹${paiseToRupee(lastScannedItem.discountAmount)}` },
+              { label: 'GST %',      val: `${lastScannedItem.gstPercent}%` },
+              { label: 'NET RATE',   val: `₹${paiseToRupee(lastScannedItem.netRate)}` },
+              { label: 'VALUE',      val: `₹${paiseToRupee(lastScannedItem.value)}` },
+            ].map(({ label, val }) => (
+              <div key={label}>
+                <div style={{ fontSize: '9px', textTransform: 'uppercase', color: lastScannedFlash ? 'rgba(0,0,0,0.5)' : 'var(--text-muted)', marginBottom: '2px' }}>{label}</div>
+                <div style={{ fontSize: '13px', fontWeight: 'bold', color: lastScannedFlash ? '#0B0F0D' : 'var(--text-main)', fontVariantNumeric: 'tabular-nums' }}>{val}</div>
               </div>
-            ) : (
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                No item scanned yet. Scan barcode or select item to view item master detail breakdown.
-              </div>
-            )}
+            ))}
           </div>
+        ) : (
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+            No item scanned yet — scan a barcode above to see item breakdown.
+          </div>
+        )}
+      </div>
 
-          {/* Item Cart Table */}
-          <div className="card" style={{ padding: '0', flex: 1 }}>
-            <div className="table-container">
-              <table>
-                <thead>
+      {/* ── MAIN AREA: table + right panel ──────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '12px', marginTop: '10px', flex: 1 }}>
+
+        {/* ── 5. ITEM LIST TABLE ───────────────────────────────────────── */}
+        <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column' }}>
+          <div className="table-container" style={{ maxHeight: '320px', overflowY: 'auto' }}>
+            <table>
+              <thead>
+                <tr>
+                  <th style={{ width: '32px' }}>SR.</th>
+                  <th>ITEM DESCRIPTION</th>
+                  <th style={{ textAlign: 'center' }}>QTY</th>
+                  <th>MRP</th>
+                  <th>RATE</th>
+                  <th>DISC %</th>
+                  <th>DISC ₹</th>
+                  <th>GST %</th>
+                  <th>NET RATE</th>
+                  <th>VALUE</th>
+                  <th style={{ width: '32px' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {cart.length === 0 ? (
                   <tr>
-                    <th>SR.</th>
-                    <th>ITEM / BARCODE</th>
-                    <th>DESCRIPTION</th>
-                    <th>QTY (F9 Edit)</th>
-                    <th>MRP</th>
-                    <th>RATE</th>
-                    <th>VALUE</th>
+                    <td colSpan={11} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)', fontSize: '13px', fontStyle: 'italic' }}>
+                      <ShoppingCart size={24} style={{ opacity: 0.3, display: 'block', margin: '0 auto 8px' }} />
+                      Cart is empty — scan items above to build the invoice.
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {cart.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                        Invoice Cart Empty. Scan items above to build invoice.
-                      </td>
-                    </tr>
-                  ) : (
-                    cart.map((item, idx) => (
-                      <tr key={idx} style={{ backgroundColor: selectedCartIndex === idx ? 'var(--accent-soft)' : undefined }}>
-                        <td className="tabular-nums">{idx + 1}</td>
-                        <td style={{ fontWeight: 'bold' }}>
-                          <div>{item.name}</div>
-                          <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{item.barcode}</div>
-                        </td>
-                        <td style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{item.description}</td>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <button className="btn" style={{ padding: '1px 6px' }} onClick={() => updateItemQty(idx, item.qty - 1)}>-</button>
-                            <span className="tabular-nums" style={{ fontWeight: 'bold' }}>{item.qty}</span>
-                            <button className="btn" style={{ padding: '1px 6px' }} onClick={() => updateItemQty(idx, item.qty + 1)}>+</button>
-                          </div>
-                        </td>
-                        <td className="monetary">₹{(item.mrp / 100).toFixed(2)}</td>
-                        <td className="monetary">₹{(item.rate / 100).toFixed(2)}</td>
-                        <td className="monetary" style={{ fontWeight: 'bold', color: 'var(--accent-lime)' }}>
-                          ₹{(item.value / 100).toFixed(2)}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                ) : cart.map((item, idx) => (
+                  <tr
+                    key={idx}
+                    style={{ backgroundColor: selectedCartIndex === idx ? 'var(--accent-soft)' : undefined, cursor: 'default' }}
+                    onClick={() => setSelectedCartIndex(idx)}
+                  >
+                    <td className="tabular-nums" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{idx + 1}</td>
+                    <td>
+                      <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{item.barcode}</div>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <button className="btn" style={{ padding: '0 5px', fontSize: '13px', lineHeight: '18px' }} onClick={e => { e.stopPropagation(); updateItemQty(idx, item.qty - 1); }}>−</button>
+                        <span className="tabular-nums" style={{ fontWeight: 'bold', minWidth: '22px', textAlign: 'center' }}>{item.qty}</span>
+                        <button className="btn" style={{ padding: '0 5px', fontSize: '13px', lineHeight: '18px' }} onClick={e => { e.stopPropagation(); updateItemQty(idx, item.qty + 1); }}>+</button>
+                      </div>
+                    </td>
+                    <td className="monetary" style={{ fontSize: '12px' }}>₹{paiseToRupee(item.mrp)}</td>
+                    <td className="monetary" style={{ fontSize: '12px' }}>₹{paiseToRupee(item.rate)}</td>
+                    <td className="tabular-nums" style={{ fontSize: '12px' }}>{item.discountPercent}%</td>
+                    <td className="monetary" style={{ fontSize: '12px', color: 'var(--status-green)' }}>₹{paiseToRupee(item.discountAmount * item.qty)}</td>
+                    <td className="tabular-nums" style={{ fontSize: '12px' }}>{item.gstPercent}%</td>
+                    <td className="monetary" style={{ fontSize: '12px' }}>₹{paiseToRupee(item.netRate)}</td>
+                    <td className="monetary" style={{ fontWeight: 'bold', color: 'var(--accent-lime)' }}>₹{paiseToRupee(item.netRate * item.qty)}</td>
+                    <td>
+                      <button className="btn" style={{ padding: '2px 5px', color: 'var(--status-red)', borderColor: 'transparent' }} onClick={e => { e.stopPropagation(); removeItem(idx); }} title="Remove">
+                        <Trash2 size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
 
-        {/* Right Side Totals & Actions Panel */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Running Totals Large Box */}
-          <div className="card" style={{ border: '2px solid var(--accent-lime)', textAlign: 'center', padding: '24px' }}>
-            <div style={{ fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-              Total Sale Amount
-            </div>
-            <div style={{ fontSize: '38px', fontWeight: 'bold', color: 'var(--accent-lime)', marginTop: '4px' }} className="monetary">
-              ₹{(totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-            </div>
+        {/* ── RIGHT PANEL ─────────────────────────────────────────────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
-              <div>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Total Qty (pcs)</span>
-                <strong style={{ fontSize: '18px' }} className="tabular-nums">{totalQty}</strong>
-              </div>
-              <div>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Total Discount</span>
-                <strong style={{ fontSize: '18px', color: 'var(--status-green)' }} className="monetary">
-                  ₹{(totalDiscount / 100).toFixed(2)}
-                </strong>
+          {/* ── 6. TOTALS BOX ─────────────────────────────────────────── */}
+          <div className="card" style={{ border: '2px solid var(--accent-lime)', padding: '16px', backgroundColor: 'var(--surface-secondary)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total Qty (Pcs)</span>
+              <strong className="tabular-nums" style={{ fontSize: '18px' }}>{totalQty}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total Discount</span>
+              <strong className="monetary" style={{ fontSize: '16px', color: 'var(--status-green)' }}>₹{paiseToRupee(totalDiscount)}</strong>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Total</div>
+              <div className="monetary" style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--accent-lime)', lineHeight: 1.1, marginTop: '4px' }}>
+                ₹{paiseToRupee(totalAmount)}
               </div>
             </div>
           </div>
 
-          {/* Customer Loyalty Search */}
-          <div className="card" style={{ padding: '14px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <User size={14} />
-              <span>Customer Loyalty (Alt+B)</span>
+          {/* Customer loyalty */}
+          <div className="card" style={{ padding: '12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '7px', display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-muted)' }}>
+              <User size={12} /><span>Customer Loyalty</span>
             </div>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <input
-                type="text"
-                className="input-field tabular-nums"
-                placeholder="Mobile No (e.g. 9876543210)"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-              />
-              <button
-                className="btn"
-                onClick={() => {
-                  setCustomerName('Vikram Mehta');
-                  setLoyaltyPoints(450);
-                }}
-              >
-                Find
-              </button>
+            <div style={{ display: 'flex', gap: '5px' }}>
+              <input type="text" className="input-field tabular-nums" placeholder="Mobile No." value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} style={{ fontSize: '13px', padding: '5px 8px' }} />
+              <button className="btn" style={{ padding: '5px 10px', fontSize: '12px' }} onClick={() => { setCustomerName('Valued Customer'); setLoyaltyPoints(0); }}>Find</button>
             </div>
             {customerName && (
-              <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--status-green)' }}>
-                Customer: <strong>{customerName}</strong> | Points: <strong>{loyaltyPoints}</strong>
+              <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--status-green)' }}>
+                {customerName} · <strong>{loyaltyPoints ?? 0} pts</strong>
               </div>
             )}
-          </div>
-
-          {/* Last Invoice Reference */}
-          <div className="card" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            <div>Last Invoice: <strong className="tabular-nums">{lastSavedInvoice.invoiceNo}</strong></div>
-            <div>Amount: <strong className="monetary">₹{(lastSavedInvoice.amount / 100).toFixed(2)}</strong></div>
-            <div style={{ marginTop: '4px' }}>Cash Return Due: <strong style={{ color: 'var(--status-green)' }} className="monetary">₹{(changeDue / 100).toFixed(2)}</strong></div>
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: 'auto' }}>
-            <button
-              className="btn btn-primary"
-              onClick={openPaymentModal}
-              disabled={cart.length === 0}
-              style={{ padding: '14px', fontSize: '16px' }}
-            >
-              <Save size={18} />
-              <span>Save & Pay Invoice (F10)</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: 'auto' }}>
+            <button className="btn btn-primary" onClick={openPaymentModal} disabled={cart.length === 0} style={{ padding: '13px', fontSize: '15px' }}>
+              <Save size={16} /><span>Save & Pay (F10)</span>
             </button>
-            <button
-              className="btn"
-              onClick={() => setCart([])}
-              disabled={cart.length === 0}
-              style={{ color: 'var(--status-red)', borderColor: 'var(--border-color)' }}
-            >
-              Cancel Invoice
+            <button className="btn" onClick={() => { setCart([]); setLastScannedItem(null); refocusBarcode(); }} disabled={cart.length === 0} style={{ color: 'var(--status-red)' }}>
+              Void Invoice
             </button>
           </div>
         </div>
       </div>
 
-      {/* 6.5 Invoice Footer Credit Line */}
-      <footer style={{ marginTop: 'auto', borderTop: '1px solid var(--border-color)', paddingTop: '12px', textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)' }}>
-        Software by Gous Khan · Mobile: 8625076618 · gousk2004@gmail.com
-      </footer>
+      {/* ── 7. FOOTER — LAST INVOICE REFERENCE ──────────────────────────── */}
+      <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: 'var(--text-muted)' }}>
+        <div>
+          {lastSavedInvoice
+            ? <>Last Invoice: <strong className="tabular-nums" style={{ color: 'var(--text-main)' }}>{lastSavedInvoice.invoiceNo}</strong>&nbsp;&nbsp;(RS:- <strong className="monetary" style={{ color: 'var(--status-green)' }}>₹{paiseToRupee(lastSavedInvoice.amount)}</strong>)</>
+            : <span style={{ fontStyle: 'italic' }}>No invoice yet today</span>
+          }
+        </div>
+        <div style={{ fontSize: '11px' }}>Software by Gous Khan · 8625076618</div>
+      </div>
 
-      {/* F1 Shortcuts Overlay Modal */}
-      <F1ShortcutOverlay isOpen={showF1Overlay} onClose={() => setShowF1Overlay(false)} />
+      {/* ── F1 OVERLAY ────────────────────────────────────────────────────── */}
+      <F1ShortcutOverlay isOpen={showF1Overlay} onClose={() => { setShowF1Overlay(false); refocusBarcode(); }} />
 
-      {/* 6.6 Payment Capture Modal with Split Payment Support */}
+      {/* ── PAYMENT MODAL ────────────────────────────────────────────────── */}
       {showPaymentModal && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '780px' }}>
-            <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-              Payment Capture & Reconciliation (F10 Save)
+          <div className="modal-content" style={{ maxWidth: '760px' }}>
+            <h3 style={{ fontSize: '17px', fontWeight: 'bold', marginBottom: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+              Payment Capture — Invoice {invoiceNo}
             </h3>
-
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-              {/* Payment Mode Selection & Inputs */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                  Split Payment Breakdown
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Cash Amount Received (₹)</label>
-                  <input
-                    type="number"
-                    className="input-field tabular-nums"
-                    value={paidCash / 100}
-                    onChange={(e) => {
-                      const v = Math.round((parseFloat(e.target.value) || 0) * 100);
-                      setPaidCash(v);
-                      setReceivedAmount(v + paidCard + paidUPI);
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Card Payment Amount (₹)</label>
-                  <input
-                    type="number"
-                    className="input-field tabular-nums"
-                    value={paidCard / 100}
-                    onChange={(e) => {
-                      const v = Math.round((parseFloat(e.target.value) || 0) * 100);
-                      setPaidCard(v);
-                      setReceivedAmount(paidCash + v + paidUPI);
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>UPI Payment Amount (₹)</label>
-                  <input
-                    type="number"
-                    className="input-field tabular-nums"
-                    value={paidUPI / 100}
-                    onChange={(e) => {
-                      const v = Math.round((parseFloat(e.target.value) || 0) * 100);
-                      setPaidUPI(v);
-                      setReceivedAmount(paidCash + paidCard + v);
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                  <button className="btn" style={{ flex: 1 }} onClick={triggerUPIPayment}>
-                    <QrCode size={16} />
-                    <span>UPI Pay (F7)</span>
-                  </button>
-                  <button className="btn" style={{ flex: 1 }} onClick={triggerCardPayment}>
-                    <CreditCard size={16} />
-                    <span>Card EDC (F8)</span>
-                  </button>
+                <div style={{ fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase' }}>Split Payment Breakdown</div>
+                {[
+                  { label: 'Cash Amount (₹)', val: paidCash, set: (v: number) => { setPaidCash(v); setReceivedAmount(v + paidCard + paidUPI); } },
+                  { label: 'Card Amount (₹)',  val: paidCard, set: (v: number) => { setPaidCard(v); setReceivedAmount(paidCash + v + paidUPI); } },
+                  { label: 'UPI Amount (₹)',   val: paidUPI,  set: (v: number) => { setPaidUPI(v); setReceivedAmount(paidCash + paidCard + v); } },
+                ].map(({ label, val, set }) => (
+                  <div key={label}>
+                    <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>{label}</label>
+                    <input type="number" className="input-field tabular-nums" value={val / 100}
+                      onChange={e => set(Math.round((parseFloat(e.target.value) || 0) * 100))}
+                      style={{ padding: '7px 10px' }} />
+                  </div>
+                ))}
+                <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                  <button className="btn" style={{ flex: 1 }} onClick={triggerUPIPayment}><QrCode size={15} /><span>UPI (F7)</span></button>
+                  <button className="btn" style={{ flex: 1 }} onClick={triggerCardPayment}><CreditCard size={15} /><span>Card (F8)</span></button>
                 </div>
               </div>
-
-              {/* Side Panel Reconciliation Summary */}
               <div style={{ backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 'bold', textTransform: 'uppercase' }}>Invoice Summary</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Bill Amount:</span>
-                  <strong className="monetary">₹{(totalAmount / 100).toFixed(2)}</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Total Received:</span>
-                  <strong className="monetary">₹{(receivedAmount / 100).toFixed(2)}</strong>
-                </div>
+                <div style={{ fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase' }}>Invoice Summary</div>
+                {[
+                  { l: 'Bill Amount', v: `₹${paiseToRupee(totalAmount)}`, bold: false },
+                  { l: 'Total Discount', v: `₹${paiseToRupee(totalDiscount)}`, bold: false },
+                  { l: 'Amount Received', v: `₹${paiseToRupee(receivedAmount)}`, bold: false },
+                ].map(({ l, v }) => (
+                  <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{l}</span>
+                    <strong className="monetary">{v}</strong>
+                  </div>
+                ))}
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '8px' }}>
-                  <span>Balance / Change Due:</span>
-                  <strong className="monetary" style={{ color: 'var(--accent-lime)' }}>₹{(changeDue / 100).toFixed(2)}</strong>
+                  <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Change Due</span>
+                  <strong className="monetary" style={{ fontSize: '18px', color: 'var(--accent-lime)' }}>₹{paiseToRupee(changeDue)}</strong>
                 </div>
-
                 <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <button className="btn btn-primary" onClick={() => finalizeInvoice(PaymentMode.CASH)} style={{ padding: '12px' }}>
+                  <button className="btn btn-primary" onClick={() => finalizeInvoice(paymentModeUpfront)} style={{ padding: '11px' }}>
                     Confirm & Print Bill
                   </button>
-                  <button className="btn" onClick={() => setShowPaymentModal(false)}>
-                    Back to Invoice
-                  </button>
+                  <button className="btn" onClick={() => { setShowPaymentModal(false); refocusBarcode(); }}>Back to Invoice</button>
                 </div>
               </div>
             </div>
@@ -599,31 +569,29 @@ export const POSScreen: React.FC = () => {
         </div>
       )}
 
-      {/* 6.7 Full-Screen Payment Overlays */}
+      {/* ── FULL-SCREEN PAYMENT OVERLAYS ─────────────────────────────────── */}
       {fullScreenOverlay === 'UPI' && (
         <div className="payment-overlay-fullscreen">
-          <QrCode size={96} style={{ color: 'var(--accent-lime)', marginBottom: '24px' }} />
-          <h2 style={{ fontSize: '28px', fontWeight: 'bold', textTransform: 'uppercase' }}>Scan UPI QR Code to Pay</h2>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', color: 'var(--accent-lime)', margin: '16px 0' }} className="monetary">
-            Amount: ₹{(totalAmount / 100).toFixed(2)}
+          <QrCode size={90} style={{ color: 'var(--accent-lime)', marginBottom: '20px' }} />
+          <h2 style={{ fontSize: '26px', fontWeight: 'bold', textTransform: 'uppercase' }}>Scan UPI QR to Pay</h2>
+          <div className="monetary" style={{ fontSize: '40px', fontWeight: 'bold', color: 'var(--accent-lime)', margin: '14px 0' }}>
+            ₹{paiseToRupee(totalAmount)}
           </div>
-          <div style={{ fontSize: '16px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <RefreshCw className="spin" size={18} />
-            <span>{overlayStatus}</span>
+          <div style={{ fontSize: '15px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <RefreshCw size={16} /><span>{overlayStatus}</span>
           </div>
         </div>
       )}
 
       {fullScreenOverlay === 'CARD' && (
         <div className="payment-overlay-fullscreen">
-          <CreditCard size={96} style={{ color: 'var(--accent-lime)', marginBottom: '24px' }} />
-          <h2 style={{ fontSize: '28px', fontWeight: 'bold', textTransform: 'uppercase' }}>Swipe / Tap / Insert Card on EDC Terminal</h2>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', color: 'var(--accent-lime)', margin: '16px 0' }} className="monetary">
-            Amount: ₹{(totalAmount / 100).toFixed(2)}
+          <CreditCard size={90} style={{ color: 'var(--accent-lime)', marginBottom: '20px' }} />
+          <h2 style={{ fontSize: '26px', fontWeight: 'bold', textTransform: 'uppercase' }}>Swipe / Tap / Insert Card</h2>
+          <div className="monetary" style={{ fontSize: '40px', fontWeight: 'bold', color: 'var(--accent-lime)', margin: '14px 0' }}>
+            ₹{paiseToRupee(totalAmount)}
           </div>
-          <div style={{ fontSize: '16px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <RefreshCw className="spin" size={18} />
-            <span>{overlayStatus}</span>
+          <div style={{ fontSize: '15px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <RefreshCw size={16} /><span>{overlayStatus}</span>
           </div>
         </div>
       )}
