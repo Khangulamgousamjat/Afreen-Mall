@@ -38,7 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentScreen, onNavigate }) =
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-header" style={{ padding: '16px 12px' }}>
+      <div className="sidebar-header" style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
         <AfreenMallLogo size="small" />
       </div>
 
