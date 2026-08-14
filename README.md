@@ -1,7 +1,7 @@
 # 🛍️ AFREEN MALL — Enterprise POS & Operations Platform
 
 > **Military-Grade, Bank-Secured Point of Sale & Retail ERP System**  
-> Designed for High-Volume Retail Superstores, Hypermarkets, and Multi-Counter Malls.
+> Engineered for High-Volume Retail Superstores, Hypermarkets, and Multi-Counter Enterprise Malls.
 
 ---
 
@@ -9,187 +9,270 @@
 ![Crafted by Gous Organisation](https://img.shields.io/badge/Made%20With-%E2%9D%A4%EF%B8%8F%20by%20Gous%20Organisation-FF1493?style=for-the-badge)
 ![Architect](https://img.shields.io/badge/Architect-Gous%20Khan-10b981?style=for-the-badge)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Monorepo-3178C6?style=for-the-badge&logo=typescript)
-![React](https://img.shields.io/badge/Frontend-Vite%20React-61DAFB?style=for-the-badge&logo=react)
+![React](https://img.shields.io/badge/Frontend-Vite%20React%2018-61DAFB?style=for-the-badge&logo=react)
 ![Express](https://img.shields.io/badge/Backend-Node.js%20Express-000000?style=for-the-badge&logo=express)
-![Prisma](https://img.shields.io/badge/ORM-Prisma-2D3748?style=for-the-badge&logo=prisma)
+![Prisma](https://img.shields.io/badge/ORM-Prisma%20v5-2D3748?style=for-the-badge&logo=prisma)
 ![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-4169E1?style=for-the-badge&logo=postgresql)
 
 ---
 
-## 🌟 Comprehensive Feature Showcase (Minor to Major)
-
-### 💳 1. Manual Bill Recovery — Card/UPI Payment Failures (`Shift + F8`)
-- **Scenario**: Customer's card or UPI payment succeeds at the bank/EDC terminal, but POS printer paper jams or fails before generating the bill.
-- **Cash Officer Verification**: Cash Officer verifies bank receipt, then triggers **`Shift + F8`** (or clicks **Recover Bill** in the header bar).
-- **Data Capture**: Requests mandatory **Transaction ID** (text), **Amount Paid** (currency > ₹0), and **Payment Mode** (Card/UPI).
-- **Duplicate Prevention**: Live WAF check blocks duplicate Transaction IDs.
-- **Audit Compliance**: Immutable entry logged to `AuditLog` table.
-
----
-
-### 🖨️ 2. Strict One-Time Original Print & Authorized Duplicate Copy (`Ctrl + F5`)
-- **Strict 1-Time Original Rule**: Original receipt prints strictly **ONCE** upon payment completion. Automatic re-printing is prohibited.
-- **Duplicate Reprinting**: Triggered via **`Ctrl + F5`** or **Print Duplicate** header action button.
-- **Supervisor Role Guard**: Restricted to Cash Officer, Store Manager, Super Admin, Accountant, and Auditor. Standard cashiers see a supervisor warning.
-- **Prominent Watermark**: Formats receipt header & footer with `*** DUPLICATE COPY *** (NOT AN ORIGINAL RECEIPT)`.
-- **Audit Tracking**: Every duplicate print records staff ID, invoice number, reprint count (`reprintCount`), timestamp, and reason into `AuditLog`.
-
----
-
-### 🖥️ 3. POS Register Auto-Feed / Terminal Selection (`[ POS-01 ]`)
-- **Post-Login Terminal Feed**: Prompts cashier to select active terminal register (`POS-01 Main Counter`, `POS-02 Express`, `POS-03 Grocery`, etc.) or auto-feeds from memory.
-- **Prominent Badge**: Renders an interactive **`[ POS-01 ]`** badge in the header bar. Clicking allows seamless switching.
-- **Invoice Tracking**: Every invoice records the active register ID for audit & cash drawer reconciliation.
+## 📑 Table of Contents
+1. [System Architecture & Monorepo Overview](#-system-architecture--monorepo-overview)
+2. [Seeded Official Staff & Credential Directory](#-seeded-official-staff--credential-directory)
+3. [Deep Feature Catalog (Minor to Major)](#-deep-feature-catalog-minor-to-major)
+   - [Module 1: High-Speed POS Billing & Checkout](#1-high-speed-pos-billing--checkout)
+   - [Module 2: Return & Exchange Management](#2-return--exchange-management)
+   - [Module 3: Cash Management & BNA Vault Accounting](#3-cash-management--bna-vault-accounting)
+   - [Module 4: Day Close & Shift Handover Reporting](#4-day-close--shift-handover-reporting)
+   - [Module 5: Inventory & Warehouse Master](#5-inventory--warehouse-master)
+   - [Module 6: Procurement & Purchase Order Management (PO / GRN)](#6-procurement--purchase-order-management-po--grn)
+   - [Module 7: Accounting & Financial Governance](#7-accounting--financial-governance)
+   - [Module 8: HR & Staff Administration](#8-hr--staff-administration)
+   - [Module 9: Customer Relationship Management (CRM) & Loyalty](#9-customer-relationship-management-crm--loyalty)
+   - [Module 10: Business Intelligence & Executive Analytics](#10-business-intelligence--executive-analytics)
+   - [Module 11: Military & Bank-Grade Security Hardening](#11-military--bank-grade-security-hardening)
+   - [Module 12: Zero-Mouse Keyboard Operability (WCAG Compliant)](#12-zero-mouse-keyboard-operability-wcag-compliant)
+4. [Keyboard Shortcut Command Matrix](#-keyboard-shortcut-command-matrix)
+5. [Environment Variables & Deployment](#-environment-variables--deployment)
 
 ---
 
-### 💵 4. BNA (Bulk Note Acceptor) Machine Cash Deposit Accounting
-- **Accounting Policy**: Cash deposited into the store's BNA machine is physical sales money and is **STRICTLY CLASSIFIED UNDER CASH MONEY** (never mixed into Card or UPI).
-- **Formula**: `Total Cash Sales = Counter Notes Cash + BNA Machine Deposited Cash`.
-- **Comprehensive Reporting**: Day Close (`DayCloseScreen.tsx`), Cash Reconciliation (`CashReconciliationScreen.tsx`), and Reports (`ReportsScreen.tsx`) display explicit columns for **Counter Cash (₹)**, **BNA Machine Cash (₹)**, **BNA Slip #**, and **Total Cash Sales (₹)**.
-
----
-
-### 🔒 5. Active Cart Navigation Session Lock Guard
-- **Session Locking**: While items exist in the active POS cart, navigating away (via sidebar menu or browser refresh/back) is locked with `beforeunload` session guards.
-- **Alert**: Displays alert modal: *"Active Billing Session in Progress: Please complete payment or clear cart before leaving POS screen."*
-- **Unlock Condition**: Unlocks automatically once payment finishes or bill is explicitly cancelled.
-
----
-
-### 🕒 6. Live Real-Time Clock & Dynamic Timestamping
-- **Header Badge**: Renders a live ticking clock (**`HH:mm:ss DD/MM/YYYY`**) in the POS top bar that auto-syncs continuously every second.
-- **Real-Time Invoice Sync**: Invoices record the exact real-time timestamp upon payment confirmation.
-
----
-
-### 🛑 7. Item Deletion Rules (1-Item Minimum) & Cancel Bill Workflow
-- **1-Item Threshold**: Individual item deletion is permitted down to **1 item**. The final item cannot be deleted individually (trash button disabled with notice: *"At least 1 item must remain in invoice"*).
-- **Explicit Cancel Bill Action**: To reset an entire cart, the cashier clicks **Cancel Bill**, prompting a red confirmation modal to reset the cart session.
-- **Delete Key Removal**: Keyboard `Delete` key single-item shortcut is disabled to prevent accidental item deletion during fast barcode scanning.
-
----
-
-### 🎨 8. Unified Emerald/Green Aesthetics (Dark & Light Theme Alignment)
-- **Design Tokens**: Dark mode `--accent-lime` and `.btn-primary` button styles use matching vibrant emerald green (`#10b981` / `#059669` with white text contrast).
-- **Consistent Aesthetics**: Both Dark and Light themes feature identical green action buttons for brand consistency.
-
----
-
-### 🖨️ 9. Automated Thermal Receipt Auto-Print on Payment Success
-- **Immediate Print**: As soon as payment confirmation completes (Cash, Card, or UPI), the system automatically triggers `window.print()` after 400ms so connected thermal printers immediately print the receipt.
-
----
-
-### 👤 10. Dedicated Staff Full Name Box & Interactive Picker (Indian Names)
-- **Staff Full Name Box**: Below the 6-digit Staff ID input box on the Login screen, a dedicated **Staff Name Box** auto-populates real Indian full names and surnames (e.g. **Vinayak Shinde**, **Babuji Namole**, **Gous Khan**, **Sanjay Gupta**, **Pooja Sharma**, **Amit Verma**).
-- **Directory Picker Modal**: Clicking the Name Box opens an interactive **Staff Directory Picker Modal** listing staff names, roles, and Staff IDs to select and auto-fill login credentials.
-
----
-
-### 👑 11. Store Manager Staff Management Delegation
-- Both **Store Managers** and **Super Admins** can add new staff accounts, assign 6-digit Staff IDs (`300000+`), edit full names, update roles, and manage access permissions.
-
----
-
-### ⏳ 12. 7-Day Inactivity Auto-Deactivation & Admin Reactivation (Turn ON)
-- **Auto-Deactivation**: If a staff member has not logged in for **7 days (1 week)**, the system automatically marks the account as **Deactivated (7-Day Inactive)**.
-- **Reactivation Control**: Managers and Super Admins have a **Turn ON (Reactivate)** switch in Staff Settings to restore access anytime.
-
----
-
-### 🚫 13. Cashier Sale Return Permission Control (`canProcessSaleReturn`)
-- **Default Restrict Rule**: Newly added cashiers default to **Sales Only** (`canProcessSaleReturn: false`). Sale Returns are blocked.
-- **Manager Toggle**: Managers and Super Admins can grant **Allow Return** permission in Staff Settings.
-- **POS Restriction**: Attempting `Alt + F11` or Return Mode without permission displays an explicit permission error toast: *"Permission Denied: Cashier is restricted to sales only. Sale Return permission must be granted by Manager or Super Admin."*
-
----
-
-### 🛡️ 14. Military & Bank-Grade Security Hardening
-- **WAF SQL Injection Firewall (`sqlInjectionGuard.middleware.ts`)**: Global Web Application Firewall middleware that inspects all incoming HTTP requests (`req.body`, `req.query`, `req.params`). Payloads such as `' 1=1 --`, `' OR 1=1`, `UNION SELECT`, and `; DROP` are intercepted with **HTTP 403 Forbidden**. Authentication bypass is 100% impossible.
-- **Frontend Anti-Tampering Shield (`SecurityGuard.tsx`)**:
-  - Right-click context menus strictly prohibited (`onContextMenu={(e) => e.preventDefault()}`).
-  - Developer Tools keyboard shortcuts blocked: `F12`, `Ctrl+Shift+I`, `Ctrl+Shift+J`, `Ctrl+Shift+C`, `Ctrl+U`, `Ctrl+S`.
-  - Console logging stripped/suppressed in production.
-- **Security Headers**: Configured Express headers: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `X-XSS-Protection: 1; mode=block`, and `Content-Security-Policy: default-src 'self'`.
-- **Account Lockouts**: 5 failed login attempts trigger an automatic 15-minute account lockout and IP rate limiter block.
-
----
-
-### 🔑 15. Extreme Session Invalidation & 15-Minute Idle Auto-Logout
-- **Ephemeral `sessionStorage` Enforcement**: All session tokens and user objects are stored in ephemeral `sessionStorage` (legacy persistent `localStorage` is explicitly purged on startup).
-- **Tab & Browser Exit Invalidation**: Closing the browser tab or window **INSTANTLY DESTROYS** the session. Opening the URL link again in a new tab/window **ALWAYS forces a fresh password login**.
-- **15-Minute Inactivity Watchdog (`useIdleTimer`)**: A background security watchdog tracks user interaction (`mousemove`, `keydown`, `click`, `scroll`, `touchstart`). If no user activity occurs for **15 minutes (900,000 ms)**, the system automatically purges all session tokens, logs out the user, and displays a red **Security Session Expired** modal requiring re-authentication.
-- **Session Time-To-Live (TTL)**: Enforces an 8-hour maximum shift limit (`afreen_session_expires`). If expired on load/refresh, the session is purged immediately.
-
----
-
-### 🎯 16. Strict Cashier Role Navigation & Streamlined Command Center
-- **Sidebar Role Filtering (`Sidebar.tsx`)**: When logged in as a **Cashier** (`RoleName.CASHIER`), all store-wide management modules (Inventory, Purchasing, Warehouse, Reports, Settings) are **HIDDEN**. The sidebar displays **ONLY 3 Essential Operational Items**:
-  1. 🛒 **Sale (POS Billing)**
-  2. 🔄 **Sale Return**
-  3. 🕒 **Close Sale & Return (Day Close)**
-- **Cashier Command Center (`DashboardScreen.tsx`)**: Replaces complex store-wide KPIs with a focused **Cashier Terminal Desk** featuring **4 Quick Action Cards**:
-  1. 💳 **1. Retail Sale (POS)** (Launch POS Barcode Billing)
-  2. 🔄 **2. Process Sale Return** (Launch POS Return Mode)
-  3. 🕒 **3. Close Sale (Register Close)** (Launch Shift Day Close)
-  4. 📋 **4. Close Sale Return Summary** (Launch Day Close Handover Summary)
-
----
-
-### 🔍 17. POS Barcode Scanner Validations & Zero Price Guard
-- **Unregistered / Invalid Barcode Alert**: Scanned barcodes not present in the store catalog (e.g. unknown barcode `99999999`) trigger an instant red modal: `❌ BARCODE NOT FOUND: Barcode "99999999" is WRONG or NOT AVAILABLE in store catalog.`
-- **Zero Price Prevention Guard**: Items with an MRP / selling price of `₹0.00` are blocked from being added to the cart with an amber warning: `⚠️ INVALID ITEM PRICE: Item price cannot be ₹0.00. Please set valid price in Inventory master.`
----
-
-### ⌨️ 18. Global Keyboard Operability System (WCAG 2.1.1 / 2.1.2 Compliant)
-- **Zero-Mouse Rule Guarantee**: Cashiers can complete 100% of POS tasks using only keyboard shortcuts and navigation without touching a mouse.
-- **Centralized Shortcut Registry (`shortcutRegistry.ts`)**: Single collision-checked registry avoiding OS/browser reserved keys (`F5`, `F11`, `F12`, `Ctrl+W`, `Ctrl+T`, `Ctrl+F`). Maps `F1` (Help Legend), `F2` (Sale Type), `F3` (Repeat Item), `F7` (Instant UPI), `F10` (Checkout), `Shift + F8` (Manual Bill Recovery), `Ctrl + F5` (Duplicate Print), `Alt + F11` (Return Mode), and `Escape` (Cancel Modal).
-- **High-Contrast Focus Indicator (WCAG 2.4.7)**: Enforces 3:1 minimum contrast `:focus-visible` emerald outline (`outline: 2px solid var(--accent-lime); outline-offset: 2px;`) across all buttons, inputs, selects, and table rows.
-- **Modal Focus Trap (`useFocusTrap.ts` - WCAG 2.1.2)**: Auto-focuses the first field inside modals on open. Traps `Tab` / `Shift + Tab` cycling strictly inside modal bounds. Restores focus to the triggering element on close.
-- **Full Numeric Keypad (Numpad) Support**: Treats `NumpadEnter` and `NumpadDecimal` identically to main keyboard keys across all amount and quantity fields.
-
----
-
-## 📐 Monorepo Architecture & Tech Stack
+## 🏛️ System Architecture & Monorepo Overview
 
 ```mermaid
 graph TD
-    A[Web Application - Vite React] -->|REST API & Bearer Auth| B[API Gateway & Express Server]
-    B -->|WAF Firewall Guard| C[sqlInjectionGuard Middleware]
-    C -->|RBAC Guard| D[Role & Permission Middleware]
-    D -->|ORM Queries| E[Prisma Client v5]
-    E -->|Database| F[PostgreSQL / SQLite]
+    A[Frontend: Vite + React 18 + TypeScript] -->|REST API + Bearer JWT Auth| B[API Gateway & Express Server]
+    B -->|WAF Layer| C[sqlInjectionGuard Middleware]
+    C -->|RBAC Guard| D[Role & Session Authenticator]
+    D -->|ORM Engine| E[Prisma Client v5]
+    E -->|Database| F[(PostgreSQL Database on Render)]
+    A -.->|Static Delivery| G[Vercel Global CDN]
 ```
 
-### Workspace Structure:
-- `apps/web`: Vite + React + TypeScript frontend with Times New Roman typography, custom emerald green palette, and SecurityGuard wrapper.
-- `apps/api`: Node.js + Express + Prisma backend with WAF SQLi Firewall, bcrypt password hashing, and JWT session handling.
-- `packages/shared-types`: Shared TypeScript interfaces (`UserSession`, `POSInvoice`, `DayCloseReport`, `BillRecoveryPayload`).
+### Monorepo Workspaces:
+- **`apps/web`**: High-performance React 18 frontend with Times New Roman classic styling, custom Emerald Dark/Light themes, zero-mouse keyboard focus engine, and anti-tamper security wrappers.
+- **`apps/api`**: Express + TypeScript backend running on Node.js with WAF SQL injection firewall, bcrypt password hashing, dynamic database bootstrapper, and 12 departmental REST API controllers.
+- **`packages/shared-types`**: Shared types, role enums, cart payloads, and financial calculation interfaces.
 
 ---
 
-## 🔑 Seeded Demo Credentials
+## 🔑 Seeded Official Staff & Credential Directory
 
-| Role | Staff ID | Username | Full Name | Default Password |
-|---|---|---|---|---|
-| **Super Admin** | `300000` | `Superkhan` | Gous Khan | *(Initial Set)* |
-| **Store Manager** | `300001` | `manager1` | Rajesh Sharma | `AfreenStaff@2026` |
-| **Head Cashier** | `300002` | `accountant1` | Priya Patel | `AfreenStaff@2026` |
-| **Cashier (Sales Only)** | `300003` | `cashier1` | Vinayak Shinde | `AfreenStaff@2026` |
-| **Cash Officer** | `300004` | `cashofficer1` | Babuji Namole | `AfreenStaff@2026` |
-| **Senior Accountant** | `300005` | `auditor1` | Amit Verma | `AfreenStaff@2026` |
+The production backend automatically bootstraps and activates all official staff accounts on server boot.
 
+### 👑 Super Admin Account
+| Role | Staff ID | Username | Full Name | Default Password | Permissions |
+|---|---|---|---|---|---|
+| **Super Admin** | `300000` | `Superkhan` | Gous Khan (Super Admin) | `Kingkhan@12` | Full unrestricted access to all 12 modules, staff password reset, role assignment, audit logs, and system config. |
 
+### 👥 Official Staff Roster Matrix (Default Password: `Pass@123`)
+*All staff members can log in and change their password at any time via the Change Password screen. Super Admin can also reset any staff password from the Admin panel.*
+
+| Staff ID | Username | Full Name | Department / Role | Default Password | Initial Return Access |
+|---|---|---|---|---|---|
+| **`300001`** | `manager1` | Sanjay Gupta | **STORE_MANAGER** | `Pass@123` | ✅ Allowed |
+| **`300002`** | `cashofficer1` | Babuji Namole | **CASH_OFFICER** | `Pass@123` | ✅ Allowed |
+| **`300003`** | `accountant1` | Amit Verma | **ACCOUNTANT** | `Pass@123` | ✅ Allowed |
+| **`300004`** | `inventory1` | Vikram Singh | **INVENTORY_STAFF** | `Pass@123` | ❌ Sales/GRN Only |
+| **`300005`** | `warehouse1` | Deepak Gaikwad | **WAREHOUSE_STAFF** | `Pass@123` | ❌ Warehouse Only |
+| **`300006`** | `purchase1` | Neha Singh | **PURCHASE_TEAM** | `Pass@123` | ❌ Purchase Only |
+| **`300007`** | `auditor1` | Rajesh Deshmukh | **AUDITOR** | `Pass@123` | ✅ Allowed |
+| **`300008`** | `hr1` | Priya Kulkarni | **HR_MANAGER** | `Pass@123` | ❌ HR Admin Only |
+| **`300009`** | `sales1` | Rohan Kadam | **SALES_MANAGER** | `Pass@123` | ✅ Allowed |
+| **`300010`** | `crm1` | Sneha Joshi | **CRM_MANAGER** | `Pass@123` | ❌ CRM Only |
+| **`300011`** | `cashier1` | Pooja Sharma | **CASHIER** (Counter 1) | `Pass@123` | 🔒 Restricted (Sales Only) |
+| **`300012`** | `cashier2` | Vinayak Shinde | **CASHIER** (Counter 2) | `Pass@123` | 🔒 Restricted (Sales Only) |
+| **`300013`** | `cashier3` | Mahesh Patil | **CASHIER** (Counter 3) | `Pass@123` | 🔒 Restricted (Sales Only) |
+| **`300014`** | `cashier4` | Sachin Jadhav | **CASHIER** (Express Counter) | `Pass@123` | 🔒 Restricted (Sales Only) |
+| **`300015`** | `cashier5` | Rahul Chavan | **CASHIER** (Floater Cashier) | `Pass@123` | 🔒 Restricted (Sales Only) |
+
+---
+
+## 🌟 Deep Feature Catalog (Minor to Major)
+
+### 1. High-Speed POS Billing & Checkout
+- **Lightning-Fast Barcode Scanning**: Sub-millisecond item lookup by EAN-13, UPC, SKU, or Product Name.
+- **Multi-Sale Type Support (`F2`)**: One-touch switching between **Retail Sale**, **Wholesale Billing**, and **Institutional Supply**.
+- **Instant Item Repetition (`F3`)**: Quick increments of the last scanned item without re-scanning.
+- **Dynamic GST Engine**: Automatic split and computation of CGST, SGST, IGST across 0%, 5%, 12%, 18%, and 28% slabs with HSN tracking.
+- **Zero Price Prevention Guard**: Items with `₹0.00` price cannot be added to the cart; triggers an alert prompting price configuration in inventory master.
+- **Unregistered Barcode Alert**: Uncataloged barcodes prompt an immediate red alert modal (*"Barcode not found in store catalog"*).
+- **Cart Deletion Safeguard (1-Item Minimum)**: Individual items can be removed down to 1 item. The last item requires clicking **Cancel Bill** to confirm full cart reset.
+- **Multi-Mode Payment Terminal**:
+  - 💵 **Cash**: Interactive change calculator with instant tender return calculation.
+  - 💳 **Card / EDC**: Bank transaction code capture and slip reconciliation.
+  - 📱 **UPI QR (`F7`)**: Instant dynamic UPI QR code generator for direct mobile payments.
+  - 🔀 **Split Tender**: Combine Cash + UPI + Card on a single transaction invoice.
+- **Active Cart Session Lock Guard**: Prevents accidental tab close or page navigation while an active bill is in progress (`beforeunload` protection).
+- **POS Terminal Auto-Feed**: Interactive `[ POS-01 ]` counter badge in top header allowing switching between counters (`POS-01`, `POS-02`, `POS-03`).
+- **Automated Thermal Auto-Print**: Automatically sends print command (`window.print()`) 400ms after payment confirmation.
+
+---
+
+### 2. Return & Exchange Management
+- **Dedicated Sale Return Mode (`Alt + F11`)**: Switch POS terminal into item return and refund processing mode.
+- **Cashier Return Access Guard (`canProcessSaleReturn`)**: By default, Cashiers are restricted to sales only. Attempting returns without authorization shows a permission error requiring Manager override.
+- **Original Invoice Verification**: Validates invoice number, original purchase date, and return quantity against sold quantity.
+- **Automated Inventory Restocking**: Returned products automatically restock into available floor inventory.
+- **Credit Note & Cash Refund Management**: Supports credit notes, exchange against new cart items, or cash refund disbursement.
+
+---
+
+### 3. Cash Management & BNA Vault Accounting
+- **Cash In / Cash Out Petty Cash Engine**: Log daily petty expenses (tea, cleaning, maintenance, transport) with approval reasons.
+- **BNA (Bulk Note Acceptor) Machine Deposit Accounting**:
+  - **Accounting Formula**: `Total Cash Sales = Counter Notes Cash + BNA Machine Cash`.
+  - Cash deposited into in-store BNA machines is strictly categorized under **CASH** (never mixed into Card or UPI).
+- **Physical Denomination Counter**: Full breakdown inputs for ₹2000, ₹500, ₹200, ₹100, ₹50, ₹20, ₹10, ₹5, ₹2, ₹1 notes & coins.
+- **Cash Variance Detection**: Automatic calculation of **MATCHED**, **SHORT**, or **EXCESS** cash positions on every shift handover.
+- **Safe Drop Records**: Transfer excess counter cash to the main vault during peak trading hours.
+
+---
+
+### 4. Day Close & Shift Handover Reporting
+- **End-of-Day Z-Report**: Complete shift breakdown including Gross Sales, Net Sales, Tax Collection, Returns, and Net Cash Position.
+- **Tender-Wise Reconciliation**: Side-by-side reconciliation of Cash vs Card vs UPI vs BNA Machine deposits.
+- **Supervisor Sign-Off**: Mandatory digital sign-off by Cash Officer or Store Manager before register closure.
+- **Audit Export**: Instant PDF and Excel export for store accounting and tax filing.
+
+---
+
+### 5. Inventory & Warehouse Master
+- **SKU & Barcode Management**: Create and track products with barcodes, HSN codes, category, brand, and unit metrics (PCS, KG, LTR).
+- **Real-Time Stock Depletion**: Every POS sale instantly updates live stock quantities across counters.
+- **Batch & Expiry Date Tracking**: Automated warnings for near-expiry products and FIFO stock management.
+- **Low Stock & Reorder Triggers**: Automatic reorder level alerts when stock drops below threshold.
+- **Warehouse Floor Transfers**: Multi-stage transfer workflow between Main Warehouse and Retail Floor counters.
+- **Physical Stock Audit (Stock Taking)**: Cycle counting with discrepancy reporting and audit logging.
+
+---
+
+### 6. Procurement & Purchase Order Management (PO / GRN)
+- **Supplier / Vendor Master**: Complete vendor directory with GSTIN, PAN, payment terms, and contact profiles.
+- **Purchase Order (PO) Engine**: Multi-tier PO creation (`DRAFT` → `SUBMITTED` → `APPROVED` → `RECEIVED` → `COMPLETED`).
+- **Goods Receipt Note (GRN) Inspection**: 3-way matching between PO, Delivery Challan, and Physical Stock count.
+- **Landed Cost & Tax Calculation**: Auto-calculate landed cost per unit including freight, insurance, and GST input tax credit (ITC).
+- **Purchase Return & Debit Notes**: Return damaged or defective goods directly to vendors with automated debit note generation.
+
+---
+
+### 7. Accounting & Financial Governance
+- **Double-Entry General Ledger**: Auto-posted journal entries for sales, purchases, cash transfers, expenses, and returns.
+- **Accounts Receivable (AR) & Accounts Payable (AP)**: Track credit sales to institutional clients and pending vendor bills.
+- **GST R1 & 3B Tax Liability Engine**: Automated monthly and quarterly GST liability summaries.
+- **Profit & Loss (P&L) Statement**: Real-time Gross Margin and Net Margin calculation.
+- **Daily Cash Flow Tracker**: Inflow vs outflow monitoring across cash drawers, bank accounts, and BNA machines.
+
+---
+
+### 8. HR & Staff Administration
+- **Staff Directory & 6-Digit ID System**: Centralized directory with auto-generated 6-digit staff IDs (`300000+`).
+- **Super Admin Staff Password Management**:
+  - Super Admin can reset or change the password of any staff member from the User Management panel.
+  - Dedicated endpoint `POST /api/v1/admin/users/:id/reset-password`.
+- **7-Day Inactivity Auto-Deactivation**: Staff accounts with no login activity for 7 consecutive days are automatically suspended.
+- **Manager Reactivation Switch ("Turn ON")**: Store Managers and Super Admins can restore suspended accounts with one click.
+- **Cashier Return Access Delegation**: Toggle `canProcessSaleReturn` per cashier individually.
+
+---
+
+### 9. Customer Relationship Management (CRM) & Loyalty
+- **Customer Phone Lookup**: Sub-second customer profile retrieval at POS by 10-digit mobile number.
+- **Loyalty Points Engine**: Automated point accrual per ₹100 spent with one-touch POS redemption.
+- **Tiered Customer Classification**: Auto-tagging of **VIP**, **Regular**, **Wholesale**, and **Institutional** buyers.
+- **Khata / Store Credit Ledger**: Digital credit ledger for regular customers with payment reminders.
+
+---
+
+### 10. Business Intelligence & Executive Analytics
+- **Executive Real-Time KPI Dashboard**: Live sales, gross margin, net profit, transactions count, and average basket value.
+- **Role Perspective Filters**: Switch dashboard view between **Executive / Owner**, **CFO / Finance**, **COO / Operations**, and **Store Manager**.
+- **What-If Simulation Engine**: Interactive forecasting simulating the financial impact of price changes, discount variations, footfall shifts, and supplier cost fluctuations.
+- **Departmental Scorecards**: Performance scorecards across Sales, Inventory, Cashier Efficiency, and Customer Retention.
+- **AI-Powered Operational Insights**: Automated detection of dead stock, peak sales hours, fast-moving items, and cash anomalies.
+
+---
+
+### 11. Military & Bank-Grade Security Hardening
+- **WAF SQL Injection Firewall (`sqlInjectionGuard.middleware.ts`)**: Global Web Application Firewall inspecting all HTTP bodies, queries, and params. Malicious SQL payloads (`' 1=1 --`, `UNION SELECT`, `; DROP`) are intercepted with **HTTP 403 Forbidden**.
+- **Frontend Anti-Tampering Shield (`SecurityGuard.tsx`)**:
+  - Right-click context menus strictly disabled.
+  - Developer Tools shortcuts (`F12`, `Ctrl+Shift+I`, `Ctrl+Shift+J`, `Ctrl+Shift+C`, `Ctrl+U`, `Ctrl+S`) blocked.
+  - Production console logging suppressed.
+- **Strict Ephemeral Session Architecture**:
+  - All JWT tokens are stored in `sessionStorage` (no persistent `localStorage`).
+  - Closing the browser tab or window **instantly destroys the session**.
+- **15-Minute Inactivity Auto-Logout Watchdog (`useIdleTimer.ts`)**: Automatically logs out idle sessions after 15 minutes without activity.
+- **Brute-Force Account Lockout**: 5 failed login attempts trigger an automatic 15-minute account lockout and IP rate limiter block.
+- **Manual Bill Recovery (`Shift + F8`)**: Allows Cash Officers to recover failed print bills using bank transaction IDs with live duplicate prevention.
+- **Authorized Duplicate Copy Print (`Ctrl + F5`)**: Prints with prominent watermark `*** DUPLICATE COPY *** (NOT AN ORIGINAL RECEIPT)` and logs reprint count to immutable audit logs.
+- **Immutable Audit Trail (`AuditLog`)**: Comprehensive logging of user, role, action, entity, before/after values, and justification reasons.
+
+---
+
+### 12. Zero-Mouse Keyboard Operability (WCAG Compliant)
+- **100% Keyboard Operable**: Cashiers can perform complete billing, item search, quantity adjustments, tender selection, and printing without touching a mouse.
+- **Centralized Shortcut Registry (`shortcutRegistry.ts`)**: Collision-free shortcut engine avoiding browser-reserved keys.
+- **WCAG 2.4.7 Focus Indicator**: High-contrast 3:1 emerald outline (`outline: 2px solid var(--accent-lime)`) across all active inputs, buttons, and rows.
+- **WCAG 2.1.2 Modal Focus Trap (`useFocusTrap.ts`)**: Traps `Tab` / `Shift + Tab` cycling within open modals and restores focus upon modal close.
+- **Full Numeric Keypad Support**: Complete support for `NumpadEnter` and `NumpadDecimal`.
+
+---
+
+## ⌨️ Keyboard Shortcut Command Matrix
+
+| Shortcut | Action | Scope | Description |
+|---|---|---|---|
+| **`F1`** | **Help Legend** | Global POS | Opens full keyboard shortcut guide modal. |
+| **`F2`** | **Sale Type Switch** | POS Cart | Cycles between Retail, Wholesale, and Institutional. |
+| **`F3`** | **Repeat Last Item** | POS Cart | Instantly increments quantity of the last scanned product. |
+| **`F7`** | **Instant UPI Payment** | Checkout | Launches dynamic UPI QR code generator modal. |
+| **`F10`** | **Quick Cash Checkout** | Checkout | Confirms full cash payment and triggers thermal receipt print. |
+| **`Shift + F8`** | **Manual Bill Recovery** | Supervisor | Recovers bill from successful bank EDC/UPI transaction ID. |
+| **`Ctrl + F5`** | **Print Duplicate Bill** | Supervisor | Generates watermarked Duplicate Copy with audit logging. |
+| **`Alt + F11`** | **Sale Return Mode** | POS Screen | Toggles between Sale Mode and Return Mode (Role Guarded). |
+| **`Escape`** | **Close / Dismiss** | Modals | Closes active modals and returns focus to barcode input. |
+
+---
+
+## ⚙️ Environment Variables & Deployment
+
+### Backend API Configuration (`apps/api/.env`)
+```env
+# PostgreSQL Connection (Render PostgreSQL)
+DATABASE_URL="postgresql://afreen_mall_user:password@host:5432/afreen_mall"
+
+# Port & Node Environment
+PORT=4000
+NODE_ENV="production"
+
+# JWT Security Secrets
+JWT_SECRET="your_64_char_secure_jwt_secret"
+JWT_REFRESH_SECRET="your_64_char_secure_refresh_secret"
+
+# Allowed CORS Origins
+ALLOWED_ORIGINS="https://afreen-mall.vercel.app"
+
+# Bootstrap Credentials
+INITIAL_SUPER_ADMIN_PASSWORD="Kingkhan@12"
+INITIAL_STAFF_PASSWORD="Pass@123"
+```
+
+### Frontend Web Configuration (`apps/web/.env.local`)
+```env
+# Production API URL (Render Web Service)
+VITE_API_URL="https://afreen-mall.onrender.com"
+```
+
+---
 
 <div align="center">
 
-###  Made by **Gous Organisation**
+### 💎 Crafted with Passion by **Gous Organisation**
 
-*Software Architect: **Gous Khan** · Afreen Mall Enterprise Platform*
+*Chief Software Architect: **Gous Khan** · Afreen Mall Enterprise Platform*  
+📞 **Mobile**: `+91 8625076618` | ✉️ **Email**: `gousk2004@gmail.com`
 
-📞 **Mobile**: `+91 862507****` | ✉️ **Email**: `gousk2004@gmail.com`
-
-![Made by Gous Organisation](https://img.shields.io/badge/Crafted%20With-%E2%9D%A4%EF%B8%8F%20by%20Gous%20Organisation-FF1493?style=for-the-badge)
+![Made with Love](https://img.shields.io/badge/Crafted%20With-%E2%9D%A4%EF%B8%8F%20by%20Gous%20Organisation-FF1493?style=for-the-badge)
 
 </div>
