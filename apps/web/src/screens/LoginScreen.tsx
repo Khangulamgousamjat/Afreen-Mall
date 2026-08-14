@@ -17,9 +17,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onBackToWelcome, onLog
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [staffList, setStaffList] = useState<StaffMember[]>(INITIAL_STAFF_LIST);
   const [staffSearchQuery, setStaffSearchQuery] = useState('');
-  const [directoryLoading, setDirectoryLoading] = useState(true);
+  const [directoryLoading, setDirectoryLoading] = useState(false);
   const [directoryError, setDirectoryError] = useState(false);
   
   // Table is HIDDEN by default on screen load
