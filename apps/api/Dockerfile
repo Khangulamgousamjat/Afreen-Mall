@@ -10,4 +10,4 @@ RUN npm run build --workspace=packages/shared-types
 RUN cd apps/api && npx prisma generate && npm run build
 
 EXPOSE 4000
-CMD ["sh", "-c", "npx prisma migrate deploy || npx prisma migrate resolve --applied 20260101000000_init; npm run start --workspace=apps/api"]
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss; npm run start --workspace=apps/api"]
