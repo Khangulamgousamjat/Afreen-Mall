@@ -44,7 +44,7 @@ export async function bootstrapDatabase(): Promise<void> {
     console.log('[Bootstrap] Super Admin (300000) verified active.');
 
     // 3. Ensure Standard Seed Staff Accounts (300001 - 300015) exist
-    const defaultStaffPassword = process.env.INITIAL_STAFF_PASSWORD || 'AfreenStaff@2026';
+    const defaultStaffPassword = process.env.INITIAL_STAFF_PASSWORD || 'Pass@123';
     const defaultHash = await bcrypt.hash(defaultStaffPassword, 12);
 
     const staffAccounts = [

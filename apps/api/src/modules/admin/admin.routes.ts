@@ -385,6 +385,69 @@ router.post('/users/:id/unlock', requireManagerOrAdmin, async (req: Authenticate
   }
 });
 
+// POST /api/v1/admin/users/:id/reset-password — Super Admin / Manager reset or set staff password
+router.post('/users/:id/reset-password', requireManagerOrAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { newPassword, requirePasswordChange } = req.body;
+
+    const targetUser = await prisma.user.findUnique({ where: { id } });
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User account not found' });
+    }
+
+    // Only Super Admin can modify Super Admin password
+    if (targetUser.role === RoleName.SUPER_ADMIN && req.user!.role !== RoleName.SUPER_ADMIN) {
+      return res.status(403).json({ error: 'Only Super Admin can modify Super Admin password.' });
+    }
+
+    const passwordToSet = newPassword && String(newPassword).trim().length >= 6
+      ? String(newPassword).trim()
+      : 'Pass@123';
+
+    const newHash = await bcrypt.hash(passwordToSet, 12);
+
+    await prisma.user.update({
+      where: { id },
+      data: {
+        passwordHash: newHash,
+        mustChangePassword: Boolean(requirePasswordChange),
+        isLocked: false,
+        failedAttempts: 0,
+        lockoutUntil: null,
+      },
+    });
+
+    // Invalidate target user's active sessions so they must log in with new password
+    await prisma.session.deleteMany({
+      where: { userId: id },
+    });
+
+    // Audit log entry
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        staffId: req.user!.staffId,
+        userName: req.user!.fullName,
+        userRole: req.user!.role,
+        action: 'ADMIN_RESET_PASSWORD',
+        entityName: 'User',
+        entityId: id,
+        reason: `Staff password reset for ${targetUser.fullName} (Staff ID: ${targetUser.staffId}) by ${req.user!.fullName}.`,
+      },
+    });
+
+    return res.json({
+      message: `Password for ${targetUser.fullName} (ID: ${targetUser.staffId}) reset successfully.`,
+      temporaryPassword: passwordToSet,
+      tempPassword: passwordToSet,
+    });
+  } catch (err: any) {
+    console.error('Admin reset password error:', err);
+    return res.status(500).json({ error: 'Failed to reset staff password' });
+  }
+});
+
 // GET /api/v1/admin/roles — List role permissions
 router.get('/roles', async (req: AuthenticatedRequest, res: Response) => {
   try {

@@ -39,7 +39,7 @@ async function main() {
   console.log(`Seeded Super Admin: Staff ID ${superAdmin.staffId} (${superAdmin.username})`);
 
   // 3. Seed Default Staff Accounts
-  const defaultStaffPassword = process.env.INITIAL_STAFF_PASSWORD || 'AfreenStaff@2026';
+  const defaultStaffPassword = process.env.INITIAL_STAFF_PASSWORD || 'Pass@123';
   const defaultHash = await bcrypt.hash(defaultStaffPassword, 12);
   const staffMembers = [
     { staffId: 300001, username: 'manager1',    name: 'Sanjay Gupta (Store Manager)',        role: RoleName.STORE_MANAGER },
