@@ -63,7 +63,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentScreen, onNavigate }) =
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentScreen === item.id;
-          const isSuperAdmin = user?.role === RoleName.SUPER_ADMIN;
+          const isManagerOrAdmin =
+            user?.role === RoleName.SUPER_ADMIN ||
+            user?.role === RoleName.STORE_MANAGER ||
+            user?.role === RoleName.REGIONAL_MANAGER ||
+            user?.role === RoleName.COMPANY_ADMIN;
 
           return (
             <div
@@ -71,7 +75,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentScreen, onNavigate }) =
               className={`nav-item ${isActive ? 'active' : ''}`}
               onClick={() => onNavigate(item.id)}
               style={{
-                opacity: item.isSuperAdminOnly && !isSuperAdmin ? 0.45 : 1,
+                opacity: item.isSuperAdminOnly && !isManagerOrAdmin ? 0.45 : 1,
               }}
             >
               <Icon size={18} />

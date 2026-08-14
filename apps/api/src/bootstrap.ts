@@ -74,6 +74,7 @@ export async function bootstrapDatabase(): Promise<void> {
           isLocked: false,
           failedAttempts: 0,
           lockoutUntil: null,
+          mustChangePassword: false,
         },
         create: {
           staffId: staff.staffId,
@@ -85,7 +86,23 @@ export async function bootstrapDatabase(): Promise<void> {
         },
       });
     }
-    console.log(`[Bootstrap] ${staffAccounts.length} Staff accounts (300001–300015) verified active.`);
+
+    // 3.1 Also update any other existing staff accounts (like 300203 or custom users) to Pass@123
+    await prisma.user.updateMany({
+      where: {
+        staffId: { not: 300000 },
+      },
+      data: {
+        passwordHash: defaultHash,
+        isDeactivated: false,
+        isLocked: false,
+        failedAttempts: 0,
+        lockoutUntil: null,
+        mustChangePassword: false,
+      },
+    });
+
+    console.log(`[Bootstrap] All staff accounts verified active with password Pass@123.`);
 
     // 4. Ensure POS Registers exist
     const registers = ['POS-01', 'POS-02', 'POS-03'];
