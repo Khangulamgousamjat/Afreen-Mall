@@ -81,10 +81,25 @@ export function requireSuperAdmin(req: AuthenticatedRequest, res: Response, next
   next();
 }
 
+export const MANAGER_ROLES: readonly RoleName[] = [
+  RoleName.SUPER_ADMIN,
+  RoleName.COMPANY_ADMIN,
+  RoleName.BRANCH_ADMIN,
+  RoleName.REGIONAL_MANAGER,
+  RoleName.STORE_MANAGER,
+  RoleName.PURCHASE_MANAGER,
+  RoleName.INVENTORY_MANAGER,
+  RoleName.FINANCE_MANAGER,
+  RoleName.HR_MANAGER,
+  RoleName.SALES_MANAGER,
+  RoleName.CRM_MANAGER,
+  RoleName.CASH_OFFICER,
+];
+
 export function requireManagerOrAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  if (!req.user || (req.user.role !== RoleName.SUPER_ADMIN && req.user.role !== RoleName.STORE_MANAGER)) {
+  if (!req.user || !(MANAGER_ROLES as readonly string[]).includes(req.user.role)) {
     return res.status(403).json({
-      error: 'Access denied. Manager or Super Admin role is required for staff account management.',
+      error: 'Access denied. Manager or Admin role is required for staff account management.',
     });
   }
   next();

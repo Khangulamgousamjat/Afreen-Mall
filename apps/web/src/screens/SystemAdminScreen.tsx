@@ -78,7 +78,18 @@ const STATUS_COLOR: Record<string, string> = {
 export const SystemAdminScreen: React.FC = () => {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === RoleName.SUPER_ADMIN;
-  const isManager = user?.role === RoleName.STORE_MANAGER;
+  const isManager =
+    user?.role === RoleName.STORE_MANAGER ||
+    user?.role === RoleName.COMPANY_ADMIN ||
+    user?.role === RoleName.BRANCH_ADMIN ||
+    user?.role === RoleName.REGIONAL_MANAGER ||
+    user?.role === RoleName.PURCHASE_MANAGER ||
+    user?.role === RoleName.INVENTORY_MANAGER ||
+    user?.role === RoleName.FINANCE_MANAGER ||
+    user?.role === RoleName.HR_MANAGER ||
+    user?.role === RoleName.SALES_MANAGER ||
+    user?.role === RoleName.CRM_MANAGER ||
+    user?.role === RoleName.CASH_OFFICER;
   const isAuthorized = isSuperAdmin || isManager;
 
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
