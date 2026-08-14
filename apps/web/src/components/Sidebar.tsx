@@ -2,6 +2,7 @@ import React from 'react';
 import {
   LayoutDashboard,
   ShoppingCart,
+  RotateCcw,
   Clock,
   DollarSign,
   Package,
@@ -22,11 +23,13 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentScreen, onNavigate }) => {
   const { user } = useAuth();
+  const isCashier = user?.role === RoleName.CASHIER;
 
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'pos', label: 'POS / Billing', icon: ShoppingCart },
-    { id: 'dayclose', label: 'Day Close', icon: Clock },
+  const allNavItems = [
+    { id: 'dashboard', label: isCashier ? 'Cashier Command Center' : 'Dashboard', icon: LayoutDashboard },
+    { id: 'pos', label: 'Sale (POS Billing)', icon: ShoppingCart },
+    { id: 'pos-return', label: 'Sale Return', icon: RotateCcw },
+    { id: 'dayclose', label: isCashier ? 'Close Sale & Return' : 'Day Close', icon: Clock },
     { id: 'cash', label: 'Cash Reconciliation', icon: DollarSign },
     { id: 'inventory', label: 'Inventory', icon: Package },
     { id: 'purchasing', label: 'Purchasing', icon: ShoppingBag },
@@ -35,6 +38,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentScreen, onNavigate }) =
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'settings', label: 'Settings & Staff', icon: Settings, isSuperAdminOnly: true },
   ];
+
+  // Cashier role sees strictly Sale, Sale Return, and Close Sale & Return
+  const navItems = isCashier
+    ? allNavItems.filter((i) => ['dashboard', 'pos', 'pos-return', 'dayclose'].includes(i.id))
+    : allNavItems;
 
   return (
     <aside className="sidebar">

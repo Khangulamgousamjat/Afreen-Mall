@@ -6,6 +6,8 @@
 ---
 
 ![Afreen Mall Security](https://img.shields.io/badge/Security-Military%20%26%20Bank--Grade-10b981?style=for-the-badge&logo=shield)
+![Crafted by Gous Organisation](https://img.shields.io/badge/Made%20With-%E2%9D%A4%EF%B8%8F%20by%20Gous%20Organisation-FF1493?style=for-the-badge)
+![Architect](https://img.shields.io/badge/Architect-Gous%20Khan-10b981?style=for-the-badge)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Monorepo-3178C6?style=for-the-badge&logo=typescript)
 ![React](https://img.shields.io/badge/Frontend-Vite%20React-61DAFB?style=for-the-badge&logo=react)
 ![Express](https://img.shields.io/badge/Backend-Node.js%20Express-000000?style=for-the-badge&logo=express)
@@ -114,6 +116,27 @@
 
 ---
 
+### 🔑 15. Extreme Session Invalidation & 15-Minute Idle Auto-Logout
+- **Ephemeral `sessionStorage` Enforcement**: All session tokens and user objects are stored in ephemeral `sessionStorage` (legacy persistent `localStorage` is explicitly purged on startup).
+- **Tab & Browser Exit Invalidation**: Closing the browser tab or window **INSTANTLY DESTROYS** the session. Opening the URL link again in a new tab/window **ALWAYS forces a fresh password login**.
+- **15-Minute Inactivity Watchdog (`useIdleTimer`)**: A background security watchdog tracks user interaction (`mousemove`, `keydown`, `click`, `scroll`, `touchstart`). If no user activity occurs for **15 minutes (900,000 ms)**, the system automatically purges all session tokens, logs out the user, and displays a red **Security Session Expired** modal requiring re-authentication.
+- **Session Time-To-Live (TTL)**: Enforces an 8-hour maximum shift limit (`afreen_session_expires`). If expired on load/refresh, the session is purged immediately.
+
+---
+
+### 🎯 16. Strict Cashier Role Navigation & Streamlined Command Center
+- **Sidebar Role Filtering (`Sidebar.tsx`)**: When logged in as a **Cashier** (`RoleName.CASHIER`), all store-wide management modules (Inventory, Purchasing, Warehouse, Reports, Settings) are **HIDDEN**. The sidebar displays **ONLY 3 Essential Operational Items**:
+  1. 🛒 **Sale (POS Billing)**
+  2. 🔄 **Sale Return**
+  3. 🕒 **Close Sale & Return (Day Close)**
+- **Cashier Command Center (`DashboardScreen.tsx`)**: Replaces complex store-wide KPIs with a focused **Cashier Terminal Desk** featuring **4 Quick Action Cards**:
+  1. 💳 **1. Retail Sale (POS)** (Launch POS Barcode Billing)
+  2. 🔄 **2. Process Sale Return** (Launch POS Return Mode)
+  3. 🕒 **3. Close Sale (Register Close)** (Launch Shift Day Close)
+  4. 📋 **4. Close Sale Return Summary** (Launch Day Close Handover Summary)
+
+---
+
 ## 📐 Monorepo Architecture & Tech Stack
 
 ```mermaid
@@ -143,20 +166,16 @@ graph TD
 | **Cash Officer** | `300004` | `babuji1` | Babuji Namole | `Pass@123` |
 | **Senior Accountant** | `300005` | `amit1` | Amit Verma | `Pass@123` |
 
----
 
-## 🛠️ Build & Deployment Instructions
 
-### Prerequisites
-- Node.js >= 18.x
-- npm >= 9.x
+<div align="center">
 
-### Build Commands
-```bash
-# Build all monorepo workspaces (shared-types, api, web)
-npm run build
-```
+### 💖 Made by **Gous Organisation**
 
----
+*Software Architect: **Gous Khan** · Afreen Mall Enterprise Platform*
 
-*Afreen Mall Enterprise Operations Platform — Software Architecture by Gous Khan*
+📞 **Mobile**: `+91 8625076618` | ✉️ **Email**: `khangulamgousamjat@gmail.com`
+
+![Made with Love by Gous Organisation](https://img.shields.io/badge/Crafted%20With-%E2%9D%A4%EF%B8%8F%20by%20Gous%20Organisation-FF1493?style=for-the-badge)
+
+</div>

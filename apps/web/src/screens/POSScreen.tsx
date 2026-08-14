@@ -18,8 +18,12 @@ const formatLiveClock = (d: Date) =>
 const paiseToRupee = (p: number) =>
   (p / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
 
+interface POSScreenProps {
+  initialReturnMode?: boolean;
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
-export const POSScreen: React.FC = () => {
+export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false }) => {
   const { user } = useAuth();
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
@@ -36,7 +40,7 @@ export const POSScreen: React.FC = () => {
     return saved ? JSON.parse(saved) : { id: 'reg-01', posNumber: 'POS-01', name: 'Main Billing Counter (Ground Floor)', isActive: true };
   });
   const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const [isReturnMode, setIsReturnMode] = useState(false);
+  const [isReturnMode, setIsReturnMode] = useState(initialReturnMode);
   const [saleType, setSaleType] = useState<SaleType>(SaleType.RETAIL);
   const [paymentModeUpfront, setPaymentModeUpfront] = useState<PaymentMode>(PaymentMode.CASH);
   const [invoiceNo, setInvoiceNo] = useState('...');
