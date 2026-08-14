@@ -26,7 +26,7 @@ export const ManualBillRecoveryModal: React.FC<ManualBillRecoveryModalProps> = (
   const [amountRupees, setAmountRupees] = useState<string>(
     defaultAmountRupees > 0 ? defaultAmountRupees.toString() : ''
   );
-  const [paymentMode, setPaymentMode] = useState<PaymentMode.CARD | PaymentMode.UPI>(PaymentMode.CARD);
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>(PaymentMode.CARD);
   const [error, setError] = useState('');
   const [checkingTx, setCheckingTx] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -72,7 +72,7 @@ export const ManualBillRecoveryModal: React.FC<ManualBillRecoveryModalProps> = (
     RoleName.AUDITOR,
   ];
 
-  const isAuthorized = user && allowedRoles.includes(user.role as RoleName);
+  const isAuthorized = Boolean(user && (allowedRoles as readonly string[]).includes(user.role));
 
   const numAmount = parseFloat(amountRupees);
   const isValidAmount = !isNaN(numAmount) && numAmount > 0;

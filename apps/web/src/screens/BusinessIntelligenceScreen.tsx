@@ -39,7 +39,7 @@ export const BusinessIntelligenceScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<BITab>('executive');
   const [dateRange, setDateRange] = useState('30d');
   const [selectedBranch, setSelectedBranch] = useState('ALL');
-  const [rolePerspective, setRolePerspective] = useState(user?.role || 'SUPER_ADMIN');
+  const [rolePerspective, setRolePerspective] = useState<string>(user?.role || 'SUPER_ADMIN');
 
   // BI Data States - Part 1
   const [execSummary, setExecSummary] = useState<any>(null);

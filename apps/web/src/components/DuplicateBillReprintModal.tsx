@@ -69,7 +69,7 @@ export const DuplicateBillReprintModal: React.FC<DuplicateBillReprintModalProps>
     RoleName.AUDITOR,
   ];
 
-  const isAuthorized = user && allowedRoles.includes(user.role as RoleName);
+  const isAuthorized = Boolean(user && (allowedRoles as readonly string[]).includes(user.role));
   const finalReason = reason === 'Other' ? customReason.trim() : reason;
   const isFormValid = invoiceNo.trim().length >= 4 && (reason !== 'Other' || customReason.trim().length >= 3);
 
