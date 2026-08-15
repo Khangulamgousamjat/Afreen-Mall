@@ -63,7 +63,16 @@ async function main() {
   for (const s of staffMembers) {
     await prisma.user.upsert({
       where: { staffId: s.staffId },
-      update: {},
+      update: {
+        passwordHash: defaultHash, // <-- the fix: force-sync password on every seed run
+        fullName: s.name,
+        role: s.role,
+        mustChangePassword: true,
+        isLocked: false,
+        failedAttempts: 0,
+        lockoutUntil: null,
+        isDeactivated: false,
+      },
       create: {
         staffId: s.staffId,
         username: s.username,

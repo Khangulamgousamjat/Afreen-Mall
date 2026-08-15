@@ -389,119 +389,20 @@ router.post('/users/:id/unlock', requireManagerOrAdmin, async (req: Authenticate
 router.post('/users/:id/reset-password', requireManagerOrAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { newPassword, requirePasswordChange } = req.body;
+    const { newPassword } = req.body; // optional — admin/manager can type an exact new password
 
     const targetUser = await prisma.user.findUnique({ where: { id } });
-    if (!targetUser) {
-      return res.status(404).json({ error: 'User account not found' });
-    }
+    if (!targetUser) return res.status(404).json({ error: 'User not found' });
 
     // Only Super Admin can modify Super Admin password
     if (targetUser.role === RoleName.SUPER_ADMIN && req.user!.role !== RoleName.SUPER_ADMIN) {
       return res.status(403).json({ error: 'Only Super Admin can modify Super Admin password.' });
     }
 
-    const passwordToSet = newPassword && String(newPassword).trim().length >= 6
-      ? String(newPassword).trim()
-      : 'Pass@123';
+    const tempPassword = newPassword && newPassword.length >= 6
+      ? newPassword
+      : (process.env.DEFAULT_TEMP_PASSWORD || ('Afreen#' + Math.floor(100000 + Math.random() * 900000)));
 
-    const newHash = await bcrypt.hash(passwordToSet, 12);
-
-    await prisma.user.update({
-      where: { id },
-      data: {
-        passwordHash: newHash,
-        mustChangePassword: Boolean(requirePasswordChange),
-        isLocked: false,
-        failedAttempts: 0,
-        lockoutUntil: null,
-      },
-    });
-
-    // Invalidate target user's active sessions so they must log in with new password
-    await prisma.session.deleteMany({
-      where: { userId: id },
-    });
-
-    // Audit log entry
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        staffId: req.user!.staffId,
-        userName: req.user!.fullName,
-        userRole: req.user!.role,
-        action: 'ADMIN_RESET_PASSWORD',
-        entityName: 'User',
-        entityId: id,
-        reason: `Staff password reset for ${targetUser.fullName} (Staff ID: ${targetUser.staffId}) by ${req.user!.fullName}.`,
-      },
-    });
-
-    return res.json({
-      message: `Password for ${targetUser.fullName} (ID: ${targetUser.staffId}) reset successfully.`,
-      temporaryPassword: passwordToSet,
-      tempPassword: passwordToSet,
-    });
-  } catch (err: any) {
-    console.error('Admin reset password error:', err);
-    return res.status(500).json({ error: 'Failed to reset staff password' });
-  }
-});
-
-// GET /api/v1/admin/roles — List role permissions
-router.get('/roles', async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const roles = await prisma.rolePermission.findMany();
-    return res.json({ roles });
-  } catch (err: any) {
-    return res.status(500).json({ error: 'Failed to fetch roles' });
-  }
-});
-
-// PATCH /api/v1/admin/roles/:name/permissions — Update role permissions in DB
-router.patch('/roles/:name/permissions', async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { name } = req.params;
-    const { permissions } = req.body;
-
-    if (!permissions) {
-      return res.status(400).json({ error: 'Permissions object is required' });
-    }
-
-    const updated = await prisma.rolePermission.upsert({
-      where: { roleName: name },
-      update: { permissions },
-      create: { roleName: name, permissions },
-    });
-
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        staffId: req.user!.staffId,
-        userName: req.user!.fullName,
-        userRole: req.user!.role,
-        action: 'ROLE_PERMISSIONS_UPDATED',
-        entityName: 'RolePermission',
-        entityId: updated.id,
-        reason: `Updated permissions for role ${name}`,
-      },
-    });
-
-    return res.json({ message: `Permissions for role ${name} updated successfully!`, role: updated });
-  } catch (err: any) {
-    return res.status(500).json({ error: err.message || 'Failed to update role permissions' });
-  }
-});
-
-// POST /api/v1/admin/users/:id/reset-password — Force password reset
-router.post('/users/:id/reset-password', async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-
-    const targetUser = await prisma.user.findUnique({ where: { id } });
-    if (!targetUser) return res.status(404).json({ error: 'User not found' });
-
-    const tempPassword = process.env.DEFAULT_TEMP_PASSWORD || ('Afreen#' + Math.floor(100000 + Math.random() * 900000));
     const passwordHash = await bcrypt.hash(tempPassword, 12);
 
     await prisma.user.update({
@@ -509,30 +410,26 @@ router.post('/users/:id/reset-password', async (req: AuthenticatedRequest, res: 
       data: { passwordHash, mustChangePassword: true, isLocked: false, failedAttempts: 0, lockoutUntil: null },
     });
 
-    // Invalidate all sessions
-    await prisma.session.deleteMany({ where: { userId: id } });
+    await prisma.session.deleteMany({ where: { userId: id } }); // force re-login everywhere
 
     await prisma.auditLog.create({
       data: {
-        userId: req.user!.id,
-        staffId: req.user!.staffId,
-        userName: req.user!.fullName,
-        userRole: req.user!.role,
-        action: 'ADMIN_PASSWORD_RESET',
-        entityName: 'User',
-        entityId: id,
-        reason: `Password reset by admin ${req.user!.fullName}. All sessions invalidated.`,
+        userId: req.user!.id, staffId: req.user!.staffId,
+        userName: req.user!.fullName, userRole: req.user!.role,
+        action: 'ADMIN_PASSWORD_RESET', entityName: 'User', entityId: id,
+        reason: `Password reset by ${req.user!.fullName} — no old password required. All sessions invalidated.`,
       },
     });
 
-    return res.json({ tempPassword, message: 'Password reset. User must change on next login.' });
+    return res.json({ tempPassword, temporaryPassword: tempPassword, message: 'Password reset. User must change it on next login.' });
   } catch (err: any) {
+    console.error('Admin reset password error:', err);
     return res.status(500).json({ error: 'Failed to reset password' });
   }
 });
 
 // POST /api/v1/admin/users/:id/force-logout — Force logout all sessions
-router.post('/users/:id/force-logout', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/users/:id/force-logout', requireManagerOrAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
 
