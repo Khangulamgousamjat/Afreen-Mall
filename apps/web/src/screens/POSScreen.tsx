@@ -58,6 +58,8 @@ const BARCODE_CACHE = new Map<string, POSCartItem>();
 
 export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false }) => {
   const { user } = useAuth();
+  const isSuperOrManager = user?.role === RoleName.SUPER_ADMIN || user?.role === RoleName.STORE_MANAGER;
+  const canReturn = isSuperOrManager || user?.canProcessSaleReturn === true;
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
   // ── Real-Time Live Clock ────────────────────────────────────────────────
@@ -291,9 +293,8 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
 
   const handleToggleReturnMode = () => {
     if (!isReturnMode) {
-      const isSuperOrManager = user?.role === RoleName.SUPER_ADMIN || user?.role === RoleName.STORE_MANAGER;
-      if (!isSuperOrManager && user?.canProcessSaleReturn === false) {
-        setCartError('Permission Denied: Cashier is restricted to sales only. Sale Return permission must be granted by Manager or Super Admin.');
+      if (!canReturn) {
+        setCartError('Permission Denied: You do not have Sale Return permission. Contact Manager or Super Admin.');
         setTimeout(() => setCartError(''), 6000);
         return;
       }
@@ -810,13 +811,15 @@ export const POSScreen: React.FC<POSScreenProps> = ({ initialReturnMode = false 
           <button className="btn" onClick={() => { setShowCalculatorModal(true); }} style={{ padding: '3px 8px', fontSize: '11px' }}>
             <Calculator size={12} /><span>F12 Calc</span>
           </button>
-          <button
-            className="btn"
-            onClick={handleToggleReturnMode}
-            style={{ padding: '3px 10px', fontSize: '11px', backgroundColor: isReturnMode ? 'var(--status-red)' : undefined, color: isReturnMode ? '#fff' : undefined }}
-          >
-            {isReturnMode ? '⚠ RETURN MODE' : 'RETAIL SALE'}
-          </button>
+          {canReturn && (
+            <button
+              className="btn"
+              onClick={handleToggleReturnMode}
+              style={{ padding: '3px 10px', fontSize: '11px', backgroundColor: isReturnMode ? 'var(--status-red)' : undefined, color: isReturnMode ? '#fff' : undefined }}
+            >
+              {isReturnMode ? '⚠ RETURN MODE' : 'RETAIL SALE'}
+            </button>
+          )}
           <button className="btn" onClick={() => { setShowF1Overlay(true); }} style={{ padding: '3px 10px', fontSize: '11px' }}>
             <HelpCircle size={13} /><span>F1</span>
           </button>

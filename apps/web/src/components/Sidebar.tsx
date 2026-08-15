@@ -48,9 +48,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentScreen, onNavigate }) =
     { id: 'admin', label: 'System Administration', icon: ShieldCheck, isSuperAdminOnly: true },
   ];
 
-  // Cashier role sees strictly Sale, Sale Return, and Close Sale & Return in main list
+  // Cashier role sees strictly Sale, Sale Return (only if permitted), and Close Sale & Return
+  const canReturn = user?.canProcessSaleReturn === true;
   const navItems = isCashier
-    ? allNavItems.filter((i) => ['dashboard', 'pos', 'pos-return', 'dayclose'].includes(i.id))
+    ? allNavItems.filter((i) => {
+        if (i.id === 'pos-return') return canReturn; // hide if no sale return permission
+        return ['dashboard', 'pos', 'dayclose'].includes(i.id);
+      })
     : allNavItems;
 
   return (
