@@ -54,14 +54,6 @@ graph TD
 - **`apps/api`**: Express + TypeScript backend running on Node.js with WAF SQL injection firewall, bcrypt password hashing, dynamic database bootstrapper, and 12 departmental REST API controllers.
 - **`packages/shared-types`**: Shared types, role enums, cart payloads, and financial calculation interfaces.
 
-
-
-### 👑 Super Admin Account
-| Role | Staff ID | Username | Full Name | Default Password | Permissions |
-|---|---|---|---|---|---|
-| **Super Admin** | `300000` | `Superkhan` | Gous Khan (Super Admin) | `Kingkhan@12` | Full unrestricted access to all 12 modules, staff password reset, role assignment, audit logs, and system config. |
-
-
 ## 🌟 Deep Feature Catalog (Minor to Major)
 
 ### 1. High-Speed POS Billing & Checkout
