@@ -459,6 +459,52 @@ router.post('/users/:id/force-logout', requireManagerOrAdmin, async (req: Authen
   }
 });
 
+// DELETE /api/v1/admin/users/:id — Permanently delete staff account
+router.delete('/users/:id', requireManagerOrAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const targetUser = await prisma.user.findUnique({ where: { id } });
+    if (!targetUser) return res.status(404).json({ error: 'User not found' });
+
+    if (targetUser.staffId === 300000) {
+      return res.status(400).json({ error: 'Root Super Admin account cannot be deleted.' });
+    }
+
+    if (req.user?.id === id) {
+      return res.status(400).json({ error: 'You cannot delete your own logged-in account.' });
+    }
+
+    // Invalidate target user's active sessions
+    await prisma.session.deleteMany({ where: { userId: id } });
+
+    // Nullify references in history and logs so foreign key constraints do not prevent deletion
+    await prisma.loginHistory.updateMany({ where: { userId: id }, data: { userId: null } });
+    await prisma.auditLog.updateMany({ where: { userId: id }, data: { userId: null } });
+
+    // Permanently remove the user from database
+    await prisma.user.delete({ where: { id } });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        staffId: req.user!.staffId,
+        userName: req.user!.fullName,
+        userRole: req.user!.role,
+        action: 'ADMIN_DELETE_USER',
+        entityName: 'User',
+        entityId: id,
+        reason: `Staff profile for ${targetUser.fullName} (Staff ID: ${targetUser.staffId}, username: ${targetUser.username}) permanently deleted by ${req.user!.fullName}.`,
+      },
+    });
+
+    return res.json({ message: `Staff account for ${targetUser.fullName} (Staff ID: ${targetUser.staffId}) has been permanently deleted.` });
+  } catch (err: any) {
+    console.error('Delete staff error:', err);
+    return res.status(500).json({ error: 'Failed to delete staff account' });
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // RBAC — ROLES & PERMISSIONS
 // ─────────────────────────────────────────────────────────────────────────────
