@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { prisma } from '../../prisma.js';
-import { authenticateToken, requireManagerOrAdmin, AuthenticatedRequest } from '../../middleware/auth.js';
+import { authenticateToken, requireManagerOrAdmin, requireSuperAdmin, AuthenticatedRequest } from '../../middleware/auth.js';
 import { RoleName } from '@afreen-mall/shared-types';
 
 const router = Router();
@@ -133,8 +133,8 @@ router.get('/users', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-// POST /api/v1/admin/users — Create user
-router.post('/users', requireManagerOrAdmin, async (req: AuthenticatedRequest, res: Response) => {
+// POST /api/v1/admin/users — Create user (Super Admin only)
+router.post('/users', requireSuperAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const {
       username, fullName, role, email, mobile, department,

@@ -658,9 +658,11 @@ export const SystemAdminScreen: React.FC = () => {
         </select>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
           <button className="btn" onClick={loadUsers}><RefreshCw size={14} /></button>
-          <button className="btn btn-primary" onClick={() => setShowCreateUser(true)}>
-            <Users size={14} /> Add User
-          </button>
+          {isSuperAdmin && (
+            <button className="btn btn-primary" onClick={() => setShowCreateUser(true)}>
+              <Users size={14} /> Add New Staff
+            </button>
+          )}
         </div>
       </div>
 
@@ -1809,7 +1811,7 @@ export const SystemAdminScreen: React.FC = () => {
       {activeTab === 'maintenance' && renderMaintenance()}
 
       {/* ─── Modals — Part 1 ─── */}
-      {showCreateUser && (
+      {showCreateUser && isSuperAdmin && (
         <CreateUserModal
           onClose={() => setShowCreateUser(false)}
           onCreated={(newUser, tempPass) => {
