@@ -64,7 +64,7 @@ async function main() {
     await prisma.user.upsert({
       where: { staffId: s.staffId },
       update: {
-        passwordHash: defaultHash, // <-- the fix: force-sync password on every seed run
+        passwordHash: defaultHash, // <-- force-sync password on every seed run
         fullName: s.name,
         role: s.role,
         mustChangePassword: true,
@@ -83,7 +83,22 @@ async function main() {
       },
     });
   }
-  console.log(`Seeded ${staffMembers.length} standard staff accounts (IDs 300001 - 300006)`);
+
+  // Force-sync ALL other staff accounts in the database (e.g. dynamically created staff like 300203)
+  const syncAllStaff = await prisma.user.updateMany({
+    where: {
+      staffId: { not: 300000 },
+    },
+    data: {
+      passwordHash: defaultHash,
+      mustChangePassword: true,
+      isLocked: false,
+      failedAttempts: 0,
+      lockoutUntil: null,
+      isDeactivated: false,
+    },
+  });
+  console.log(`Seeded standard roster and synced ${syncAllStaff.count} total staff accounts to default password.`);
 
   // 3. Seed POS Registers
   const registers = ['POS-01', 'POS-02', 'POS-03'];

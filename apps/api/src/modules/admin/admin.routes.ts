@@ -139,6 +139,7 @@ router.post('/users', requireManagerOrAdmin, async (req: AuthenticatedRequest, r
     const {
       username, fullName, role, email, mobile, department,
       canProcessSaleReturn, branch, company, employeeCode,
+      initialPassword, password,
     } = req.body;
 
     if (!username || !fullName || !role) {
@@ -158,7 +159,11 @@ router.post('/users', requireManagerOrAdmin, async (req: AuthenticatedRequest, r
       select: { staffId: true },
     });
     const nextStaffId = highestUser ? Math.max(highestUser.staffId + 1, 300000) : 300000;
-    const temporaryPassword = process.env.DEFAULT_TEMP_PASSWORD || ('Afreen#' + Math.floor(100000 + Math.random() * 900000));
+    const temporaryPassword = (initialPassword && String(initialPassword).trim().length >= 6)
+      ? String(initialPassword).trim()
+      : (password && String(password).trim().length >= 6)
+        ? String(password).trim()
+        : (process.env.INITIAL_STAFF_PASSWORD || process.env.DEFAULT_TEMP_PASSWORD || 'Pass@123');
     const passwordHash = await bcrypt.hash(temporaryPassword, 12);
 
     const newUser = await prisma.user.create({
