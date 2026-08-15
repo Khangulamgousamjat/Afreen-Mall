@@ -465,16 +465,6 @@ The system provides 20 granular role-based access levels. Seeded accounts can be
 | **`Escape`** | **Close / Dismiss** | Modals | Closes active modals and returns focus to barcode input. |
 | **`Ctrl + S`** | **Hold / Park Bill** | POS Cart | Temporarily parks the active bill for queue management. |
 
----
-
-## 🚀 Installation, Setup & Deployment Guide
-
-### Prerequisites
-- **Node.js**: Version `20.x LTS` or higher
-- **NPM**: Version `9.x` or higher
-- **PostgreSQL**: Version `14.x` or higher (Local instance or Cloud PostgreSQL on Render / Neon)
-
-
 
 ## 👨‍💻 Author & Architecture Credits
 
